@@ -1,6 +1,7 @@
 import {
   Calendar,
   CheckSquare,
+  Contact,
   Fingerprint,
   Kanban,
   LayoutDashboard,
@@ -79,6 +80,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Chat",
         url: "/dashboard/chat",
         icon: MessageSquare,
+      },
+      {
+        id: "contacts",
+        title: "Contacts",
+        url: "/dashboard/contacts",
+        icon: Contact,
       },
       {
         id: "calendar",
