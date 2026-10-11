@@ -39,7 +39,7 @@ function getRoleGroupFilterValue(typeFilter: string) {
   return undefined;
 }
 
-export function Roles({ roles }: { roles: Role[] }) {
+export function Roles({ roles, embedded = false }: { roles: Role[]; embedded?: boolean }) {  // F140: embedded = داخل تبويب «الأدوار» في صفحة المستخدمين
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -72,11 +72,13 @@ export function Roles({ roles }: { roles: Role[] }) {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl tracking-tight">Roles & Permissions</h1>
-          <p className="text-muted-foreground text-sm">Manage access roles and permissions across your organization.</p>
-        </div>
+      <div className={embedded ? "flex justify-end" : "flex flex-col items-start gap-4 sm:flex-row sm:justify-between"}>
+        {!embedded && (
+          <div className="flex flex-col gap-1">
+            <h1 className="text-3xl tracking-tight">Roles & Permissions</h1>
+            <p className="text-muted-foreground text-sm">Manage access roles and permissions across your organization.</p>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline">

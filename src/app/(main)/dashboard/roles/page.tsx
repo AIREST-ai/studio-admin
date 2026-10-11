@@ -1,16 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { Roles } from "./_components/roles";
-import { roles } from "./_components/roles-table/data";
-
-export const metadata: Metadata = {
-  title: "Open Source Roles and Permissions UI with shadcn/ui",
-  description: "Explore an open source roles and permissions interface for reviewing access levels and managing roles.",
-  alternates: {
-    canonical: "/dashboard/roles",
-  },
-};
-
+// F140: الأدوار صارت تبويباً داخل صفحة المستخدمين؛ الرابط القديم يحوّل إليه.
 export default function Page() {
-  return <Roles roles={roles} />;
+  redirect("/dashboard/users?tab=roles");
 }

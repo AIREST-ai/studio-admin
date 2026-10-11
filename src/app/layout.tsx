@@ -7,7 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { APP_CONFIG } from "@/config/app-config";
 import { fontVars } from "@/lib/fonts/registry";
 import { PREFERENCE_DEFAULTS } from "@/lib/preferences/preferences-config";
+import { EmbedBootScript } from "@/scripts/embed-boot";
 import { ThemeBootScript } from "@/scripts/theme-boot";
+import { ViewSyncScript } from "@/scripts/view-sync";
 import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provider";
 
 import "./globals.css";
@@ -39,6 +41,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <head>
         {/* Applies theme and layout preferences on load to avoid flicker and unnecessary server rerenders. */}
         <ThemeBootScript />
+        {/* F151: hides Studio's own sidebar and header when shown inside the Chatwoot copy (:8810) or with ?embed=1. */}
+        <EmbedBootScript />
+        {/* F153: tells a framing page (8798 / room 3018) the page shown now, for the room's screenshot. */}
+        <ViewSyncScript />
       </head>
       <body className={`${fontVars} min-h-screen antialiased`}>
         <TooltipProvider>

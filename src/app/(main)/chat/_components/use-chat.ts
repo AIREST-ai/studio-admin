@@ -24,3 +24,11 @@ export function useChat() {
 
   return [chat, setChat] as const;
 }
+
+// F145: when a tag filter hides the open conversation, open the first one of the filtered list.
+export function keepSelectionIn(ids: Conversation["id"][]) {
+  const { chat, setChat } = useChatStore.getState();
+  if (ids.length > 0 && (chat.selected === null || !ids.includes(chat.selected))) {
+    setChat({ ...chat, selected: ids[0] });
+  }
+}

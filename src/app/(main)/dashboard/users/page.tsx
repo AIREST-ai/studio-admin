@@ -1,16 +1,23 @@
+import { Suspense } from "react";
+
 import type { Metadata } from "next";
 
+import { roles } from "../roles/_components/roles-table/data";
 import { users } from "./_components/data";
-import { Users } from "./_components/users";
+import { UsersRoles } from "./_components/users-roles";
 
 export const metadata: Metadata = {
-  title: "Open Source User Management Dashboard with shadcn/ui",
-  description: "Explore an open source user management dashboard for browsing, filtering, and managing user accounts.",
+  title: "Users & Roles",
+  description: "Your team, and what each person can see and do.",
   alternates: {
     canonical: "/dashboard/users",
   },
 };
 
 export default function Page() {
-  return <Users users={users} />;
+  return (
+    <Suspense>
+      <UsersRoles users={users} roles={roles} />
+    </Suspense>
+  );
 }

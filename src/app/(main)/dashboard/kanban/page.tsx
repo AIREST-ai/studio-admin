@@ -4,9 +4,8 @@ import { initialBoard } from "./_components/data";
 import { Kanban } from "./_components/kanban";
 
 export const metadata: Metadata = {
-  title: "Open Source Kanban Board with shadcn/ui",
-  description:
-    "Explore an open source Kanban board for organizing work, tracking progress, and managing tasks visually.",
+  title: "Dodge board",
+  description: "Customer problems a reply left open, tracked from the dodge until they are solved.",
   alternates: {
     canonical: "/dashboard/kanban",
   },

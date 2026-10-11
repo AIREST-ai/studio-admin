@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import { EllipsisVertical, LogOut, Settings, UserRound } from "lucide-react";
 import { siFacebook, siInstagram, siWhatsapp } from "simple-icons";
 
@@ -29,6 +30,8 @@ import {
 } from "@/components/ui/sidebar";
 import { getInitials } from "@/lib/utils";
 
+import { ChatSidebarTags, mark, markStyle } from "./chat-tags-sidebar";
+import { setChatView, useChatView } from "./chat-view-store";
 import { channelItems, currentUser, navItems, viewItems } from "./data";
 
 const channelBrandIcons = {
@@ -40,6 +43,8 @@ const channelBrandIcons = {
 export function ChatSidebar() {
   const { state } = useSidebar();
   const _isCollapsed = state === "collapsed";
+  // F146: "Email" under Channels shows Studio's Email UI inside the chat screen; everything else goes back to chat.
+  const view = useChatView();
 
   return (
     <Sidebar
@@ -51,7 +56,13 @@ export function ChatSidebar() {
           <SidebarMenu className="gap-1">
             {navItems.map((item) => (
               <SidebarMenuItem key={item.id}>
-                <SidebarMenuButton className="[&_svg]:size-3.5" size="sm" isActive={item.isActive} tooltip={item.title}>
+                <SidebarMenuButton
+                  className="[&_svg]:size-3.5"
+                  size="sm"
+                  isActive={item.isActive && view === "chat"}
+                  tooltip={item.title}
+                  onClick={() => setChatView("chat")}
+                >
                   <item.icon />
                   <span className="font-medium">{item.title}</span>
                 </SidebarMenuButton>
@@ -66,7 +77,14 @@ export function ChatSidebar() {
           <SidebarMenu className="gap-1">
             {channelItems.map((item) => (
               <SidebarMenuItem key={item.id}>
-                <SidebarMenuButton className="[&_svg]:size-3.5" size="sm" isActive={item.isActive} tooltip={item.title}>
+                <SidebarMenuButton
+                  className={cn("[&_svg]:size-3.5", item.id === "email" && mark.active)}
+                  style={item.id === "email" ? markStyle : undefined}
+                  size="sm"
+                  isActive={item.isActive || (item.id === "email" && view === "email")}
+                  tooltip={item.title}
+                  onClick={() => setChatView(item.id === "email" ? "email" : "chat")}
+                >
                   {item.id in channelBrandIcons ? (
                     <SimpleIcon icon={channelBrandIcons[item.id as keyof typeof channelBrandIcons]} />
                   ) : (
@@ -85,7 +103,13 @@ export function ChatSidebar() {
           <SidebarMenu className="gap-1">
             {viewItems.map((item) => (
               <SidebarMenuItem key={item.id}>
-                <SidebarMenuButton className="[&_svg]:size-3.5" size="sm" isActive={item.isActive} tooltip={item.title}>
+                <SidebarMenuButton
+                  className="[&_svg]:size-3.5"
+                  size="sm"
+                  isActive={item.isActive}
+                  tooltip={item.title}
+                  onClick={() => setChatView("chat")}
+                >
                   <item.icon />
                   <span className="font-medium">{item.title}</span>
                 </SidebarMenuButton>
@@ -94,6 +118,8 @@ export function ChatSidebar() {
             ))}
           </SidebarMenu>
         </SidebarGroup>
+
+        <ChatSidebarTags />
       </SidebarContent>
 
       <SidebarFooter>

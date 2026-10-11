@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RowStar } from "@/app/(main)/chat/_components/chat-mail-actions";
 
 import type { Mail } from "./data";
 import { useMail } from "./use-mail";
@@ -68,6 +69,7 @@ export function MailList({ groups, onSelectMail }: MailListProps) {
                             )}
                           >
                             {item.from.name} {!item.isRead && <span className="size-2 rounded-full bg-blue-600" />}
+                            <RowStar mailId={item.id} />
                           </div>
                           <div
                             className={cn(

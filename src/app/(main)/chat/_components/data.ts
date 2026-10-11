@@ -11,6 +11,7 @@ export type Conversation = {
   isUnread: boolean;
   isOnline: boolean;
   unreadCount: number;
+  channel: NavItem["id"]; // F149: channel id from channelItems (email, chat, whatsapp, …)
   contact: Contact;
   messages: Message[];
 };
@@ -74,6 +75,7 @@ export const conversations: Conversation[] = [
   {
     id: 1,
     group: "Pinned",
+    channel: "whatsapp",
     name: "Olivia Rhye",
     subject: "Deployment pipeline failing on staging since last deploy",
     preview: "We're seeing 502 errors after the latest build went out. Rollback didn't help.",
@@ -132,6 +134,7 @@ export const conversations: Conversation[] = [
   {
     id: 2,
     group: "Pinned",
+    channel: "email",
     name: "Phoenix Baker",
     subject: "Refund for order #8823 — double charged",
     preview: "I was billed twice on the 3rd. Can someone look into this and reverse the duplicate?",
@@ -190,6 +193,7 @@ export const conversations: Conversation[] = [
   {
     id: 3,
     group: "Pinned",
+    channel: "instagram",
     name: "Lana Steiner",
     subject: "Access to analytics dashboard — permissions issue",
     preview: "I'm getting a 403 since the role update yesterday. Tried clearing cache already.",
@@ -249,6 +253,7 @@ export const conversations: Conversation[] = [
   {
     id: 5,
     group: "Today",
+    channel: "facebook",
     name: "Demi Wilkinson",
     subject: "Sustainability report inquiry",
     preview: "Hi team, I'm looking for the latest ESG disclosure for our upcoming board meeting.",
@@ -301,6 +306,7 @@ export const conversations: Conversation[] = [
   {
     id: 6,
     group: "Today",
+    channel: "whatsapp",
     name: "Candice Wu",
     subject: "Bulk export keeps timing out",
     preview: "Tried three times this morning. It gets to about 60% then throws a gateway error.",
@@ -352,6 +358,7 @@ export const conversations: Conversation[] = [
   {
     id: 7,
     group: "Today",
+    channel: "email",
     name: "Natali Craig",
     subject: "Invoice INV-4821 still marked unpaid",
     preview: "Our payment cleared on Friday — screenshot of the confirmation attached here.",
@@ -403,6 +410,7 @@ export const conversations: Conversation[] = [
   {
     id: 8,
     group: "Today",
+    channel: "chat",
     name: "Drew Cano",
     subject: "Onboarding docs for new hire — where to start?",
     preview: "Got a new backend dev starting Monday. Need the standard checklist and repo access steps.",
@@ -454,6 +462,7 @@ export const conversations: Conversation[] = [
   {
     id: 9,
     group: "Today",
+    channel: "email",
     name: "Orlando Diggs",
     subject: "Downgrade from Enterprise to Pro plan",
     preview: "We're winding down the project at end of quarter. Is there an early termination fee?",
@@ -504,6 +513,7 @@ export const conversations: Conversation[] = [
   {
     id: 10,
     group: "Today",
+    channel: "phone",
     name: "Andi Lane",
     subject: "API rate limit hitting hard during peak",
     preview: "Our batch jobs are getting 429s every 15 minutes between 9 and 11 AM. Need a bump.",
@@ -554,6 +564,7 @@ export const conversations: Conversation[] = [
   {
     id: 11,
     group: "Today",
+    channel: "email",
     name: "Kate Morrison",
     subject: "Custom domain SSL cert expired overnight",
     preview: "Users are seeing certificate warnings when they hit our shop page. This is urgent.",
@@ -605,6 +616,7 @@ export const conversations: Conversation[] = [
   {
     id: 12,
     group: "Today",
+    channel: "chat",
     name: "Alec Whitten",
     subject: "Upgrade to annual billing — is there a discount?",
     preview: "We're ready to commit for the year. Can you send over the annual pricing sheet?",
@@ -656,6 +668,7 @@ export const conversations: Conversation[] = [
   {
     id: 13,
     group: "Today",
+    channel: "email",
     name: "Ariana Decker",
     subject: "Bug: date picker off by one in reports",
     preview: "Selecting June 5 produces June 4 in the CSV export. Screenshot attached for reference.",
@@ -706,6 +719,7 @@ export const conversations: Conversation[] = [
   {
     id: 14,
     group: "Today",
+    channel: "whatsapp",
     name: "Steven Tey",
     subject: "Webhook delivery failures for Zapier integration",
     preview: "Getting intermittent 500s on the webhook endpoint since roughly 2 AM UTC. Logs linked.",
@@ -756,6 +770,7 @@ export const conversations: Conversation[] = [
   {
     id: 15,
     group: "Today",
+    channel: "email",
     name: "Lori Bryson",
     subject: "Request: granular RBAC for team leads",
     preview: "Our engineering leads need read-only on production but full write access on staging.",
@@ -806,6 +821,7 @@ export const conversations: Conversation[] = [
   {
     id: 16,
     group: "Today",
+    channel: "chat",
     name: "Koray Okumus",
     subject: "Mobile app crashes on Android 14 after update",
     preview: "Three users reported the same crash on launch. Stack trace from Firebase attached.",
@@ -857,6 +873,7 @@ export const conversations: Conversation[] = [
   {
     id: 17,
     group: "Yesterday",
+    channel: "email",
     name: "Josh Miller",
     subject: "Partnership proposal for Latin American market",
     preview: "We're expanding into Mexico and Brazil next quarter. Would love to explore a reseller deal.",
@@ -907,6 +924,7 @@ export const conversations: Conversation[] = [
   {
     id: 18,
     group: "Yesterday",
+    channel: "facebook",
     name: "Mollie Hall",
     subject: "Data export — need all logs from May",
     preview: "Our compliance audit starts next week. I need a full activity log dump for the auditors.",
@@ -957,6 +975,7 @@ export const conversations: Conversation[] = [
   {
     id: 19,
     group: "Yesterday",
+    channel: "email",
     name: "Rene Wells",
     subject: "White-label options for our reseller program",
     preview: "We have five partners asking about branded dashboards. Do you offer white-label tiers?",
@@ -1007,6 +1026,7 @@ export const conversations: Conversation[] = [
   {
     id: 20,
     group: "Yesterday",
+    channel: "chat",
     name: "Rylee Howard",
     subject: "MFA enforcement rollout — questions",
     preview: "Our security team wants to know if SMS fallback is still supported after the enforcement date.",
@@ -1057,6 +1077,7 @@ export const conversations: Conversation[] = [
   {
     id: 21,
     group: "Yesterday",
+    channel: "instagram",
     name: "Sienna Hewitt",
     subject: "Missing line items in CSV export",
     preview: "The January invoice export is short by three line items. The PDF version is correct though.",
@@ -1107,6 +1128,7 @@ export const conversations: Conversation[] = [
   {
     id: 22,
     group: "Yesterday",
+    channel: "email",
     name: "Noah Pierre",
     subject: "Demo request for procurement team — Friday",
     preview: "Need a 30-minute walkthrough of the vendor portal for our finance leads this Friday.",
@@ -1157,6 +1179,7 @@ export const conversations: Conversation[] = [
   {
     id: 23,
     group: "Yesterday",
+    channel: "email",
     name: "Eve Lechner",
     subject: "SSO integration with Azure AD",
     preview: "We're migrating from Okta to Azure AD. What's the typical setup timeline for SSO?",
@@ -1207,6 +1230,7 @@ export const conversations: Conversation[] = [
   {
     id: 24,
     group: "Yesterday",
+    channel: "phone",
     name: "Zahir McClure",
     subject: "Cancellation request — account owner left",
     preview: "Our ops lead resigned last week. Need to transfer ownership to me before we can cancel.",

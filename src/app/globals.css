@@ -9,6 +9,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* F151: never generate this class (it produced invalid CSS; the running dev server still remembers it). */
+@source not inline("[html[data-embed=1]_&]:block");
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

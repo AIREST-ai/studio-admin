@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { BoxTitle, MailBoxTabs } from "@/app/(main)/chat/_components/chat-mail-nav";
 
 import type { Mail } from "./data";
 import { MailList } from "./mail-list";
@@ -25,7 +26,8 @@ export function MailInbox({ mails, onSelectMail }: MailInboxProps) {
         <div className="flex items-center">
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-2 ml-1 h-4 data-vertical:self-center" />
-          <h1 className="font-medium text-xl leading-none">Inbox</h1>
+          {/* The box title ("Inbox"), now a button that opens/closes the side drawer with all boxes. */}
+          <BoxTitle />
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon-sm">
@@ -43,6 +45,8 @@ export function MailInbox({ mails, onSelectMail }: MailInboxProps) {
       <div className="px-2">
         <Separator />
       </div>
+
+      <MailBoxTabs />
 
       <div className="px-2">
         <InputGroup className="h-7 w-full rounded-md">

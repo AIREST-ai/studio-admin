@@ -36,7 +36,7 @@ export type Mail = {
   subject: string;
   body: string;
   receivedAt: string;
-  folder: "inbox" | "drafts" | "sent" | "archive" | "trash";
+  folder: "inbox" | "drafts" | "sent" | "archive" | "trash" | "spam";
   isRead: boolean;
   isPinned: boolean;
   isPriority: boolean;

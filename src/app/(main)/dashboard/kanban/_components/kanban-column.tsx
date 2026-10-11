@@ -4,7 +4,7 @@ import { CollisionPriority } from "@dnd-kit/abstract";
 import { useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { cn } from "cn";
-import { GripVertical, MoreVertical, Plus } from "lucide-react";
+import { GripVertical, MoreVertical } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -37,6 +37,7 @@ export function KanbanColumn({ column, index, tasks }: KanbanColumnProps) {
   return (
     <section
       ref={columnSortable.ref}
+      data-column-id={column.id}
       className={cn(
         "flex min-h-0 flex-col rounded-t-xl border bg-muted/50 transition-colors",
         (columnSortable.isDropTarget || taskDropTarget.isDropTarget) && "bg-muted/70",
@@ -57,14 +58,12 @@ export function KanbanColumn({ column, index, tasks }: KanbanColumnProps) {
             </Button>
             <h2 className="truncate font-medium text-base leading-none">{column.title}</h2>
           </div>
-          <p className="text-muted-foreground text-sm tabular-nums leading-none">
-            {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+          <p className="text-muted-foreground text-sm tabular-nums leading-none" data-card-count>
+            {tasks.length} {tasks.length === 1 ? "card" : "cards"}
           </p>
+          <p className="truncate text-muted-foreground text-xs leading-4">{column.hint}</p>
         </div>
         <div className="-mr-2 flex items-center gap-0.5 text-muted-foreground">
-          <Button variant="ghost" size="icon-sm" aria-label={`Add task to ${column.title}`}>
-            <Plus />
-          </Button>
           <Button variant="ghost" size="icon-sm" aria-label={`${column.title} column actions`}>
             <MoreVertical />
           </Button>

@@ -15,7 +15,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  CreditCard,
+  MessagesSquare,
   Search,
   UsersRound,
 } from "lucide-react";
@@ -39,31 +39,32 @@ import type { RecentCustomerRow } from "./schema";
 
 const statusOptions = [
   { value: "all", label: "All" },
-  { value: "Subscribed", label: "Subscribed" },
-  { value: "Inactive", label: "Inactive" },
-  { value: "Unsubscribed", label: "Unsubscribed" },
+  { value: "Dodge detected", label: "Dodge detected" },
+  { value: "In progress", label: "In progress" },
+  { value: "Waiting on customer", label: "Waiting on customer" },
+  { value: "Solved", label: "Solved" },
 ] as const;
-const billingOptions = [
+const channelOptions = [
   { value: "all", label: "All" },
-  { value: "Paid", label: "Paid" },
-  { value: "Pending", label: "Pending" },
-  { value: "Overdue", label: "Overdue" },
-  { value: "Trial", label: "Trial" },
+  { value: "WhatsApp", label: "WhatsApp" },
+  { value: "Instagram", label: "Instagram" },
+  { value: "Messenger", label: "Messenger" },
+  { value: "TikTok", label: "TikTok" },
 ] as const;
-const joinedDateOptions = [
+const detectedDateOptions = [
   { value: "all", label: "All time" },
+  { value: "7", label: "Last 7 days" },
   { value: "30", label: "Last 30 days" },
-  { value: "90", label: "Last 90 days" },
 ] as const;
 const sortOptions = [
   { value: "newest", label: "Newest first" },
   { value: "oldest", label: "Oldest first" },
-  { value: "name-asc", label: "Name A-Z" },
-  { value: "name-desc", label: "Name Z-A" },
+  { value: "name-asc", label: "Customer A-Z" },
+  { value: "name-desc", label: "Customer Z-A" },
 ] as const;
 const sortOptionState = {
-  newest: [{ id: "joined", desc: true }],
-  oldest: [{ id: "joined", desc: false }],
+  newest: [{ id: "detected", desc: true }],
+  oldest: [{ id: "detected", desc: false }],
   "name-asc": [{ id: "name", desc: false }],
   "name-desc": [{ id: "name", desc: true }],
 } satisfies Record<(typeof sortOptions)[number]["value"], SortingState>;
@@ -71,10 +72,10 @@ const sortOptionState = {
 export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: "joined", desc: true }]);
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "detected", desc: true }]);
   const [columnVisibility] = React.useState<ColumnVisibilityState>({
     search: false,
-    joinedWindow: false,
+    detectedWindow: false,
   });
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -102,14 +103,14 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
 
   const searchQuery = (table.getColumn("search")?.getFilterValue() as string | undefined) ?? "";
   const statusFilter = (table.getColumn("status")?.getFilterValue() as string | undefined) ?? "all";
-  const billingFilter = (table.getColumn("billing")?.getFilterValue() as string | undefined) ?? "all";
-  const joinedDateFilter = (table.getColumn("joinedWindow")?.getFilterValue() as string | undefined) ?? "all";
+  const channelFilter = (table.getColumn("channel")?.getFilterValue() as string | undefined) ?? "all";
+  const detectedDateFilter = (table.getColumn("detectedWindow")?.getFilterValue() as string | undefined) ?? "all";
   const sortValue = React.useMemo(() => {
     const currentSort = sorting[0];
 
     if (!currentSort) return "newest";
-    if (currentSort.id === "joined" && currentSort.desc) return "newest";
-    if (currentSort.id === "joined" && !currentSort.desc) return "oldest";
+    if (currentSort.id === "detected" && currentSort.desc) return "newest";
+    if (currentSort.id === "detected" && !currentSort.desc) return "oldest";
     if (currentSort.id === "name" && !currentSort.desc) return "name-asc";
     if (currentSort.id === "name" && currentSort.desc) return "name-desc";
 
@@ -124,7 +125,7 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-7 rounded-[min(var(--radius-md),12px)] pl-8"
-              placeholder="Search customers..."
+              placeholder="Search dodges..."
               value={searchQuery}
               onChange={(event) => {
                 table.getColumn("search")?.setFilterValue(event.target.value || undefined);
@@ -139,7 +140,7 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
                 Status
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-35" align="start">
+            <DropdownMenuContent className="w-48" align="start">
               <DropdownMenuRadioGroup
                 value={statusFilter}
                 onValueChange={(value) => {
@@ -159,18 +160,18 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <CalendarDays />
-                Joined date
+                Detected
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-40" align="start">
               <DropdownMenuRadioGroup
-                value={joinedDateFilter}
+                value={detectedDateFilter}
                 onValueChange={(value) => {
-                  table.getColumn("joinedWindow")?.setFilterValue(value === "all" ? undefined : value);
+                  table.getColumn("detectedWindow")?.setFilterValue(value === "all" ? undefined : value);
                   table.setPageIndex(0);
                 }}
               >
-                {joinedDateOptions.map((option) => (
+                {detectedDateOptions.map((option) => (
                   <DropdownMenuRadioItem key={option.value} value={option.value}>
                     {option.label}
                   </DropdownMenuRadioItem>
@@ -183,21 +184,21 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <CreditCard />
-                Billing
+                <MessagesSquare />
+                Channel
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuRadioGroup
-                value={billingFilter}
+                value={channelFilter}
                 onValueChange={(value) => {
-                  table.getColumn("billing")?.setFilterValue(value === "all" ? undefined : value);
+                  table.getColumn("channel")?.setFilterValue(value === "all" ? undefined : value);
                   table.setPageIndex(0);
                 }}
               >
-                {billingOptions.map((billing) => (
-                  <DropdownMenuRadioItem key={billing.value} value={billing.value}>
-                    {billing.label}
+                {channelOptions.map((channel) => (
+                  <DropdownMenuRadioItem key={channel.value} value={channel.value}>
+                    {channel.label}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>

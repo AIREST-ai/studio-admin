@@ -36,6 +36,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { NotSpamBar, ReportSpamItem, StarToggle } from "@/app/(main)/chat/_components/chat-mail-actions";
 
 import type { Mail } from "./data";
 import { useMail } from "./use-mail";
@@ -87,6 +88,7 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <StarToggle mail={mail} />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Pin thread">
@@ -142,6 +144,7 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
                     Add label
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
+                <ReportSpamItem mail={mail} />
               </DropdownMenuContent>
             </DropdownMenu>
             <TooltipContent>More actions</TooltipContent>
@@ -163,6 +166,7 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
       <div className="flex min-h-0 flex-1 flex-col">
         {mail ? (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <NotSpamBar mail={mail} />
             <div className="space-y-1.5">
               <div className="font-medium leading-none">{mail.subject}</div>
 

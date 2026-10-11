@@ -9,14 +9,16 @@ import customersData from "./data.json";
 import type { RecentCustomerRow } from "./recent-customers-table/schema";
 import { RecentCustomersTable } from "./recent-customers-table/table";
 
-const customers = customersData as RecentCustomerRow[];
+const dodges = customersData as RecentCustomerRow[];
 
 export function SubscriberOverview() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="leading-none">18,426 Customers</CardTitle>
-        <CardDescription>Recent customer records with plan, billing, status, and signup activity.</CardDescription>
+        <CardTitle className="leading-none">Recent dodges</CardTitle>
+        <CardDescription>
+          386 dodges in the last 30 days: WhatsApp 172 · Instagram 98 · Messenger 71 · TikTok 45
+        </CardDescription>
         <CardAction>
           <Button variant="outline" size="sm">
             <Download />
@@ -26,7 +28,7 @@ export function SubscriberOverview() {
       </CardHeader>
 
       <CardContent className="pt-0">
-        <RecentCustomersTable data={customers} />
+        <RecentCustomersTable data={dodges} />
       </CardContent>
     </Card>
   );

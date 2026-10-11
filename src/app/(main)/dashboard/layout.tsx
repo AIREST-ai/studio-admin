@@ -68,6 +68,10 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
             </div>
           </div>
         </header>
+        {/* F151: in embedded mode the header is hidden, so the layout settings panel stays reachable here (bottom-right). */}
+        <div data-embed-only className="fixed right-3 bottom-3 z-50 hidden">
+          <LayoutControls />
+        </div>
         {/* Pages can set data-content-padding="false" to render full-bleed app layouts. */}
         <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden p-4 has-data-[content-padding=false]:p-0 md:p-6 md:has-data-[content-padding=false]:p-0">
           {children}

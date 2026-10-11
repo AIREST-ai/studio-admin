@@ -1,53 +1,15 @@
 "use client";
 
 import { cn } from "cn";
-import {
-  ArrowUpRight,
-  BadgeCheck,
-  CalendarDays,
-  FileText,
-  Flame,
-  type LucideIcon,
-  MessageSquare,
-  Minus,
-  Paperclip,
-} from "lucide-react";
+import { ArrowUpRight, BadgeCheck, CalendarDays, Sparkles } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { getInitials } from "@/lib/utils";
 
-import { tagTones } from "./data";
-import type { ColumnId, Task, TaskInsightLabel, TaskPriority } from "./types";
-
-const taskInsightIcons: Record<TaskInsightLabel, LucideIcon> = {
-  Attachments: Paperclip,
-  Comments: MessageSquare,
-  Documents: FileText,
-};
-
-const priorityBadgeConfig: Record<
-  TaskPriority,
-  { icon: LucideIcon; variant: "destructive" | "secondary"; className: string }
-> = {
-  High: {
-    icon: Flame,
-    variant: "destructive",
-    className: "border-transparent",
-  },
-  Low: {
-    icon: Minus,
-    variant: "secondary",
-    className: "bg-slate-500/10 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
-  },
-  Medium: {
-    icon: ArrowUpRight,
-    variant: "secondary",
-    className: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  },
-};
+import { channelTones } from "./data";
+import type { ColumnId, Task } from "./types";
 
 export function TaskCard({
   task,
@@ -58,10 +20,8 @@ export function TaskCard({
   columnId?: ColumnId;
   isOverlay?: boolean;
 }) {
-  const isDone = columnId === "shipped";
-  const showBuildingDetails = columnId === "building" && typeof task.progress === "number";
+  const isSolved = columnId === "solved";
   const owner = task.owner;
-  const PriorityIcon = priorityBadgeConfig[task.priority].icon;
 
   return (
     <article
@@ -70,105 +30,66 @@ export function TaskCard({
         isOverlay && "w-68 rotate-1 shadow-lg",
       )}
     >
-      <div className="min-w-0 space-y-1.5">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="min-w-0 truncate font-medium text-sm leading-none">{task.title}</h3>
+      <div className="min-w-0 space-y-2">
+        <h3 className="truncate font-medium text-sm leading-none">{task.customer}</h3>
+        <div className="flex min-w-0 items-center gap-2">
           <Badge
-            variant={priorityBadgeConfig[task.priority].variant}
-            className={cn(
-              "shrink-0 rounded-md border-transparent px-2 font-medium",
-              priorityBadgeConfig[task.priority].className,
-            )}
+            variant="secondary"
+            className={cn("shrink-0 rounded-md border-transparent px-1.5 font-medium", channelTones[task.channel])}
           >
-            <PriorityIcon data-icon="inline-start" />
-            {task.priority}
+            {task.channel}
           </Badge>
+          <p className="min-w-0 truncate text-muted-foreground text-xs" title={task.problem}>
+            {task.problem}
+          </p>
         </div>
-        <p className="line-clamp-2 text-muted-foreground text-sm leading-5">{task.description}</p>
       </div>
 
-      {!showBuildingDetails ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Avatar className={cn("size-5 after:rounded-sm", owner.tone)}>
-              <AvatarFallback className="rounded-sm text-[10px]">{getInitials(owner.name)}</AvatarFallback>
-            </Avatar>
-
-            <span className="text-muted-foreground text-sm">{owner.name}</span>
-          </div>
-
-          <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <span className="truncate text-sm">{task.dueDate}</span>
-            <CalendarDays className="size-3" />
-          </div>
+      <div className="flex flex-col gap-2">
+        <div className="rounded-r-md border-red-500/70 border-l-2 bg-red-500/5 px-2.5 py-1.5">
+          <p className="font-medium text-[11px] text-red-700 uppercase tracking-wide dark:text-red-300">Dodge</p>
+          <p className="line-clamp-2 text-foreground/80 text-sm italic leading-5">“{task.dodge}”</p>
         </div>
-      ) : null}
-
-      {showBuildingDetails ? (
-        <div className="flex flex-col gap-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-muted-foreground text-xs">
-              <span className="leading-none">Progress</span>
-              <span className="tabular-nums leading-none">{task.progress}%</span>
-            </div>
-            <Progress value={task.progress} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground text-sm">Owner</span>
-              <div className="flex items-center gap-1.5">
-                <span className="truncate text-muted-foreground text-sm">{owner.name}</span>
-                <Avatar className={cn("size-5 after:rounded-sm", owner.tone)}>
-                  <AvatarFallback className="rounded-sm text-[10px]">{getInitials(owner.name)}</AvatarFallback>
-                </Avatar>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground text-sm">Due date</span>
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="truncate text-sm">{task.dueDate}</span>
-                <CalendarDays className="size-3" />
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground text-sm">Team</span>
-              <Badge
-                variant="secondary"
-                className={cn("rounded-md border-transparent px-2 font-medium", tagTones[task.team])}
-              >
-                {task.team}
-              </Badge>
-            </div>
-          </div>
+        <div className="rounded-r-md border-emerald-500/70 border-l-2 bg-emerald-500/5 px-2.5 py-1.5">
+          <p className="flex items-center gap-1 font-medium text-[11px] text-emerald-700 uppercase tracking-wide dark:text-emerald-300">
+            <Sparkles className="size-3" />
+            Better reply
+          </p>
+          <p className="line-clamp-4 text-foreground/80 text-sm leading-5">{task.betterReply}</p>
         </div>
-      ) : null}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Avatar className={cn("size-5 after:rounded-sm", owner.tone)}>
+            <AvatarFallback className="rounded-sm text-[10px]">{getInitials(owner.name)}</AvatarFallback>
+          </Avatar>
+          <span className="truncate text-muted-foreground text-sm">{owner.name}</span>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground" title="Due date">
+          <CalendarDays className="size-3" />
+          <span className="text-sm">{task.dueDate}</span>
+        </div>
+      </div>
 
       <Separator />
 
-      <div>
-        {isDone ? (
-          <div className="flex items-center gap-1 font-medium text-green-700 text-sm dark:text-green-600">
-            <BadgeCheck className="size-4" />
-            Done
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        {isSolved ? (
+          <span className="flex shrink-0 items-center gap-1 whitespace-nowrap font-medium text-green-700 text-xs dark:text-green-500">
+            <BadgeCheck className="size-3.5" />
+            Solved
+          </span>
         ) : null}
-
-        {!isDone ? (
-          <div className="flex items-center gap-3 text-muted-foreground text-sm">
-            {task.insights.map((insight) => {
-              const Icon = taskInsightIcons[insight.label];
-
-              return (
-                <span key={insight.label} className="flex items-center gap-1.5 text-sm">
-                  <Icon className="size-3.5" />
-                  {insight.count}
-                </span>
-              );
-            })}
-          </div>
-        ) : null}
+        <a
+          href={task.conversationHref}
+          draggable={false}
+          className="ml-auto inline-flex items-center gap-1 whitespace-nowrap font-medium text-primary text-sm underline-offset-4 hover:underline"
+        >
+          Open conversation
+          <ArrowUpRight className="size-3.5" />
+        </a>
       </div>
     </article>
   );

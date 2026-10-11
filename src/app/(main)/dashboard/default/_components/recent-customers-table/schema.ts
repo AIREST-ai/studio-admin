@@ -1,13 +1,13 @@
 import z from "zod";
 
-const recentCustomersSchema = z.object({
+const recentDodgesSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string(),
-  plan: z.string(),
+  channel: z.string(),
+  agent: z.string(),
+  dodge: z.string(),
   status: z.string(),
-  billing: z.string(),
-  joined: z.string(),
+  detected: z.string(),
 });
 
-export type RecentCustomerRow = z.infer<typeof recentCustomersSchema>;
+export type RecentCustomerRow = z.infer<typeof recentDodgesSchema>;

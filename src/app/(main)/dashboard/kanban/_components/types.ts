@@ -1,29 +1,12 @@
-export type ColumnId = "ideas" | "planned" | "building" | "qa" | "shipped";
+export type ColumnId = "detected" | "in-progress" | "waiting" | "solved";
 
 export type Column = {
   id: ColumnId;
   title: string;
+  hint: string;
 };
 
-export type TaskTeam =
-  | "Backend"
-  | "Data"
-  | "Design"
-  | "Docs"
-  | "Finance Ops"
-  | "Platform"
-  | "Product"
-  | "QA"
-  | "Security";
-
-export type TaskPriority = "High" | "Medium" | "Low";
-
-export type TaskInsightLabel = "Attachments" | "Comments" | "Documents";
-
-export type TaskInsight = {
-  label: TaskInsightLabel;
-  count: number;
-};
+export type Channel = "WhatsApp" | "Messenger" | "Instagram" | "TikTok";
 
 export type TaskOwnerProfile = {
   name: string;
@@ -32,14 +15,14 @@ export type TaskOwnerProfile = {
 
 export type Task = {
   id: string;
-  title: string;
-  description: string;
-  priority: TaskPriority;
+  customer: string;
+  channel: Channel;
+  problem: string;
+  dodge: string;
+  betterReply: string;
   dueDate: string;
-  progress: number;
   owner: TaskOwnerProfile;
-  team: TaskTeam;
-  insights: TaskInsight[];
+  conversationHref: string;
 };
 
 export type BoardState = Record<ColumnId, Task[]>;

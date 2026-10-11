@@ -9,8 +9,10 @@ import { useIsLg } from "@/hooks/use-lg";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { ChatConversationList } from "./chat-conversation-list";
+import { ChatEmailView } from "./chat-email-view";
 import { ChatProfileDetails } from "./chat-profile-details";
 import { ChatThread } from "./chat-thread";
+import { useChatView } from "./chat-view-store";
 import type { Conversation } from "./data";
 import { useChat } from "./use-chat";
 
@@ -24,8 +26,12 @@ export function Chat({ conversations }: ChatProps) {
   const [showThread, setShowThread] = useState(false);
   const isLg = useIsLg();
   const isMobile = useIsMobile();
+  const view = useChatView();
 
   const activeConversation = conversations.find((c) => c.id === chat.selected) ?? conversations[0];
+
+  // F146: "Email" under Channels shows Studio's Email UI here instead of the list and thread.
+  if (view === "email") return <ChatEmailView />;
 
   return (
     <>
