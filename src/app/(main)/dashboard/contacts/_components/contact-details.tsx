@@ -5,7 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
-import { Ban, ImageIcon, MessageSquare, Search, Tag } from "lucide-react";
+import {
+  Ban,
+  ImageIcon,
+  Inbox,
+  MessageSquare,
+  MessagesSquare,
+  Search,
+  Smile,
+  Tag,
+  Timer,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +30,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -29,6 +41,7 @@ import { getInitials } from "@/lib/utils";
 
 import { ContactFormFields, DeleteContactDialog, SocialLinksFields } from "./contact-dialogs";
 import { attributes, type Contact, contacts, conversations, notes, toneFor } from "./data";
+import { ContactAvatar, contactStatus, LabelBadge, StatusBadge, statusMeta } from "./studio-ui";
 
 function AttributesTab() {
   return (
@@ -68,7 +81,19 @@ function HistoryTab({ contact }: { contact: Contact }) {
             <Badge variant="outline" className="font-normal">
               {c.inbox}
             </Badge>
-            <Badge variant={c.status === "Open" ? "default" : "secondary"} className="font-normal">
+            <Badge
+              variant="outline"
+              className={cn(
+                "gap-1.5 border px-2 py-1 font-medium",
+                c.status === "Open" ? statusMeta.Active.badgeClass : statusMeta.Inactive.badgeClass,
+              )}
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  c.status === "Open" ? statusMeta.Active.dotClass : statusMeta.Inactive.dotClass,
+                )}
+              />
               {c.status}
             </Badge>
           </div>
@@ -166,14 +191,50 @@ function MergeTab({ contact }: { contact: Contact }) {
   );
 }
 
+const stats = [
+  { icon: MessagesSquare, label: "Conversations", value: "14", trend: "+3", up: true, note: "Across WhatsApp, Website and Email" },
+  { icon: Inbox, label: "Open", value: "1", trend: "-2", up: false, note: "Waiting on your team" },
+  { icon: Timer, label: "Avg. first response", value: "4m 12s", trend: "-18%", up: false, note: "Faster than team average" },
+  { icon: Smile, label: "CSAT", value: "96%", trend: "+4 pts", up: true, note: "From 9 ratings" },
+];
+
+function StatCards() {
+  return (
+    <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+      {stats.map((stat) => (
+        <Card key={stat.label}>
+          <CardHeader>
+            <CardTitle>
+              <div className="flex size-7 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+                <stat.icon className="size-4" />
+              </div>
+            </CardTitle>
+            <CardDescription>{stat.label}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">{stat.value}</div>
+              <Badge>
+                {stat.up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+                {stat.trend}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground text-sm">{stat.note}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function ContactDetails({ contact }: { contact: Contact }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [blocked, setBlocked] = React.useState(false);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="@container/main flex flex-col gap-4 md:gap-6">
+      <div className="flex flex-col gap-3">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -187,55 +248,60 @@ export function ContactDetails({ contact }: { contact: Contact }) {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setBlocked((b) => !b)}>
-            <Ban /> {blocked ? "Unblock contact" : "Block contact"}
-          </Button>
-          <Button size="sm" asChild>
-            <Link href="/dashboard/chat">
-              <MessageSquare /> Send message
-            </Link>
-          </Button>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <ContactAvatar contact={contact} className="size-14 text-lg" />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl leading-none tracking-tight">{contact.name}</h1>
+                <StatusBadge status={blocked ? "Blocked" : contactStatus(contact)} />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {contact.email} · {contact.company ? `${contact.company} · ` : ""}
+                {contact.city}, {contact.country} · Created {contact.createdAt}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setBlocked((b) => !b)}>
+              <Ban /> {blocked ? "Unblock contact" : "Block contact"}
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/dashboard/chat">
+                <MessageSquare /> Send message
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[1fr_380px]">
+      <StatCards />
+
+      <div className="grid items-start gap-4 lg:grid-cols-[1fr_480px]">
         <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-xl leading-none">Contact details</CardTitle>
+            <CardDescription className="leading-snug">
+              Last active {contact.lastActivity}. Edit profile, labels and social links.
+            </CardDescription>
+          </CardHeader>
           <CardContent className="grid gap-6">
-            <div className="flex items-start gap-4">
-              <Avatar className="size-16">
-                <AvatarFallback className={cn("font-medium text-lg", toneFor(contact.id))}>
-                  {getInitials(contact.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid gap-1.5">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-medium text-xl">{contact.name}</h1>
-                  {blocked ? <Badge variant="destructive">Blocked</Badge> : null}
-                </div>
-                <span className="text-muted-foreground text-sm">
-                  Created {contact.createdAt} • Last active {contact.lastActivity}
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {contact.labels.map((label) => (
-                    <Badge key={label} variant="secondary" className="font-normal">
-                      {label}
-                    </Badge>
-                  ))}
-                  <Button variant="ghost" size="xs" className="text-muted-foreground">
-                    <Tag /> Add labels
-                  </Button>
-                </div>
+            <div className="grid gap-2">
+              <span className="text-muted-foreground text-sm">Labels</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {contact.labels.map((label) => (
+                  <LabelBadge key={label} label={label} />
+                ))}
+                <Button variant="outline" size="xs" className="text-muted-foreground">
+                  <Tag /> Add labels
+                </Button>
               </div>
             </div>
 
-            <div className="grid gap-3">
-              <span className="font-medium text-sm">Edit contact details</span>
-              <ContactFormFields contact={contact} />
-            </div>
+            <ContactFormFields contact={contact} />
             <SocialLinksFields />
             <div>
-              <Button>Update contact</Button>
+              <Button size="sm">Update contact</Button>
             </div>
 
             <Separator />
@@ -247,24 +313,45 @@ export function ContactDetails({ contact }: { contact: Contact }) {
                   Permanently delete this contact. This action is irreversible
                 </span>
               </div>
-              <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
                 Delete contact
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="py-4">
-          <CardContent className="px-4">
-            <Tabs defaultValue="attributes">
-              <TabsList variant="line" className="w-full justify-start">
-                <TabsTrigger value="attributes">Attributes</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-xl leading-none">Activity</CardTitle>
+            <CardDescription className="leading-snug">Attributes, history, notes and media.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="attributes" className="gap-4">
+              <TabsList
+                variant="line"
+                className="w-full justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none"
+              >
+                <TabsTrigger value="attributes">
+                  Attributes
+                  <Badge variant="secondary" className="ms-1 tabular-nums">
+                    {attributes.length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="history">
+                  History
+                  <Badge variant="secondary" className="ms-1 tabular-nums">
+                    {conversations.length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="notes">
+                  Notes
+                  <Badge variant="secondary" className="ms-1 tabular-nums">
+                    {notes.length}
+                  </Badge>
+                </TabsTrigger>
                 <TabsTrigger value="media">Media</TabsTrigger>
                 <TabsTrigger value="merge">Merge</TabsTrigger>
               </TabsList>
-              <Separator className="mb-2" />
               <TabsContent value="attributes">
                 <AttributesTab />
               </TabsContent>
