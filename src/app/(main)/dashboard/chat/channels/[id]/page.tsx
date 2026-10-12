@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 
-import { ConversationsWorkspace } from "../../_components/conversations-workspace";
-import { inboxes } from "../../_components/cw-data";
-import { ViewNotFound } from "../../_components/view-not-found";
+import { inboxes } from "@/lib/cw/data";
+
+import { CwViewGuard } from "../../_components/cw-view-guard";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  return { title: inboxes.some((inbox) => inbox.id === id) ? "Inbox conversations" : "Inbox not found" };
+  return { title: inboxes.find((inbox) => inbox.slug === id)?.name ?? "Inbox conversations" };
 }
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!inboxes.some((inbox) => inbox.id === id)) return <ViewNotFound kind="inbox" />;
-  return <ConversationsWorkspace view={{ kind: "inbox", id }} />;
+  return <CwViewGuard kind="inbox" id={id} />;
 }

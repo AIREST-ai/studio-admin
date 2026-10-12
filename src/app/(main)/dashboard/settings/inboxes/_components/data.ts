@@ -14,19 +14,10 @@ import {
   Webhook,
 } from "lucide-react";
 
-export type ChannelKey =
-  | "website"
-  | "facebook"
-  | "whatsapp"
-  | "whatsapp_call"
-  | "sms"
-  | "email"
-  | "api"
-  | "telegram"
-  | "line"
-  | "instagram"
-  | "tiktok"
-  | "voice";
+import { type ChannelKey, type Inbox, agents as sharedAgents, inboxes as sharedInboxes } from "@/lib/cw/data";
+
+// F161: channel keys, inboxes and agents come from the shared layer (src/lib/cw/data.ts).
+export type { ChannelKey, Inbox } from "@/lib/cw/data";
 
 export interface Channel {
   key: ChannelKey;
@@ -34,6 +25,8 @@ export interface Channel {
   description: string;
   name: string;
   icon: LucideIcon;
+  /** Chatwoot ChannelItem.vue isBeta: TikTok, Voice and WhatsApp Call carry a "Beta" badge. */
+  beta?: boolean;
 }
 
 // Labels copied from Chatwoot INBOX_MGMT.ADD.AUTH.CHANNEL and INBOX_MGMT.CHANNELS
@@ -52,13 +45,6 @@ export const channels: Channel[] = [
     description: "Support your customers on WhatsApp",
     name: "WhatsApp",
     icon: MessageCircle,
-  },
-  {
-    key: "whatsapp_call",
-    title: "WhatsApp Call",
-    description: "Take voice calls on your WhatsApp number",
-    name: "WhatsApp",
-    icon: Phone,
   },
   {
     key: "sms",
@@ -90,97 +76,39 @@ export const channels: Channel[] = [
     name: "Instagram",
     icon: Camera,
   },
-  { key: "tiktok", title: "TikTok", description: "Connect your TikTok account", name: "TikTok", icon: Music2 },
-  { key: "voice", title: "Voice", description: "Integrate with Twilio Voice", name: "Voice", icon: PhoneCall },
+  {
+    key: "tiktok",
+    title: "TikTok",
+    description: "Connect your TikTok account",
+    name: "TikTok",
+    icon: Music2,
+    beta: true,
+  },
+  {
+    key: "voice",
+    title: "Voice",
+    description: "Integrate with Twilio Voice",
+    name: "Voice",
+    icon: PhoneCall,
+    beta: true,
+  },
+  // Chatwoot ChannelList.vue pushes WhatsApp Call last.
+  {
+    key: "whatsapp_call",
+    title: "WhatsApp Call",
+    description: "Take voice calls on your WhatsApp number",
+    name: "WhatsApp",
+    icon: Phone,
+    beta: true,
+  },
 ];
 
 export function channelFor(key: ChannelKey): Channel {
   return channels.find((c) => c.key === key) ?? channels[0];
 }
 
-export interface Inbox {
-  id: number;
-  name: string;
-  channel: ChannelKey;
-  identifier: string;
-  agents: number[];
-  autoAssign: boolean;
-  /** Chatwoot provider of the channel: decides which settings tabs show (Settings.vue tabs()). */
-  provider?: "whatsapp_cloud" | "twilio";
-}
-
-// F159: the six inboxes of Conversations (cw-data.ts inboxes), same names and addresses, in the same order, then
-// two settings-only examples (SMS, API).
-export const inboxes: Inbox[] = [
-  {
-    id: 1,
-    name: "Support Email",
-    channel: "email",
-    identifier: "support@weblabs.studio",
-    agents: [1, 2, 3, 4],
-    autoAssign: false,
-  },
-  {
-    id: 2,
-    name: "Website Chat",
-    channel: "website",
-    identifier: "weblabs.studio",
-    agents: [1, 2, 3, 4, 5],
-    autoAssign: true,
-  },
-  {
-    id: 3,
-    name: "WhatsApp Business",
-    channel: "whatsapp",
-    identifier: "+974 4400 1122",
-    agents: [1, 2, 4, 5],
-    autoAssign: true,
-    provider: "whatsapp_cloud",
-  },
-  {
-    id: 4,
-    name: "Instagram",
-    channel: "instagram",
-    identifier: "@weblabs.studio",
-    agents: [2, 5],
-    autoAssign: true,
-  },
-  {
-    id: 5,
-    name: "Facebook Page",
-    channel: "facebook",
-    identifier: "Weblabs Studio",
-    agents: [2, 3, 4],
-    autoAssign: true,
-  },
-  {
-    id: 6,
-    name: "Phone",
-    channel: "voice",
-    identifier: "+974 4400 1100",
-    agents: [1, 3],
-    autoAssign: false,
-    provider: "twilio",
-  },
-  // F159 settings-a: two more channel types so every inbox settings tab can be opened (Twilio SMS and API).
-  {
-    id: 7,
-    name: "SMS Alerts",
-    channel: "sms",
-    identifier: "+974 4400 1144",
-    agents: [2, 3],
-    autoAssign: true,
-    provider: "twilio",
-  },
-  {
-    id: 8,
-    name: "Mobile App API",
-    channel: "api",
-    identifier: "api.weblabs.studio",
-    agents: [1, 4, 5],
-    autoAssign: true,
-  },
-];
+// F161: the eight inboxes and the agent roster are the shared ones (Users & Roles, Conversations, Reports).
+export const inboxes: Inbox[] = sharedInboxes;
 
 export interface Agent {
   id: number;
@@ -189,14 +117,12 @@ export interface Agent {
   role: "Administrator" | "Agent";
 }
 
-// F159: the same five agents as Conversations (cw-data.ts), same ids, names and emails.
-export const agents: Agent[] = [
-  { id: 1, name: "Arham Khan", email: "arham.khan@weblabs.studio", role: "Administrator" },
-  { id: 2, name: "Priya Nair", email: "priya.nair@weblabs.studio", role: "Agent" },
-  { id: 3, name: "Yousef Al-Harbi", email: "yousef.harbi@weblabs.studio", role: "Agent" },
-  { id: 4, name: "Lina Haddad", email: "lina.haddad@weblabs.studio", role: "Agent" },
-  { id: 5, name: "Ravi Menon", email: "ravi.menon@weblabs.studio", role: "Agent" },
-];
+export const agents: Agent[] = sharedAgents.map((agent) => ({
+  id: agent.id,
+  name: agent.name,
+  email: agent.email,
+  role: agent.role === "administrator" ? "Administrator" : "Agent",
+}));
 
 const tones = [
   "bg-sky-500/15 text-sky-700 dark:text-sky-300",
@@ -208,4 +134,11 @@ const tones = [
 
 export function toneFor(id: number) {
   return tones[id % tones.length];
+}
+
+/** The channel name a row shows under the inbox name (Chatwoot's channel type label). */
+export function inboxChannelName(inbox: Inbox): string {
+  // Chatwoot ChannelName.vue: a Twilio SMS inbox reads "Twilio SMS".
+  if (inbox.channel === "sms" && inbox.provider === "twilio") return "Twilio SMS";
+  return channelFor(inbox.channel).name;
 }

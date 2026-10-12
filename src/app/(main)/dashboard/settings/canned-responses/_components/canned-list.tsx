@@ -28,28 +28,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import type { CannedResponse } from "@/lib/cw/data";
+import { useCwList } from "@/lib/cw/store";
 
 import { ConfirmDelete, NoResults, plural, SettingsShell } from "../../labels/_shared/settings-shell";
 import { FieldError, RowMenu, tableClass } from "../../labels/_shared/settings-ui";
 
-interface Canned {
-  id: number;
-  shortCode: string;
-  content: string;
-}
-
-const initialResponses: Canned[] = [
-  { id: 1, shortCode: "greeting", content: "Hello {{contact.name}}, thank you for reaching out to us. How can I help you today?" },
-  { id: 2, shortCode: "salam", content: "وعليكم السلام ورحمة الله، أهلاً بك. كيف يمكننا مساعدتك اليوم؟" },
-  { id: 3, shortCode: "delivery-time", content: "Orders inside Doha are delivered within 24 hours. Al Khor, Dukhan and Mesaieed take 2 to 3 working days." },
-  { id: 4, shortCode: "refund-policy", content: "You can return any unused item within 14 days. The refund reaches your card in 5 to 7 working days after we receive it." },
-  { id: 5, shortCode: "working-hours", content: "Our team is available Saturday to Thursday, 8:00 AM to 10:00 PM (Doha time). Friday from 2:00 PM." },
-  { id: 6, shortCode: "payment-link", content: "Here is your secure payment link for order {{conversation.custom_attribute.order_number}}. It is valid for 24 hours." },
-  { id: 7, shortCode: "uae-shipping", content: "We ship to all Emirates. Delivery to Dubai and Abu Dhabi takes 2 working days, shipping fee is AED 25." },
-  { id: 8, shortCode: "ksa-branch", content: "Our Riyadh showroom is on King Fahd Road, open daily from 10:00 AM to 11:00 PM." },
-  { id: 9, shortCode: "handover", content: "I am passing you to {{agent.name}} from our billing team, who will continue with you here." },
-  { id: 10, shortCode: "closing", content: "Is there anything else I can help you with? Have a lovely day!" },
-];
+// F161: one list for Settings and the reply box "/" menu (src/lib/cw), so a response added here is offered there.
+type Canned = CannedResponse;
 
 // The variables Chatwoot's message editor offers after "{{" (shared/constants/messages.js MESSAGE_VARIABLES).
 const variables = [
@@ -197,7 +183,7 @@ function ContentPreview({ text }: { text: string }) {
 }
 
 export function CannedList() {
-  const [responses, setResponses] = React.useState(initialResponses);
+  const [responses, setResponses] = useCwList("cannedResponses");
   const [query, setQuery] = React.useState("");
   const [sortAsc, setSortAsc] = React.useState(true);
   const [adding, setAdding] = React.useState(false);

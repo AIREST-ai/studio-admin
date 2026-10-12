@@ -32,6 +32,8 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import type { Inbox, Team } from "@/lib/cw/data";
+import { useCwShared } from "@/lib/cw/store";
 import type {
   NavBadge,
   NavGroup,
@@ -93,8 +95,20 @@ const LABEL_PREFIX = "/dashboard/chat/labels/";
 // a renamed one updates and a deleted one disappears. The Labels item lists the labels of chat-tags-store, so a
 // label added from a conversation ("Add tag…") shows up here too, as in Chatwoot's sidebar. An empty list hides
 // the item.
-function withLiveLists(groups: readonly NavGroup[], folders: Folder[], tags: ChatTag[]): NavGroup[] {
+// F161: Teams and Channels list the shared teams and inboxes (src/lib/cw), so a team or inbox created in Settings
+// shows up here and a deleted one disappears.
+function withLiveLists(
+  groups: readonly NavGroup[],
+  folders: Folder[],
+  tags: ChatTag[],
+  teams: Team[],
+  inboxes: Inbox[],
+): NavGroup[] {
   const live = new Map<string, NavSubItem[]>([
+    [
+      "cv-teams",
+      teams.map((team) => ({ id: `cv-t-${team.slug}`, title: team.name, url: `/dashboard/chat/teams/${team.slug}` })),
+    ],
     [
       "cv-folders",
       folders.map((folder) => ({
@@ -117,9 +131,11 @@ function withLiveLists(groups: readonly NavGroup[], folders: Folder[], tags: Cha
     items: group.items.flatMap((item): NavMainItem[] => {
       // Each inbox under Channels shows its channel icon, the same one as the conversation cards and the channels bar.
       if (item.id === "cv-channels" && hasSubItems(item)) {
-        const channelItems = item.subItems.map((sub) => ({
-          ...sub,
-          icon: sub.icon ?? channelNavIcon(sub.id.replace(/^cv-c-/, "")),
+        const channelItems = inboxes.map((inbox) => ({
+          id: `cv-c-${inbox.slug}`,
+          title: inbox.name,
+          url: `/dashboard/chat/channels/${inbox.slug}`,
+          icon: channelNavIcon(inbox.slug),
         }));
         return [{ ...item, subItems: channelItems }];
       }
@@ -147,9 +163,17 @@ const CHAT_SECTION_ITEMS: Record<string, string> = {
 // not to All Conversations.
 function pageOwner(groups: readonly NavGroup[], path: string): { item: string | null; url: string | null } {
   // F159 final pass: a plain link item for this exact page (Search) owns it, so its parent group is not marked too.
+  // F161: and the pages below it (/dashboard/calls/…, /dashboard/notifications/…).
   for (const group of groups) {
     for (const item of group.items) {
       if (!hasSubItems(item) && item.url === path) return { item: item.id, url: item.url };
+    }
+  }
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (!hasSubItems(item) && item.url !== "/dashboard/chat" && path.startsWith(`${item.url}/`)) {
+        return { item: item.id, url: item.url };
+      }
     }
   }
   let best: { item: string; url: string } | null = null;
@@ -171,7 +195,9 @@ export function NavMain({ items: baseItems }: NavMainProps) {
   const path = usePathname();
   const folders = useCwStore((s) => s.folders);
   const { tags } = useChatTags();
-  const items = withLiveLists(baseItems, folders, tags);
+  const teams = useCwShared((s) => s.teams);
+  const inboxes = useCwShared((s) => s.inboxes);
+  const items = withLiveLists(baseItems, folders, tags, teams, inboxes);
   const owner = pageOwner(items, path);
 
   const isItemActive = (item: NavMainItem) => {
@@ -179,11 +205,13 @@ export function NavMain({ items: baseItems }: NavMainProps) {
       return item.id === owner.item;
     }
 
-    return path === item.url;
+    return item.id === owner.item;
   };
 
+  // F161: the sub link that owns the page is marked on its sub-pages too (/dashboard/reports/agents/3 marks
+  // Reports > Agents), not only on its exact URL.
   const isSubItemActive = (url: string) => {
-    return path === url;
+    return url === owner.url;
   };
 
   const isSubmenuOpen = (item: NavMainParentItem) => {

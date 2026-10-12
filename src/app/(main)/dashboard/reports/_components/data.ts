@@ -1,6 +1,7 @@
 // Sample data for the reports screens (visual only, nothing is fetched).
 // F159: the live numbers (Overview), the CSAT responses and the SLA rows come from the inbox conversations
 // (dashboard/chat/_components/cw-data.ts), so the same ids, people, agents and topics appear on every page.
+
 import {
   agentName,
   baseConversations,
@@ -12,6 +13,7 @@ import {
   initialMeta,
   teamName,
 } from "@/app/(main)/dashboard/chat/_components/cw-data";
+import { agents as sharedAgents, inboxes as sharedInboxes, labels as sharedLabels } from "@/lib/cw/data";
 
 export type EntityKind = "agents" | "inboxes" | "teams" | "labels";
 
@@ -244,6 +246,34 @@ export const labels: SummaryRow[] = [
     resolutionCount: 38,
   },
 ];
+
+// F161: every agent, inbox and label of the shared layer (src/lib/cw/data.ts) has a row, as in Chatwoot's reports:
+// the ones above handled the sample conversations; the others (12 more agents of Users & Roles, SMS Alerts and
+// Mobile App API, Fahad's five Arabic labels and the three hidden labels) handled none in this period, so 0 and "—".
+function idle(id: string, name: string, extra: Partial<SummaryRow> = {}): SummaryRow {
+  return {
+    id,
+    name,
+    conversations: 0,
+    avgFirstResponse: "—",
+    avgResolution: "—",
+    avgReply: "—",
+    resolutionCount: 0,
+    ...extra,
+  };
+}
+
+for (const agent of sharedAgents) {
+  if (!agents.some((row) => row.id === String(agent.id)))
+    agents.push(idle(String(agent.id), agent.name, { subtitle: agent.email }));
+}
+for (const inbox of sharedInboxes) {
+  if (!inboxes.some((row) => row.id === String(inbox.id)))
+    inboxes.push(idle(String(inbox.id), inbox.name, { subtitle: inbox.channelType }));
+}
+for (const label of sharedLabels) {
+  if (!labels.some((row) => row.name === label.title)) labels.push(idle(label.id, label.title, { color: label.color }));
+}
 
 export const entities: Record<EntityKind, SummaryRow[]> = { agents, inboxes, teams, labels };
 

@@ -9,6 +9,14 @@ import {
   conversations as studioConversations,
 } from "@/app/(main)/chat/_components/data";
 import { categoryOf, articles as helpCenterArticles } from "@/app/(main)/dashboard/help-center/_components/data";
+import {
+  CURRENT_USER_ID,
+  sendableTemplates,
+  agents as sharedAgents,
+  cannedResponses as sharedCanned,
+  inboxes as sharedInboxes,
+  teams as sharedTeams,
+} from "@/lib/cw/data";
 
 export { contactIdOf, currentUser, isPersonOnline } from "@/app/(main)/chat/_components/data";
 export { macros } from "@/app/(main)/dashboard/settings/macros/_components/data";
@@ -140,33 +148,31 @@ export interface ConversationMeta {
   createdAt: string;
 }
 
-export const agents: Agent[] = [
-  { id: 1, name: "Arham Khan", email: "arham.khan@weblabs.studio", role: "Administrator", availability: "online" },
-  // No agent shares a first or last name with a contact (Contacts page people), so a row like "Phone · Yousef"
-  // never reads as the customer's own name.
-  { id: 2, name: "Priya Nair", email: "priya.nair@weblabs.studio", role: "Agent", availability: "online" },
-  { id: 3, name: "Yousef Al-Harbi", email: "yousef.harbi@weblabs.studio", role: "Agent", availability: "busy" },
-  { id: 4, name: "Lina Haddad", email: "lina.haddad@weblabs.studio", role: "Agent", availability: "online" },
-  { id: 5, name: "Ravi Menon", email: "ravi.menon@weblabs.studio", role: "Agent", availability: "offline" },
-];
+// F161: agents, teams and inboxes come from the shared layer (src/lib/cw/data.ts), the same ones as Users & Roles,
+// Settings and Reports. Teams and inboxes keep their URL ids (slugs) here, as the conversation views use them.
+export const agents: Agent[] = sharedAgents.map((agent) => ({
+  id: agent.id,
+  name: agent.name,
+  email: agent.email,
+  role: agent.role === "administrator" ? "Administrator" : "Agent",
+  availability: agent.availability,
+}));
 
-export const CURRENT_AGENT_ID = 1;
+export const CURRENT_AGENT_ID = CURRENT_USER_ID;
 
-export const teams: Team[] = [
-  { id: "sales", name: "Sales", description: "New business, upgrades and demos", members: [1, 2, 4] },
-  { id: "support", name: "Support", description: "General product questions", members: [1, 3, 4] },
-  { id: "billing", name: "Billing", description: "Invoices, refunds and plans", members: [1, 2, 3] },
-  { id: "technical", name: "Technical", description: "Bugs, outages and integrations", members: [1, 4, 5] },
-];
+export const teams: Team[] = sharedTeams.map((team) => ({
+  id: team.slug,
+  name: team.name,
+  description: team.description,
+  members: team.members,
+}));
 
-export const inboxes: Inbox[] = [
-  { id: "email", name: "Support Email", channelType: "Email", address: "support@weblabs.studio" },
-  { id: "chat", name: "Website Chat", channelType: "Website", address: "weblabs.studio" },
-  { id: "whatsapp", name: "WhatsApp Business", channelType: "WhatsApp", address: "+974 4400 1122" },
-  { id: "instagram", name: "Instagram", channelType: "Instagram", address: "@weblabs.studio" },
-  { id: "facebook", name: "Facebook Page", channelType: "Messenger", address: "Weblabs Studio" },
-  { id: "phone", name: "Phone", channelType: "Voice", address: "+974 4400 1100" },
-];
+export const inboxes: Inbox[] = sharedInboxes.map((inbox) => ({
+  id: inbox.slug,
+  name: inbox.name,
+  channelType: inbox.channelType,
+  address: inbox.identifier,
+}));
 
 export const priorities: { value: Priority; label: string; rank: number }[] = [
   { value: "none", label: "None", rank: 0 },
@@ -603,31 +609,10 @@ export function lastPreview(
   return { text: last.text, byAgent };
 }
 
-export const cannedResponses = [
-  {
-    shortCode: "greeting",
-    content: "Hello {{contact.name}}, thank you for reaching out to us. How can I help you today?",
-  },
-  {
-    shortCode: "salam",
-    content: "Wa alaikum assalam {{contact.name}}, welcome! How can we help you today?",
-  },
-  {
-    shortCode: "refund-policy",
-    content: "You can return any unused item within 14 days. The refund reaches your card in 5 to 7 working days.",
-  },
-  {
-    shortCode: "working-hours",
-    content: "Our team is available Saturday to Thursday, 8:00 AM to 10:00 PM (Doha time). Friday from 2:00 PM.",
-  },
-  {
-    shortCode: "escalate",
-    content: "I have passed this to our technical team. You will hear back from us within 2 hours.",
-  },
-  { shortCode: "invoice-copy", content: "I have attached a copy of your invoice. Let me know if anything looks off." },
-  { shortCode: "closing", content: "Is there anything else I can help you with? Have a lovely day!" },
-];
+// F161: one set for Settings > Canned Responses and the reply box (src/lib/cw/data.ts).
+export const cannedResponses = sharedCanned.map(({ shortCode, content }) => ({ shortCode, content }));
 
+// F161: one set of WhatsApp templates (Settings > Templates, campaigns, reply box): the approved Meta ones.
 // examples: the sample values approved with each template for {{2}}, {{3}} ({{1}} is the contact's first name).
 export const whatsappTemplates: {
   name: string;
@@ -635,28 +620,13 @@ export const whatsappTemplates: {
   category: string;
   body: string;
   examples?: string[];
-}[] = [
-  {
-    name: "order_update",
-    language: "en",
-    category: "UTILITY",
-    body: "Hi {{1}}, your order {{2}} is on its way and should arrive by {{3}}.",
-    examples: ["ORD-8824", "Thursday, Oct 15"],
-  },
-  {
-    name: "payment_reminder",
-    language: "en",
-    category: "UTILITY",
-    body: "Hello {{1}}, a friendly reminder that invoice {{2}} is due on {{3}}.",
-    examples: ["INV-4821", "Oct 15, 2026"],
-  },
-  {
-    name: "hello_world",
-    language: "en_US",
-    category: "MARKETING",
-    body: "Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification.",
-  },
-];
+}[] = sendableTemplates.map((template) => ({
+  name: template.name,
+  language: template.code,
+  category: template.category,
+  body: template.body,
+  examples: template.examples,
+}));
 
 // The published articles of the Help Center (help-center/_components/data.ts), for the reply box "Insert article"
 // and the search Articles tab, so both list the same articles as Help Center > Articles.

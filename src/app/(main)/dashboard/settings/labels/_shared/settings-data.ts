@@ -1,9 +1,11 @@
-// F159 settings-b: one set of names for Automation, Macros, SLA and Workflow, matching the Conversations area
-// (chat/_components/cw-data.ts agents, teams, inboxes) and the Labels page.
-export const agentNames = ["Arham Khan", "Priya Nair", "Yousef Al-Harbi", "Lina Haddad", "Ravi Menon"];
-export const teamNames = ["Sales", "Support", "Billing", "Technical"];
-export const inboxNames = ["Support Email", "Website Chat", "WhatsApp Business", "Instagram", "Facebook Page", "Phone"];
-export const labelNames = ["vip", "billing", "lead", "partner", "support", "auto-closed", "feedback", "spam"];
+// F159 settings-b: one set of names for Automation, Macros, SLA and Workflow.
+// F161: taken from the shared layer (src/lib/cw/data.ts), the same agents, teams, inboxes and labels as every page.
+import { agents, inboxes, labels, teams } from "@/lib/cw/data";
+
+export const agentNames = agents.map((agent) => agent.name);
+export const teamNames = teams.map((team) => team.name);
+export const inboxNames = inboxes.map((inbox) => inbox.name);
+export const labelNames = labels.map((label) => label.title);
 export const priorityNames = ["None", "Low", "Medium", "High", "Urgent"];
 export const statusNames = ["Open", "Pending", "Snoozed", "Resolved"];
 export const languageNames = ["Arabic (ar)", "English (en)", "French (fr)", "Hindi (hi)", "Urdu (ur)"];

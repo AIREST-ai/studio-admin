@@ -1,6 +1,9 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+
+import type { Label } from "@/lib/cw/data";
+import { setCwList, useCwShared } from "@/lib/cw/store";
 
 import { conversations } from "./data";
 import { keepSelectionIn } from "./use-chat";
@@ -10,29 +13,24 @@ import { keepSelectionIn } from "./use-chat";
 
 export type ChatTag = { id: string; label: string; color: string };
 
-type ChatTagsState = { tags: ChatTag[]; byConv: Record<string, string[]>; filter: string | null };
+type ChatTagsState = { byConv: Record<string, string[]>; filter: string | null };
 
-// Soft colours for tags created with "Add tag…", used in turn (the five starting labels come first, see below).
+// Soft colours for tags created with "Add tag…", used in turn.
 const extraColors = ["#f43f5e", "#84cc16", "#10b981", "#f97316", "#06b6d4", "#6366f1"];
 
+// F161: the tags are the account labels of the shared store (src/lib/cw): the five English labels, Fahad's five
+// Arabic labels (مشتري، مهتم، بائع، متابعة، صيانة, restored from Studio before F159) and any label added in
+// Settings > Labels or with "Add tag…" here. Only labels shown on the sidebar are offered as tags.
 let state: ChatTagsState = {
-  // F159: English names, the same labels as the Contacts page (vip, billing, lead, partner, support).
-  // Five clearly different hues (violet, sky, amber, teal, pink), the same as the Contacts badges (studio-ui.tsx).
-  tags: [
-    { id: "vip", label: "vip", color: "#8b5cf6" },
-    { id: "billing", label: "billing", color: "#0ea5e9" },
-    { id: "lead", label: "lead", color: "#f59e0b" },
-    { id: "partner", label: "partner", color: "#14b8a6" },
-    { id: "support", label: "support", color: "#ec4899" },
-  ],
   // Sample labels so the feature is visible at once (conversation ids from data.ts, people from Contacts).
+  // The Arabic ones are the samples Studio had before F159 (conversations 1, 2, 3, 5, 6, 7).
   byConv: {
-    "1": ["vip", "support"],
-    "2": ["vip", "billing"],
-    "3": ["support"],
-    "5": ["partner"],
-    "6": ["support"],
-    "7": ["billing"],
+    "1": ["vip", "support", "buyer", "follow-up"],
+    "2": ["vip", "billing", "maintenance"],
+    "3": ["support", "interested"],
+    "5": ["partner", "seller", "follow-up"],
+    "6": ["support", "buyer"],
+    "7": ["billing", "maintenance", "follow-up"],
     "9": ["billing"],
     "12": ["lead", "billing"],
     "16": ["support"],
@@ -43,6 +41,14 @@ let state: ChatTagsState = {
   },
   filter: null,
 };
+
+function toTag(label: Label): ChatTag {
+  return { id: label.id, label: label.title, color: label.color };
+}
+
+function sidebarTags(labels: Label[]): ChatTag[] {
+  return labels.filter((label) => label.showOnSidebar).map(toTag);
+}
 
 const listeners = new Set<() => void>();
 
@@ -70,7 +76,10 @@ function syncSelection() {
 }
 
 export function useChatTags(): { tags: ChatTag[]; byConv: Record<string, string[]>; filter: string | null } {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const { byConv, filter } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const labels = useCwShared((shared) => shared.labels);
+  const tags = useMemo(() => sidebarTags(labels), [labels]);
+  return { tags, byConv, filter };
 }
 
 export function toggleTag(convId: string, tagId: string): void {
@@ -80,19 +89,23 @@ export function toggleTag(convId: string, tagId: string): void {
   syncSelection();
 }
 
-// Returns the existing tag when the label is already used (case-insensitive).
+// Returns the existing tag when the label is already used (case-insensitive). A new tag is a new account label
+// (Settings > Labels lists it too).
 export function addTag(label: string): ChatTag {
   const name = label.trim() || "New tag";
-  const existing = state.tags.find((tag) => tag.label.toLowerCase() === name.toLowerCase());
-  if (existing) return existing;
-  const used = state.tags.length - 5;
-  const tag: ChatTag = {
-    id: `tag-${Date.now().toString(36)}-${state.tags.length}`,
-    label: name,
-    color: extraColors[((used % extraColors.length) + extraColors.length) % extraColors.length],
+  const labels = useCwShared.getState().labels;
+  const existing = labels.find((item) => item.title.toLowerCase() === name.toLowerCase());
+  if (existing) return toTag(existing);
+  const added = labels.length - 13;
+  const created: Label = {
+    id: `tag-${Date.now().toString(36)}-${labels.length}`,
+    title: name,
+    description: "",
+    color: extraColors[((added % extraColors.length) + extraColors.length) % extraColors.length],
+    showOnSidebar: true,
   };
-  emit({ ...state, tags: [...state.tags, tag] });
-  return tag;
+  setCwList("labels", (previous) => [...previous, created]);
+  return toTag(created);
 }
 
 export function setTagFilter(tagId: string | null): void {

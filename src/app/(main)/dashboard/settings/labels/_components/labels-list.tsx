@@ -21,31 +21,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import type { Label as LabelType } from "@/lib/cw/data";
+import { useCwList } from "@/lib/cw/store";
 
 import { ConfirmDelete, NoResults, plural, SettingsShell } from "../_shared/settings-shell";
-import { FieldError, RowMenu, tableClass, ToneBadge } from "../_shared/settings-ui";
+import { FieldError, RowMenu, ToneBadge, tableClass } from "../_shared/settings-ui";
 
-interface LabelRow {
-  title: string;
-  description: string;
-  color: string;
-  showOnSidebar: boolean;
-}
+// F161: the account labels are the shared list (src/lib/cw): the Conversations sidebar, the "Add tag…" menu and the
+// Contacts labels read the same rows, so a label added, edited or deleted here shows there too.
+type LabelRow = Omit<LabelType, "id"> & { id?: string };
 
-// F159: the same five labels as the Conversations sidebar and the Contacts page (chat-tags-store.ts), same colours,
-// plus three hidden-from-sidebar labels used by automation / workflow.
-const initialLabels: LabelRow[] = [
-  { title: "vip", description: "Key accounts that get an answer first", color: "#8b5cf6", showOnSidebar: true },
-  { title: "billing", description: "Invoices, refunds and payment questions", color: "#0ea5e9", showOnSidebar: true },
-  { title: "lead", description: "New sales leads and demo requests", color: "#f59e0b", showOnSidebar: true },
-  { title: "partner", description: "Resellers and integration partners", color: "#14b8a6", showOnSidebar: true },
-  { title: "support", description: "General product questions and how-tos", color: "#ec4899", showOnSidebar: true },
-  { title: "auto-closed", description: "Added by the auto-resolve workflow", color: "#64748b", showOnSidebar: false },
-  { title: "feedback", description: "Customer shared a suggestion or complaint", color: "#84cc16", showOnSidebar: false },
-  { title: "spam", description: "", color: "#f43f5e", showOnSidebar: false },
+const swatches = [
+  "#8b5cf6",
+  "#0ea5e9",
+  "#f59e0b",
+  "#14b8a6",
+  "#ec4899",
+  "#f43f5e",
+  "#84cc16",
+  "#10b981",
+  "#f97316",
+  "#6366f1",
 ];
-
-const swatches = ["#8b5cf6", "#0ea5e9", "#f59e0b", "#14b8a6", "#ec4899", "#f43f5e", "#84cc16", "#10b981", "#f97316", "#6366f1"];
 
 function randomColor() {
   return `#${Math.floor(Math.random() * 0xffffff)
@@ -90,7 +87,10 @@ function LabelDialog({
     setTouched(false);
   }, [open, label]);
 
-  const error = titleError(title.trim(), existing.includes(title.trim().toLowerCase()) && title.trim() !== label?.title);
+  const error = titleError(
+    title.trim(),
+    existing.includes(title.trim().toLowerCase()) && title.trim() !== label?.title,
+  );
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -202,7 +202,7 @@ const labelViews: Record<LabelView, { label: string; match: (l: LabelRow) => boo
 };
 
 export function LabelsList() {
-  const [labels, setLabels] = React.useState(initialLabels);
+  const [labels, setLabels] = useCwList("labels");
   const [query, setQuery] = React.useState("");
   const [view, setView] = React.useState<LabelView>("all");
   const [adding, setAdding] = React.useState(false);
@@ -279,7 +279,9 @@ export function LabelsList() {
                           icon: label.showOnSidebar ? EyeOff : Eye,
                           onSelect: () =>
                             setLabels((prev) =>
-                              prev.map((l) => (l.title === label.title ? { ...l, showOnSidebar: !l.showOnSidebar } : l)),
+                              prev.map((l) =>
+                                l.title === label.title ? { ...l, showOnSidebar: !l.showOnSidebar } : l,
+                              ),
                             ),
                         },
                         {
@@ -297,7 +299,9 @@ export function LabelsList() {
             </TableBody>
           </Table>
         ) : (
-          <NoResults>{q ? "No labels found matching your search" : "There are no labels available in this account."}</NoResults>
+          <NoResults>
+            {q ? "No labels found matching your search" : "There are no labels available in this account."}
+          </NoResults>
         )}
       </SettingsShell>
 
@@ -306,7 +310,7 @@ export function LabelsList() {
         onOpenChange={setAdding}
         existing={titles}
         onSave={(row) => {
-          setLabels((prev) => [...prev, row]);
+          setLabels((prev) => [...prev, { ...row, id: row.title }]);
           toast.success("Label added successfully");
         }}
       />
@@ -316,7 +320,7 @@ export function LabelsList() {
         label={editing}
         existing={titles}
         onSave={(row) => {
-          setLabels((prev) => prev.map((l) => (l.title === editing?.title ? row : l)));
+          setLabels((prev) => prev.map((l) => (l.title === editing?.title ? { ...row, id: l.id } : l)));
           toast.success("Label updated successfully");
         }}
       />

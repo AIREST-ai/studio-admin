@@ -70,6 +70,8 @@ export const sidebarItems: NavGroup[] = [
     items: [
       // Chatwoot v4.18 Sidebar.vue: a "Search..." link to the search page sits at the top of the sidebar.
       { id: "cv-search", title: "Search", url: "/dashboard/chat/search", icon: Search },
+      // F161: Chatwoot's first sidebar item (Sidebar.vue:366-370), the notifications page, named "My Inbox" as there.
+      { id: "cw-notifications", title: "My Inbox", url: "/dashboard/notifications", icon: Bell },
       {
         id: "chat",
         title: "Conversations",
@@ -96,6 +98,7 @@ export const sidebarItems: NavGroup[] = [
         id: "cv-teams",
         title: "Teams",
         icon: Users,
+        // Starting teams only: nav-main.tsx replaces these with the shared teams (Settings > Teams).
         subItems: [
           { id: "cv-t-sales", title: "Sales", url: "/dashboard/chat/teams/sales" },
           { id: "cv-t-support", title: "Support", url: "/dashboard/chat/teams/support" },
@@ -107,6 +110,7 @@ export const sidebarItems: NavGroup[] = [
         id: "cv-channels",
         title: "Channels",
         icon: Inbox,
+        // Starting inboxes only: nav-main.tsx replaces these with every shared inbox (Settings > Inboxes).
         subItems: [
           { id: "cv-c-email", title: "Support Email", url: "/dashboard/chat/channels/email" },
           { id: "cv-c-chat", title: "Website Chat", url: "/dashboard/chat/channels/chat" },
@@ -120,7 +124,7 @@ export const sidebarItems: NavGroup[] = [
         id: "cv-labels",
         title: "Labels",
         icon: Tag,
-        // Starting labels only (the Contacts page ones): nav-main.tsx replaces these with the labels of chat-tags-store.
+        // Starting labels only: nav-main.tsx replaces these with the shared labels shown on the sidebar (src/lib/cw).
         subItems: [
           { id: "cv-l-vip", title: "vip", url: "/dashboard/chat/labels/vip" },
           { id: "cv-l-billing", title: "billing", url: "/dashboard/chat/labels/billing" },
@@ -131,43 +135,101 @@ export const sidebarItems: NavGroup[] = [
       },
     ],
   },
-  // F159: the rest of the helpdesk in the standard order (Contacts, Reports, Campaigns, Help Center,
-  // Captain, Notifications, Settings). Calls sits next to Captain as in Chatwoot's sidebar.
-  // Companies removed by Fahad's order (final pass): no data backend behind it.
+  // F161: the rest of the helpdesk in Chatwoot's sidebar order (Sidebar.vue): Captain, Calls, Contacts, Reports,
+  // Campaigns, Help Center, Settings, each with its Chatwoot children. Companies removed by Fahad's order.
   {
     id: 1,
     label: "Helpdesk",
     items: [
-      { id: "contacts", title: "Contacts", url: "/dashboard/contacts", icon: Contact },
-      { id: "cw-reports", title: "Reports", url: "/dashboard/reports/overview", icon: BarChart3 },
-      { id: "cw-campaigns", title: "Campaigns", url: "/dashboard/campaigns", icon: Megaphone },
-      { id: "cw-help-center", title: "Help Center", url: "/dashboard/help-center", icon: BookOpen },
-      { id: "cw-captain", title: "Captain", url: "/dashboard/captain", icon: Bot },
+      {
+        id: "cw-captain",
+        title: "Captain",
+        icon: Bot,
+        subItems: [
+          { id: "cp-overview", title: "Overview", url: "/dashboard/captain" },
+          { id: "cp-faqs", title: "FAQs", url: "/dashboard/captain/faqs" },
+          { id: "cp-documents", title: "Documents", url: "/dashboard/captain/documents" },
+          { id: "cp-scenarios", title: "Scenarios", url: "/dashboard/captain/scenarios" },
+          { id: "cp-playground", title: "Playground", url: "/dashboard/captain/playground" },
+          { id: "cp-inboxes", title: "Inboxes", url: "/dashboard/captain/inboxes" },
+          { id: "cp-tools", title: "Tools", url: "/dashboard/captain/tools" },
+          { id: "cp-settings", title: "Settings", url: "/dashboard/captain/settings" },
+        ],
+      },
       { id: "cw-calls", title: "Calls", url: "/dashboard/calls", icon: Phone },
-      { id: "cw-notifications", title: "Notifications", url: "/dashboard/notifications", icon: Bell },
+      {
+        id: "contacts",
+        title: "Contacts",
+        icon: Contact,
+        subItems: [
+          { id: "ct-all", title: "All Contacts", url: "/dashboard/contacts" },
+          { id: "ct-active", title: "Active", url: "/dashboard/contacts/active" },
+        ],
+      },
+      {
+        id: "cw-reports",
+        title: "Reports",
+        icon: BarChart3,
+        subItems: [
+          { id: "r-overview", title: "Overview", url: "/dashboard/reports/overview" },
+          { id: "r-conversations", title: "Conversations", url: "/dashboard/reports/conversations" },
+          { id: "r-agents", title: "Agents", url: "/dashboard/reports/agents" },
+          { id: "r-labels", title: "Labels", url: "/dashboard/reports/labels" },
+          { id: "r-inboxes", title: "Inbox", url: "/dashboard/reports/inboxes" },
+          { id: "r-teams", title: "Team", url: "/dashboard/reports/teams" },
+          { id: "r-csat", title: "CSAT", url: "/dashboard/reports/csat" },
+          { id: "r-sla", title: "SLA", url: "/dashboard/reports/sla" },
+          { id: "r-bot", title: "Bot", url: "/dashboard/reports/bot" },
+        ],
+      },
+      {
+        id: "cw-campaigns",
+        title: "Campaigns",
+        icon: Megaphone,
+        subItems: [
+          { id: "cm-live-chat", title: "Live chat", url: "/dashboard/campaigns/live-chat" },
+          { id: "cm-sms", title: "SMS", url: "/dashboard/campaigns/sms" },
+          { id: "cm-whatsapp", title: "WhatsApp", url: "/dashboard/campaigns/whatsapp" },
+        ],
+      },
+      {
+        id: "cw-help-center",
+        title: "Help Center",
+        icon: BookOpen,
+        subItems: [
+          { id: "hc-articles", title: "Articles", url: "/dashboard/help-center" },
+          { id: "hc-categories", title: "Categories", url: "/dashboard/help-center/categories" },
+          { id: "hc-locales", title: "Locales", url: "/dashboard/help-center/locales" },
+          { id: "hc-settings", title: "Settings", url: "/dashboard/help-center/settings" },
+        ],
+      },
       {
         id: "cw-settings",
         title: "Settings",
         icon: Settings,
         subItems: [
+          { id: "s-index", title: "All Settings", url: "/dashboard/settings" },
           { id: "s-account", title: "Account Settings", url: "/dashboard/settings/account" },
-          { id: "s-inboxes", title: "Inboxes", url: "/dashboard/settings/inboxes" },
+          { id: "s-agents", title: "Agents", url: "/dashboard/users" },
           { id: "s-teams", title: "Teams", url: "/dashboard/settings/teams" },
-          { id: "s-bots", title: "Bots", url: "/dashboard/settings/bots" },
-          { id: "s-assignment", title: "Assignment Policy", url: "/dashboard/settings/assignment-policy" },
+          { id: "s-assignment", title: "Agent Assignment", url: "/dashboard/settings/assignment-policy" },
+          { id: "s-inboxes", title: "Inboxes", url: "/dashboard/settings/inboxes" },
+          { id: "s-templates", title: "Templates", url: "/dashboard/settings/templates" },
           { id: "s-labels", title: "Labels", url: "/dashboard/settings/labels" },
           { id: "s-attributes", title: "Custom Attributes", url: "/dashboard/settings/attributes" },
           { id: "s-automation", title: "Automation", url: "/dashboard/settings/automation" },
+          { id: "s-bots", title: "Bots", url: "/dashboard/settings/bots" },
           { id: "s-macros", title: "Macros", url: "/dashboard/settings/macros" },
           { id: "s-canned", title: "Canned Responses", url: "/dashboard/settings/canned-responses" },
-          { id: "s-workflow", title: "Conversation Workflow", url: "/dashboard/settings/conversation-workflow" },
-          { id: "s-templates", title: "Templates", url: "/dashboard/settings/templates" },
-          { id: "s-sla", title: "SLA", url: "/dashboard/settings/sla" },
           { id: "s-integrations", title: "Integrations", url: "/dashboard/settings/integrations" },
-          { id: "s-audit", title: "Audit Logs", url: "/dashboard/settings/audit-logs" },
-          { id: "s-billing", title: "Billing", url: "/dashboard/settings/billing" },
-          { id: "s-security", title: "Security", url: "/dashboard/settings/security" },
           { id: "s-data", title: "Data", url: "/dashboard/settings/data" },
+          { id: "s-audit", title: "Audit Logs", url: "/dashboard/settings/audit-logs" },
+          { id: "s-custom-roles", title: "Custom Roles", url: "/dashboard/users?tab=roles" },
+          { id: "s-sla", title: "SLA", url: "/dashboard/settings/sla" },
+          { id: "s-captain", title: "Captain", url: "/dashboard/captain/captain-settings" },
+          { id: "s-workflow", title: "Conversation Workflow", url: "/dashboard/settings/conversation-workflow" },
+          { id: "s-security", title: "Security", url: "/dashboard/settings/security" },
+          { id: "s-billing", title: "Billing", url: "/dashboard/settings/billing" },
           { id: "s-profile", title: "Profile Settings", url: "/dashboard/settings/profile" },
         ],
       },
