@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { CompaniesList } from "./_components/companies-list";
+import { CompaniesTable } from "./_components/companies-table";
 
 export const metadata: Metadata = {
   title: "Companies",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <CompaniesList />;
+  return <CompaniesTable />;
 }

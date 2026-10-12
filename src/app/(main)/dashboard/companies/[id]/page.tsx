@@ -1,17 +1,21 @@
-import { notFound } from "next/navigation";
-
 import type { Metadata } from "next";
 
-import { CompanyDetails } from "../_components/company-details";
-import { companies } from "../_components/data";
+import { CompanyProfile } from "../_components/company-profile";
 
 export const metadata: Metadata = {
   title: "Company details",
 };
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+// The company is read from the client store, so a company added on the list opens too; an unknown id shows
+// Chatwoot's "Company not found" state.
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
-  const company = companies.find((c) => String(c.id) === id);
-  if (!company) notFound();
-  return <CompanyDetails company={company} />;
+  const { tab } = await searchParams;
+  return <CompanyProfile id={Number(id)} initialTab={tab} />;
 }

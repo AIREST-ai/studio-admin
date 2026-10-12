@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { NotificationsInbox } from "./_components/notifications-inbox";
+import { NotificationsView } from "./_components/notifications-view";
 
 export const metadata: Metadata = {
   title: "My Inbox",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <NotificationsInbox />;
+  return <NotificationsView />;
 }
