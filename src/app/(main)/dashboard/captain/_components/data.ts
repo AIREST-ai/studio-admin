@@ -40,6 +40,16 @@ export const assistants: Assistant[] = [
     faqs: 210,
     updatedAt: "3 days ago",
   },
+  {
+    id: 4,
+    name: "Hala",
+    description: "Draft assistant for school transport questions: bus routes, pick-up times and fees in Doha.",
+    productName: "Doha School Transport",
+    inboxes: 0,
+    documents: 2,
+    faqs: 12,
+    updatedAt: "Oct 1, 2026",
+  },
 ];
 
 export type DocStatus = "Updated" | "Needs update" | "Updating" | "Failed";
@@ -203,8 +213,7 @@ export const faqs: Faq[] = [
   {
     id: 7,
     question: "Can I move my fibre to a new villa in Al Wakrah?",
-    answer:
-      "Yes. Request a relocation at least 7 days before you move. Relocation inside Qatar is free once a year.",
+    answer: "Yes. Request a relocation at least 7 days before you move. Relocation inside Qatar is free once a year.",
     status: "approved",
     source: "Moving house: relocation of service",
     createdAt: "Oct 4, 2026",
@@ -332,7 +341,8 @@ export const scenarios: Scenario[] = [
     id: 2,
     title: "Order status",
     description: "Customer wants to know when their new fibre will be installed.",
-    instruction: "Ask for the order number and share the installation slot. Never promise a date that is not in the order.",
+    instruction:
+      "Ask for the order number and share the installation slot. Never promise a date that is not in the order.",
     tools: ["Order Lookup"],
     enabled: true,
   },
@@ -356,7 +366,10 @@ export const scenarios: Scenario[] = [
 
 export const exampleScenarios = [
   { title: "Customer is stuck", description: "Offer the next simple step and ask one question at a time." },
-  { title: "Speaking in Arabic", description: "Reply in Gulf-friendly Modern Standard Arabic when the customer writes in Arabic." },
+  {
+    title: "Speaking in Arabic",
+    description: "Reply in Gulf-friendly Modern Standard Arabic when the customer writes in Arabic.",
+  },
 ];
 
 export const guardrails = [
@@ -420,3 +433,6 @@ export const models = [
   { value: "gpt-4.1", label: "GPT-4.1", credits: 3 },
   { value: "gpt-5-mini", label: "GPT-5 Mini", credits: 2 },
 ];
+
+// Document limit of the plan; Chatwoot's LimitBanner shows only when the assistant reaches it.
+export const documentLimit = 50;

@@ -1,99 +1,175 @@
 "use client";
+// Chatwoot: routes/dashboard/captain/assistants/Index.vue + components-next/captain/pageComponents/assistant.
+// Studio: heading outside the card, card header with search and sort, table with a "…" menu per row.
 import * as React from "react";
 
 import Link from "next/link";
 
-import { Bot, EllipsisVertical, FileText, Inbox, MessageCircleQuestion, Pencil, Trash2 } from "lucide-react";
+import { Bot, FileText, Inbox, MessageCircleQuestion, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { type Assistant, assistants } from "./data";
 import { AssistantDialog, ConfirmDialog } from "./dialogs";
-import { CaptainCardHeader } from "./shared";
+import { CaptainShell, ChipSelect, RowMenuTrigger } from "./shared";
 
-export function AssistantsList() {
-  const [creating, setCreating] = React.useState(false);
+const sortOptions = [
+  { value: "updated", label: "Last updated" },
+  { value: "name", label: "Name" },
+  { value: "faqs", label: "Most FAQs" },
+];
+
+export function AssistantsList({ create = false }: { create?: boolean }) {
+  const [creating, setCreating] = React.useState(create);
   const [editing, setEditing] = React.useState<Assistant | null>(null);
-  const [deleting, setDeleting] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<Assistant | null>(null);
+  const [query, setQuery] = React.useState("");
+  const [sort, setSort] = React.useState("updated");
+
+  const q = query.trim().toLowerCase();
+  const rows = assistants
+    .filter((a) => !q || [a.name, a.productName, a.description].some((v) => v.toLowerCase().includes(q)))
+    .sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "faqs") return b.faqs - a.faqs;
+      return a.id - b.id;
+    });
 
   return (
-    <>
+    <CaptainShell
+      title="Assistants"
+      switcher={false}
+      nav={false}
+      subtitle="Create an assistant to provide quick and accurate responses to your users. It can learn from your help articles and past conversations."
+      actions={
+        <Button size="sm" onClick={() => setCreating(true)}>
+          <Plus /> Create a new assistant
+        </Button>
+      }
+    >
       <Card>
-        <CaptainCardHeader
-          title="Assistants"
-          switcher={false}
-          description="Create an assistant to provide quick and accurate responses to your users. It can learn from your help articles and past conversations."
-        >
-          <Button size="sm" onClick={() => setCreating(true)}>
-            Create a new assistant
-          </Button>
-        </CaptainCardHeader>
-        <CardContent className="grid gap-3">
-          {assistants.map((a) => (
-            <div
-              key={a.id}
-              className="flex flex-col gap-4 rounded-xl border p-4 transition-colors hover:bg-muted/40 md:flex-row md:items-center"
-            >
-              <div className="flex flex-1 items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Bot className="size-5" />
-                </div>
-                <div className="grid gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link href="/dashboard/captain" className="font-medium hover:underline">
-                      {a.name}
-                    </Link>
-                    <Badge variant="secondary" className="font-normal">
-                      {a.productName}
-                    </Badge>
-                  </div>
-                  <p className="text-muted-foreground text-sm">{a.description}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-muted-foreground text-xs md:gap-6">
-                <span className="inline-flex items-center gap-1.5">
-                  <Inbox className="size-3.5" /> {a.inboxes} inboxes
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <FileText className="size-3.5" /> {a.documents} documents
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <MessageCircleQuestion className="size-3.5" /> {a.faqs} FAQs
-                </span>
-                <span className="hidden whitespace-nowrap lg:inline">Updated {a.updatedAt}</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label="Assistant options">
-                      <EllipsisVertical />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52">
-                    <DropdownMenuItem onSelect={() => setEditing(a)}>
-                      <Pencil /> Edit Assistant
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/captain/inboxes">
-                        <Inbox /> View connected inboxes
+        <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+          <CardTitle className="text-xl leading-none">All assistants</CardTitle>
+          <CardDescription>Switch between assistants from the selector on every Captain page.</CardDescription>
+          <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
+            <InputGroup className="h-7 w-full md:w-64">
+              <InputGroupAddon align="inline-start">
+                <Search className="size-3.5" />
+              </InputGroupAddon>
+              <InputGroupInput
+                className="h-7"
+                placeholder="Search assistants..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </InputGroup>
+            <ChipSelect label="Sort" value={sort} options={sortOptions} onChange={setSort} align="end" />
+          </CardAction>
+        </CardHeader>
+        <CardContent className="px-0">
+          {rows.length ? (
+            <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-4 font-normal">Assistant</TableHead>
+                  <TableHead className="py-4 font-normal">Product</TableHead>
+                  <TableHead className="py-4 font-normal">Knowledge</TableHead>
+                  <TableHead className="py-4 font-normal">Inboxes</TableHead>
+                  <TableHead className="py-4 font-normal">Last updated</TableHead>
+                  <TableHead className="py-4 font-normal">
+                    <div className="text-right">Actions</div>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((a) => (
+                  <TableRow key={a.id} className="border-border/60">
+                    <TableCell className="py-4">
+                      <Link href="/dashboard/captain" className="flex items-center gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Bot className="size-4" />
+                        </div>
+                        <div className="grid max-w-md gap-0.5">
+                          <span className="font-medium text-sm">{a.name}</span>
+                          <span className="line-clamp-1 whitespace-normal text-muted-foreground text-sm">
+                            {a.description}
+                          </span>
+                        </div>
                       </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                      <Trash2 /> Delete Assistant
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ))}
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <Badge variant="outline" className="border-border bg-muted/50 px-2 py-1 font-medium">
+                        {a.productName}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <div className="flex items-center gap-3 text-muted-foreground text-sm">
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <FileText className="size-3.5" /> {a.documents} documents
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <MessageCircleQuestion className="size-3.5" /> {a.faqs} FAQs
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4">
+                      <span className="inline-flex items-center gap-1.5 text-sm">
+                        <Inbox className="size-3.5 text-muted-foreground" /> {a.inboxes}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap py-4 text-muted-foreground text-sm">
+                      {a.updatedAt}
+                    </TableCell>
+                    <TableCell className="py-4 text-right">
+                      <DropdownMenu>
+                        <RowMenuTrigger label={`Open actions for ${a.name}`} />
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem onSelect={() => setEditing(a)}>
+                            <Pencil /> Edit Assistant
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/dashboard/captain/inboxes">
+                              <Inbox /> View connected inboxes
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(a)}>
+                            <Trash2 /> Delete Assistant
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Bot />
+                </EmptyMedia>
+                <EmptyTitle>No assistants available</EmptyTitle>
+                <EmptyDescription>Try a different search term.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button variant="outline" size="sm" onClick={() => setQuery("")}>
+                  Clear search
+                </Button>
+              </EmptyContent>
+            </Empty>
+          )}
         </CardContent>
       </Card>
 
@@ -105,11 +181,11 @@ export function AssistantsList() {
         assistant={editing ?? undefined}
       />
       <ConfirmDialog
-        open={deleting}
-        onOpenChange={setDeleting}
+        open={deleting !== null}
+        onOpenChange={(o) => !o && setDeleting(null)}
         title="Are you sure to delete the assistant?"
         description="This action is permanent. Deleting this assistant will remove it from all connected inboxes and permanently erase all generated knowledge."
       />
-    </>
+    </CaptainShell>
   );
 }

@@ -1,6 +1,9 @@
 "use client";
+// Chatwoot: routes/dashboard/settings/captain/Index.vue + ModelSelector, ModelDropdown, FeatureToggle.
+import * as React from "react";
 
 import { Bot, ExternalLink, Mic, PenLine, Search, Sparkles, Tags } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 
 import { models } from "./data";
+import { CaptainShell } from "./shared";
 
 const modelRows = [
   {
@@ -60,20 +64,29 @@ const features = [
 ];
 
 export function CaptainSettings() {
+  const [on, setOn] = React.useState<Record<string, boolean>>(Object.fromEntries(features.map((f) => [f.title, f.on])));
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <div className="grid gap-1.5">
-        <h1 className="font-semibold text-xl">Captain Settings</h1>
-        <p className="text-muted-foreground text-sm">
+    <CaptainShell
+      title="Captain Settings"
+      switcher={false}
+      nav={false}
+      subtitle={
+        <>
           Configure your AI models and features for Captain. Captain follows a credit based billing, you will be charged
           credits for every action Captain takes based on the model selected.{" "}
-          <Button variant="link" className="h-auto p-0 text-sm">
-            Learn more about Captain Credits <ExternalLink className="size-3" />
+          <Button variant="link" className="h-auto p-0 text-sm" asChild>
+            <a
+              href="https://www.chatwoot.com/hc/user-guide/en/articles/captain-credits"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Learn more about Captain Credits <ExternalLink className="size-3" />
+            </a>
           </Button>
-        </p>
-      </div>
-
-      <Card>
+        </>
+      }
+    >
+      <Card className="max-w-4xl">
         <CardHeader>
           <CardTitle>Model Configuration</CardTitle>
           <CardDescription>Select AI models for different features.</CardDescription>
@@ -92,12 +105,20 @@ export function CaptainSettings() {
                     <span className="text-muted-foreground text-sm">{r.description}</span>
                   </div>
                 </div>
-                <NativeSelect size="sm" defaultValue={r.value} className="md:w-60">
+                <NativeSelect
+                  size="sm"
+                  defaultValue={r.value}
+                  className="md:w-64"
+                  onChange={() => toast.success("Captain settings updated successfully")}
+                >
                   {models.map((m) => (
                     <option key={m.value} value={m.value}>
                       {m.label} · {m.credits} credit/message
                     </option>
                   ))}
+                  <option value="claude-sonnet" disabled>
+                    Claude Sonnet · Coming soon
+                  </option>
                 </NativeSelect>
               </div>
             </div>
@@ -105,7 +126,7 @@ export function CaptainSettings() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="max-w-4xl">
         <CardHeader>
           <CardTitle>Features</CardTitle>
           <CardDescription>Enable or disable AI-powered features.</CardDescription>
@@ -121,18 +142,25 @@ export function CaptainSettings() {
                   <span className="font-medium text-sm">{f.title}</span>
                   <span className="text-muted-foreground text-sm">{f.description}</span>
                 </div>
-                <Switch defaultChecked={f.on} aria-label={f.title} />
+                <Switch
+                  checked={on[f.title]}
+                  aria-label={f.title}
+                  onCheckedChange={(v) => {
+                    setOn((p) => Object.assign({}, p, { [f.title]: v }));
+                    toast.success("Captain settings updated successfully");
+                  }}
+                />
               </div>
               {f.modelTitle && (
                 <div className="flex flex-col gap-2 rounded-md bg-muted/50 p-3 md:flex-row md:items-center md:justify-between">
                   <span className="text-sm">{f.modelTitle}</span>
                   <div className="flex items-center gap-2">
-                    {!f.on && (
+                    {!on[f.title] && (
                       <Badge variant="outline" className="font-normal">
                         Off
                       </Badge>
                     )}
-                    <NativeSelect size="sm" defaultValue="gpt-4.1-mini" disabled={!f.on} className="md:w-52">
+                    <NativeSelect size="sm" defaultValue="gpt-4.1-mini" disabled={!on[f.title]} className="md:w-52">
                       {models.map((m) => (
                         <option key={m.value} value={m.value}>
                           {m.label}
@@ -146,6 +174,6 @@ export function CaptainSettings() {
           ))}
         </CardContent>
       </Card>
-    </div>
+    </CaptainShell>
   );
 }

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description: "Captain assistants in this account.",
 };
 
-export default function Page() {
-  return <AssistantsList />;
+export default async function Page({ searchParams }: { searchParams: Promise<{ create?: string }> }) {
+  const { create } = await searchParams;
+  return <AssistantsList create={create === "1"} />;
 }

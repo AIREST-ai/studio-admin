@@ -1,47 +1,39 @@
 "use client";
 import * as React from "react";
 
-import { cn } from "cn";
-import { Copy, EllipsisVertical, Eye, FileText, Globe, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Copy, Eye, FileText, Globe, Plus, RefreshCw, Search, Trash2, TriangleAlert, X } from "lucide-react";
+import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { NativeSelect } from "@/components/ui/native-select";
-import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { type CaptainDocument, type DocStatus, documents, faqs } from "./data";
+import { type CaptainDocument, type DocStatus, documentLimit, documents, faqs } from "./data";
 import { ConfirmDialog, DocumentDialog } from "./dialogs";
-import { CaptainCardHeader } from "./shared";
-
-const statusTone: Record<DocStatus, string> = {
-  Updated: "bg-emerald-500",
-  "Needs update": "bg-amber-500",
-  Updating: "bg-sky-500",
-  Failed: "bg-red-500",
-};
+import { CaptainShell, ChipSelect, RowMenuTrigger, type Tone, ToneBadge } from "./shared";
 
 function syncText(d: CaptainDocument) {
   if (d.status === "Updating") return "updating...";
+  if (d.status === "Needs update") return "update stalled";
   if (d.status === "Failed") return "Failed to sync";
   return `last updated ${d.syncedAgo}`;
 }
 
 function DocumentSheet({ doc, onClose }: { doc: CaptainDocument | null; onClose: () => void }) {
   const related = faqs.filter((f) => f.source === doc?.name);
+  const [raw, setRaw] = React.useState(false);
   return (
     <Sheet open={doc !== null} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full gap-0 sm:max-w-xl">
@@ -78,27 +70,37 @@ function DocumentSheet({ doc, onClose }: { doc: CaptainDocument | null; onClose:
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-xs">4,182 characters extracted</span>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="sm">
-                      View raw
+                    <Button variant="ghost" size="sm" onClick={() => setRaw((r) => !r)}>
+                      {raw ? "View preview" : "View raw"}
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toast.success("Crawled content copied to clipboard")}
+                    >
                       <Copy /> Copy
                     </Button>
                   </div>
                 </div>
-                <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
-                  <h3 className="font-semibold">{doc.name}</h3>
-                  <p>
-                    Choose the speed that suits your home. All plans include unlimited data, a free Wi-Fi 6 router and
-                    free installation for new customers in Doha, Al Rayyan, Al Wakrah and Lusail.
-                  </p>
-                  <ul className="list-disc space-y-1 pl-5">
-                    <li>Home 100 Mbps: QAR 250 per month</li>
-                    <li>Home 500 Mbps: QAR 360 per month</li>
-                    <li>Home 1 Gbps: QAR 499 per month, includes TV Starter pack</li>
-                  </ul>
-                  <p>Prices include VAT where applicable. A 24-month commitment applies to all plans.</p>
-                </div>
+                {raw ? (
+                  <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed">
+                    {`# ${doc.name}\n\nChoose the speed that suits your home. All plans include unlimited data, a free Wi-Fi 6 router and free installation for new customers in Doha, Al Rayyan, Al Wakrah and Lusail.\n\n- Home 100 Mbps: QAR 250 per month\n- Home 500 Mbps: QAR 360 per month\n- Home 1 Gbps: QAR 499 per month, includes TV Starter pack\n\nPrices include VAT where applicable. A 24-month commitment applies to all plans.`}
+                  </pre>
+                ) : (
+                  <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
+                    <h3 className="font-semibold">{doc.name}</h3>
+                    <p>
+                      Choose the speed that suits your home. All plans include unlimited data, a free Wi-Fi 6 router and
+                      free installation for new customers in Doha, Al Rayyan, Al Wakrah and Lusail.
+                    </p>
+                    <ul className="list-disc space-y-1 pl-5">
+                      <li>Home 100 Mbps: QAR 250 per month</li>
+                      <li>Home 500 Mbps: QAR 360 per month</li>
+                      <li>Home 1 Gbps: QAR 499 per month, includes TV Starter pack</li>
+                    </ul>
+                    <p>Prices include VAT where applicable. A 24-month commitment applies to all plans.</p>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="faqs" className="grid gap-2 pt-2">
                 {related.length ? (
@@ -122,74 +124,129 @@ function DocumentSheet({ doc, onClose }: { doc: CaptainDocument | null; onClose:
   );
 }
 
+const sourceOptions = [
+  { value: "all", label: "All sources" },
+  { value: "web", label: "Web pages" },
+  { value: "pdf", label: "PDFs" },
+];
+const statusOptions = [
+  { value: "any", label: "Any status" },
+  { value: "Updated", label: "Updated" },
+  { value: "Needs update", label: "Needs update" },
+  { value: "Updating", label: "Updating" },
+  { value: "Failed", label: "Failed" },
+];
+const sortOptions = [
+  { value: "updated", label: "Recently updated" },
+  { value: "created", label: "Recently created" },
+  { value: "used", label: "Most used in conversations" },
+];
+const statusBadgeTone: Record<DocStatus, Tone> = {
+  Updated: "green",
+  "Needs update": "amber",
+  Updating: "sky",
+  Failed: "red",
+};
+
 export function DocumentsList() {
+  const [items, setItems] = React.useState(documents);
   const [query, setQuery] = React.useState("");
   const [source, setSource] = React.useState("all");
   const [status, setStatus] = React.useState("any");
+  const [sort, setSort] = React.useState("updated");
   const [selected, setSelected] = React.useState<number[]>([]);
   const [adding, setAdding] = React.useState(false);
-  const [deleting, setDeleting] = React.useState<"one" | "bulk" | null>(null);
+  const [deleting, setDeleting] = React.useState<CaptainDocument | "bulk" | null>(null);
   const [viewing, setViewing] = React.useState<CaptainDocument | null>(null);
+  const [limitBanner, setLimitBanner] = React.useState(true);
 
-  const rows = documents.filter(
-    (d) =>
-      (source === "all" || d.source === source) &&
-      (status === "any" || d.status === status) &&
-      (!query || d.name.toLowerCase().includes(query.toLowerCase())),
-  );
+  const rows = items
+    .filter(
+      (d) =>
+        (source === "all" || d.source === source) &&
+        (status === "any" || d.status === status) &&
+        (!query || `${d.name} ${d.url}`.toLowerCase().includes(query.toLowerCase())),
+    )
+    .sort((a, b) => {
+      if (sort === "used") return b.conversations - a.conversations;
+      if (sort === "created") return b.id - a.id;
+      return a.id - b.id;
+    });
   const allSelected = rows.length > 0 && rows.every((r) => selected.includes(r.id));
 
+  function refresh(ids: number[]) {
+    setItems((list) => list.map((d) => (ids.includes(d.id) ? { ...d, status: "Updating" as DocStatus } : d)));
+    toast.success(ids.length > 1 ? `${ids.length} documents queued for refresh` : "Document refresh queued");
+  }
+
   return (
-    <>
-      <Card>
-        <CaptainCardHeader title="Documents">
-          <InputGroup className="h-7 w-full md:w-56">
-            <InputGroupAddon align="inline-start">
-              <Search className="size-3.5" />
-            </InputGroupAddon>
-            <InputGroupInput
-              className="h-7"
-              type="search"
-              placeholder="Search..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </InputGroup>
-          <Separator orientation="vertical" className="mx-1 h-4 data-[orientation=vertical]:h-4" />
-          <Button size="sm" onClick={() => setAdding(true)}>
-            Create a new document
+    <CaptainShell
+      title="Documents"
+      subtitle="Web pages and PDFs your assistant learns from. Captain turns them into FAQs it can use in replies."
+      actions={
+        <Button size="sm" onClick={() => setAdding(true)}>
+          <Plus /> Create a new document
+        </Button>
+      }
+    >
+      {limitBanner && items.length >= documentLimit && (
+        <Alert className="flex items-center gap-3 border-amber-500/30 bg-amber-500/5">
+          <TriangleAlert className="size-4 text-amber-600" />
+          <AlertDescription className="flex-1 text-foreground">
+            Document limit reached. Upgrade to continue using Captain AI.
+          </AlertDescription>
+          <Button size="sm" variant="outline">
+            Upgrade now
           </Button>
-        </CaptainCardHeader>
+          <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setLimitBanner(false)}>
+            <X />
+          </Button>
+        </Alert>
+      )}
+      <Card>
+        <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+          <CardTitle className="text-xl leading-none">All documents</CardTitle>
+          <CardDescription>{items.length} knowledge sources for Noor.</CardDescription>
+          <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
+            <InputGroup className="h-7 w-full md:w-64">
+              <InputGroupAddon align="inline-start">
+                <Search className="size-3.5" />
+              </InputGroupAddon>
+              <InputGroupInput
+                className="h-7"
+                type="search"
+                placeholder="Search..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </InputGroup>
+          </CardAction>
+        </CardHeader>
 
         <CardContent className="flex flex-col gap-4 px-0">
-          <div className="flex flex-wrap items-center gap-2 px-4">
-            <NativeSelect size="sm" value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="all">All sources</option>
-              <option value="web">Web pages</option>
-              <option value="pdf">PDFs</option>
-            </NativeSelect>
-            <NativeSelect size="sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="any">Any status</option>
-              <option value="Updated">Updated</option>
-              <option value="Needs update">Needs update</option>
-              <option value="Updating">Updating</option>
-              <option value="Failed">Failed</option>
-            </NativeSelect>
-            <NativeSelect size="sm" defaultValue="updated">
-              <option value="updated">Recently updated</option>
-              <option value="created">Recently created</option>
-              <option value="used">Most used in conversations</option>
-            </NativeSelect>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <ChipSelect label="Source" value={source} options={sourceOptions} onChange={setSource} />
+              <ChipSelect label="Status" value={status} options={statusOptions} onChange={setStatus} />
+            </div>
+            <ChipSelect label="Sort" value={sort} options={sortOptions} onChange={setSort} align="end" />
+          </div>
+          <div className="flex min-h-8 flex-wrap items-center gap-2 px-4">
+            <span className="text-muted-foreground text-sm tabular-nums">{selected.length} selected</span>
             {selected.length > 0 && (
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-muted-foreground text-sm tabular-nums">{selected.length} selected</span>
-                <Button variant="outline" size="sm">
-                  <RefreshCw /> Refresh
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setSelected(allSelected ? [] : rows.map((r) => r.id))}>
+                  {allSelected ? `Unselect all (${rows.length})` : `Select all (${rows.length})`}
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => setDeleting("bulk")}>
-                  <Trash2 /> Delete
-                </Button>
-              </div>
+                <div className="ms-auto flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => refresh(selected)}>
+                    <RefreshCw /> Refresh
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => setDeleting("bulk")}>
+                    <Trash2 /> Delete
+                  </Button>
+                </div>
+              </>
             )}
           </div>
 
@@ -204,12 +261,14 @@ export function DocumentsList() {
                       onCheckedChange={(c) => setSelected(c ? rows.map((r) => r.id) : [])}
                     />
                   </TableHead>
-                  <TableHead className="py-4 font-normal">Name</TableHead>
-                  <TableHead className="py-4 font-normal">Status</TableHead>
+                  <TableHead className="py-4 font-normal">Document</TableHead>
+                  <TableHead className="py-4 font-normal">Sync status</TableHead>
                   <TableHead className="py-4 font-normal">FAQs</TableHead>
                   <TableHead className="py-4 font-normal">Usage</TableHead>
                   <TableHead className="py-4 font-normal">Created</TableHead>
-                  <TableHead className="w-12 py-4" />
+                  <TableHead className="py-4 font-normal">
+                    <div className="text-right">Actions</div>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -223,18 +282,12 @@ export function DocumentsList() {
                       <Checkbox
                         aria-label={`Select ${d.name}`}
                         checked={selected.includes(d.id)}
-                        onCheckedChange={(c) =>
-                          setSelected((p) => (c ? [...p, d.id] : p.filter((x) => x !== d.id)))
-                        }
+                        onCheckedChange={(c) => setSelected((p) => (c ? [...p, d.id] : p.filter((x) => x !== d.id)))}
                       />
                     </TableCell>
                     <TableCell className="py-4">
-                      <button
-                        type="button"
-                        className="flex items-center gap-3 text-left"
-                        onClick={() => setViewing(d)}
-                      >
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <button type="button" className="flex items-center gap-3 text-left" onClick={() => setViewing(d)}>
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                           {d.source === "pdf" ? (
                             <FileText className="size-4 text-red-500" />
                           ) : (
@@ -242,44 +295,37 @@ export function DocumentsList() {
                           )}
                         </div>
                         <div className="grid max-w-md gap-0.5">
-                          <span className="font-medium">{d.name}</span>
-                          <span className="truncate text-muted-foreground text-xs">{d.url}</span>
+                          <span className="font-medium text-sm hover:underline">{d.name}</span>
+                          <span className="truncate text-muted-foreground text-sm">{d.url}</span>
                         </div>
                       </button>
                     </TableCell>
                     <TableCell className="py-4">
-                      <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm">
-                        <span className={cn("size-2 rounded-full", statusTone[d.status])} />
-                        <span className={cn(d.status === "Failed" && "text-red-600")}>{syncText(d)}</span>
-                      </span>
+                      <ToneBadge tone={statusBadgeTone[d.status]}>{syncText(d)}</ToneBadge>
                     </TableCell>
                     <TableCell className="py-4">
-                      <Badge variant="outline" className="font-normal">
+                      <ToneBadge tone={d.faqs ? "violet" : "muted"} dot={false}>
                         {d.faqs} {d.faqs === 1 ? "FAQ" : "FAQs"}
-                      </Badge>
+                      </ToneBadge>
                     </TableCell>
                     <TableCell className="py-4 text-muted-foreground text-sm">
-                      Used in {d.conversations} conversations
+                      {d.conversations ? `Used in ${d.conversations} conversations` : "Not used in conversations yet"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap py-4 text-muted-foreground text-sm">
                       {d.createdAt}
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" aria-label="Document options">
-                            <EllipsisVertical />
-                          </Button>
-                        </DropdownMenuTrigger>
+                        <RowMenuTrigger label={`Open actions for ${d.name}`} />
                         <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem onSelect={() => setViewing(d)}>
                             <Eye /> View details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => refresh([d.id])}>
                             <RefreshCw /> {d.status === "Failed" ? "Retry refresh" : "Refresh now"}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting("one")}>
+                          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(d)}>
                             <Trash2 /> Delete Document
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -295,9 +341,22 @@ export function DocumentsList() {
                 <EmptyMedia variant="icon">
                   <FileText />
                 </EmptyMedia>
-                <EmptyTitle>No matching documents</EmptyTitle>
+                <EmptyTitle>No documents match these filters</EmptyTitle>
                 <EmptyDescription>Try changing the source, status, or search term.</EmptyDescription>
               </EmptyHeader>
+              <EmptyContent>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setQuery("");
+                    setSource("all");
+                    setStatus("any");
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </EmptyContent>
             </Empty>
           )}
         </CardContent>
@@ -306,10 +365,15 @@ export function DocumentsList() {
       <DocumentDialog open={adding} onOpenChange={setAdding} />
       <DocumentSheet doc={viewing} onClose={() => setViewing(null)} />
       <ConfirmDialog
-        open={deleting === "one"}
+        open={deleting !== null && deleting !== "bulk"}
         onOpenChange={(o) => !o && setDeleting(null)}
         title="Are you sure to delete the document?"
         description="This action is permanent. Deleting this document will permanently erase all generated knowledge."
+        success="Document deleted successfully"
+        onConfirm={() => {
+          const target = deleting;
+          if (target && target !== "bulk") setItems((list) => list.filter((d) => d.id !== target.id));
+        }}
       />
       <ConfirmDialog
         open={deleting === "bulk"}
@@ -317,7 +381,12 @@ export function DocumentsList() {
         title="Delete documents?"
         description="Are you sure you want to delete the selected documents? This action cannot be undone."
         confirm="Yes, delete all"
+        success="Documents deleted successfully"
+        onConfirm={() => {
+          setItems((list) => list.filter((d) => !selected.includes(d.id)));
+          setSelected([]);
+        }}
       />
-    </>
+    </CaptainShell>
   );
 }

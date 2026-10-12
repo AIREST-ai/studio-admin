@@ -1,7 +1,12 @@
 "use client";
+// Chatwoot dialogs: CreateAssistantDialog/AssistantForm, CreateDocumentDialog/DocumentForm, CreateResponseDialog/
+// ResponseForm, CreateCustomToolDialog/CustomToolForm/AuthConfig/ParamRow, AddNewScenariosDialog/ToolsDropdown,
+// ConnectInboxDialog, DeleteDialog. Required fields are checked on submit with Chatwoot's own error texts.
 import * as React from "react";
 
-import { FileText, Link2, Plus, Trash2 } from "lucide-react";
+import { cn } from "cn";
+import { AtSign, FileText, Link2, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -24,36 +29,89 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import { type Assistant, assistants, availableInboxes, type Tool } from "./data";
+import { type Assistant, assistants, availableInboxes, type Scenario, type Tool, tools } from "./data";
 
 interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-function Footer({ submit }: { submit: string }) {
+type Errors = Record<string, string | undefined>;
+
+function Field({
+  label,
+  error,
+  children,
+  className,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid gap-2", className)} data-invalid={error ? true : undefined}>
+      <Label className={cn(error && "text-destructive")}>{label}</Label>
+      {children}
+      {error && <p className="text-destructive text-xs">{error}</p>}
+    </div>
+  );
+}
+
+const invalid = "aria-invalid:border-destructive";
+
+function Footer({ submit, onSubmit }: { submit: string; onSubmit: () => void }) {
   return (
     <DialogFooter>
       <DialogClose asChild>
         <Button variant="outline">Cancel</Button>
       </DialogClose>
-      <DialogClose asChild>
-        <Button>{submit}</Button>
-      </DialogClose>
+      <Button onClick={onSubmit}>{submit}</Button>
     </DialogFooter>
   );
 }
 
+// Runs the checks; the dialog closes with Chatwoot's success toast only when every required field is filled.
+function useForm<T extends Record<string, string>>(initial: T) {
+  const [values, setValues] = React.useState<T>(initial);
+  const [errors, setErrors] = React.useState<Errors>({});
+  const set =
+    (field: keyof T) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const value = e.target.value;
+      setValues((p) => ({ ...p, [field]: value }));
+      setErrors((p) => ({ ...p, [field as string]: undefined }));
+    };
+  function validate(rules: Partial<Record<keyof T, string | ((v: string) => string | undefined)>>) {
+    const next: Errors = {};
+    for (const [field, rule] of Object.entries(rules)) {
+      const v = (values[field] ?? "").trim();
+      if (typeof rule === "function") next[field] = rule(v);
+      else if (!v) next[field] = rule as string;
+    }
+    setErrors(next);
+    return Object.values(next).every((x) => !x);
+  }
+  return { values, errors, set, validate, setValues };
+}
+
+const isUrl = (v: string) => /^https?:\/\/[^\s.]+\.[^\s]+/.test(v);
+
 function AssistantSelect() {
   return (
-    <div className="grid gap-2">
-      <Label>Assistant</Label>
+    <Field label="Assistant">
       <NativeSelect className="w-full" defaultValue="1">
         {assistants.map((a) => (
           <option key={a.id} value={a.id}>
@@ -61,11 +119,28 @@ function AssistantSelect() {
           </option>
         ))}
       </NativeSelect>
-    </div>
+    </Field>
   );
 }
 
 export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps & { assistant?: Assistant }) {
+  const { values, errors, set, validate } = useForm({
+    name: assistant?.name ?? "",
+    description: assistant?.description ?? "",
+    productName: assistant?.productName ?? "",
+  });
+  function submit() {
+    if (
+      !validate({
+        name: "The name is required",
+        description: "The description is required",
+        productName: "The product name is required",
+      })
+    )
+      return;
+    toast.success(assistant ? "Assistant updated successfully" : "Assistant created successfully");
+    onOpenChange(false);
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -77,24 +152,35 @@ export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps &
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Name</Label>
-            <Input placeholder="Enter assistant name" defaultValue={assistant?.name} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Description</Label>
+          <Field label="Name" error={errors.name}>
+            <Input
+              placeholder="Enter assistant name"
+              value={values.name}
+              onChange={set("name")}
+              aria-invalid={!!errors.name}
+              className={invalid}
+            />
+          </Field>
+          <Field label="Description" error={errors.description}>
             <Textarea
               placeholder="Enter assistant description"
-              defaultValue={assistant?.description}
-              className="min-h-20"
+              value={values.description}
+              onChange={set("description")}
+              aria-invalid={!!errors.description}
+              className={cn("min-h-20", invalid)}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label>Product Name</Label>
-            <Input placeholder="Enter product name" defaultValue={assistant?.productName} />
-          </div>
+          </Field>
+          <Field label="Product Name" error={errors.productName}>
+            <Input
+              placeholder="Enter product name"
+              value={values.productName}
+              onChange={set("productName")}
+              aria-invalid={!!errors.productName}
+              className={invalid}
+            />
+          </Field>
         </div>
-        <Footer submit={assistant ? "Update" : "Create"} />
+        <Footer submit={assistant ? "Update" : "Create"} onSubmit={submit} />
       </DialogContent>
     </Dialog>
   );
@@ -102,6 +188,20 @@ export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps &
 
 export function DocumentDialog({ open, onOpenChange }: DialogProps) {
   const [type, setType] = React.useState("url");
+  const [file, setFile] = React.useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const { values, errors, set, validate } = useForm({ url: "", name: "" });
+  const [fileError, setFileError] = React.useState<string>();
+  function submit() {
+    if (type === "url") {
+      if (!validate({ url: (v) => (isUrl(v) ? undefined : "Please provide a valid URL for the document") })) return;
+    } else if (!file) {
+      setFileError("Please select a PDF file");
+      return;
+    }
+    toast.success("Document created successfully");
+    onOpenChange(false);
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -112,8 +212,7 @@ export function DocumentDialog({ open, onOpenChange }: DialogProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Document Type</Label>
+          <Field label="Document Type">
             <ToggleGroup
               type="single"
               variant="outline"
@@ -128,35 +227,57 @@ export function DocumentDialog({ open, onOpenChange }: DialogProps) {
                 <FileText /> PDF File
               </ToggleGroupItem>
             </ToggleGroup>
-          </div>
+          </Field>
           {type === "url" ? (
-            <div className="grid gap-2">
-              <Label>URL</Label>
-              <Input placeholder="Enter the URL of the document" />
-            </div>
+            <Field label="URL" error={errors.url}>
+              <Input
+                placeholder="Enter the URL of the document"
+                value={values.url}
+                onChange={set("url")}
+                aria-invalid={!!errors.url}
+                className={invalid}
+              />
+            </Field>
           ) : (
-            <div className="grid gap-2">
-              <Label>PDF File</Label>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+            <Field label="PDF File" error={fileError}>
+              <div
+                className={cn(
+                  "flex items-center justify-between gap-3 rounded-lg border border-dashed p-4",
+                  fileError && "border-destructive",
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                     <FileText className="size-4 text-muted-foreground" />
                   </div>
-                  <span className="text-muted-foreground text-xs">Maximum file size: 10MB</span>
+                  <span className="truncate text-muted-foreground text-xs">{file ?? "Maximum file size: 10MB"}</span>
                 </div>
-                <Button variant="outline" size="sm">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    if (f.type !== "application/pdf") return setFileError("Please select a valid PDF file");
+                    if (f.size > 10 * 1024 * 1024) return setFileError("File size exceeds 10MB limit");
+                    setFile(f.name);
+                    setFileError(undefined);
+                  }}
+                />
+                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
                   Choose PDF file
                 </Button>
               </div>
-            </div>
+            </Field>
           )}
-          <div className="grid gap-2">
-            <Label>Document Name (Optional)</Label>
-            <Input placeholder="Enter a name for the document" />
-          </div>
+          <Field label="Document Name (Optional)">
+            <Input placeholder="Enter a name for the document" value={values.name} onChange={set("name")} />
+          </Field>
           <AssistantSelect />
         </div>
-        <Footer submit="Create" />
+        <Footer submit="Create" onSubmit={submit} />
       </DialogContent>
     </Dialog>
   );
@@ -167,6 +288,15 @@ export function FaqDialog({
   onOpenChange,
   initial,
 }: DialogProps & { initial?: { question: string; answer: string } }) {
+  const { values, errors, set, validate } = useForm({
+    question: initial?.question ?? "",
+    answer: initial?.answer ?? "",
+  });
+  function submit() {
+    if (!validate({ question: "Please provide a valid question.", answer: "Please provide a valid answer." })) return;
+    toast.success(initial ? "FAQ updated successfully" : "FAQ added successfully");
+    onOpenChange(false);
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -178,24 +308,82 @@ export function FaqDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Question</Label>
-            <Input placeholder="Enter the question here" defaultValue={initial?.question} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Answer</Label>
-            <Textarea placeholder="Enter the answer here" defaultValue={initial?.answer} className="min-h-28" />
-          </div>
+          <Field label="Question" error={errors.question}>
+            <Input
+              placeholder="Enter the question here"
+              value={values.question}
+              onChange={set("question")}
+              aria-invalid={!!errors.question}
+              className={invalid}
+            />
+          </Field>
+          <Field label="Answer" error={errors.answer}>
+            <Textarea
+              placeholder="Enter the answer here"
+              value={values.answer}
+              onChange={set("answer")}
+              aria-invalid={!!errors.answer}
+              className={cn("min-h-28", invalid)}
+            />
+          </Field>
           <AssistantSelect />
         </div>
-        <Footer submit={initial ? "Update" : "Create"} />
+        <Footer submit={initial ? "Update" : "Create"} onSubmit={submit} />
       </DialogContent>
     </Dialog>
   );
 }
 
+interface Param {
+  pid: number;
+  name: string;
+  type: string;
+  description: string;
+  required: boolean;
+}
+
 export function ToolDialog({ open, onOpenChange, tool }: DialogProps & { tool?: Tool }) {
   const [auth, setAuth] = React.useState(tool?.auth ?? "None");
+  const { values, errors, set, validate } = useForm({
+    title: tool?.title ?? "",
+    description: tool?.description ?? "",
+    method: tool?.method ?? "GET",
+    endpoint: tool?.endpoint ?? "",
+  });
+  const [params, setParams] = React.useState<Param[]>(
+    tool
+      ? [
+          {
+            pid: 1,
+            name: tool.endpoint.match(/\{\{\s*(\w+)\s*\}\}/)?.[1] ?? "order_id",
+            type: "string",
+            description: "Shared by the customer in the conversation",
+            required: true,
+          },
+        ]
+      : [],
+  );
+  const [paramErrors, setParamErrors] = React.useState<number[]>([]);
+  function updateParam(pid: number, patch: Partial<Param>) {
+    setParams((list) => list.map((item) => (item.pid === pid ? Object.assign({}, item, patch) : item)));
+  }
+
+  function submit() {
+    const ok = validate({
+      title: (v) => {
+        if (!v) return "Tool name is required";
+        if (v.length > 55) return "Tool name must be 55 characters or fewer";
+        return undefined;
+      },
+      endpoint: (v) => (isUrl(v) ? undefined : "Valid URL is required"),
+    });
+    const badParams = params.filter((p) => !p.name.trim()).map((p) => p.pid);
+    setParamErrors(badParams);
+    if (!ok || badParams.length) return;
+    toast.success(tool ? "Custom tool updated successfully" : "Custom tool created successfully");
+    onOpenChange(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -204,72 +392,74 @@ export function ToolDialog({ open, onOpenChange, tool }: DialogProps & { tool?: 
           <DialogDescription>Configure your custom tool to connect with external APIs</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Tool Name</Label>
-            <Input placeholder="Order Lookup" defaultValue={tool?.title} />
-          </div>
-          <div className="grid gap-2">
-            <Label>Description</Label>
+          <Field label="Tool Name" error={errors.title}>
+            <Input
+              placeholder="Order Lookup"
+              value={values.title}
+              onChange={set("title")}
+              aria-invalid={!!errors.title}
+              className={invalid}
+            />
+          </Field>
+          <Field label="Description">
             <Textarea
               placeholder="Looks up order details by order ID"
-              defaultValue={tool?.description}
+              value={values.description}
+              onChange={set("description")}
               className="min-h-16"
             />
-          </div>
+          </Field>
           <div className="grid grid-cols-[120px_1fr] gap-3">
-            <div className="grid gap-2">
-              <Label>Method</Label>
-              <NativeSelect className="w-full" defaultValue={tool?.method ?? "GET"}>
+            <Field label="Method">
+              <NativeSelect className="w-full" value={values.method} onChange={set("method")}>
                 <option>GET</option>
                 <option>POST</option>
+                <option>PUT</option>
+                <option>PATCH</option>
+                <option>DELETE</option>
               </NativeSelect>
-            </div>
-            <div className="grid gap-2">
-              <Label>Endpoint URL</Label>
+            </Field>
+            <Field label="Endpoint URL" error={errors.endpoint}>
               <Input
                 placeholder="https://api.example.com/orders/{{ order_id }}"
-                defaultValue={tool?.endpoint}
-                className="font-mono text-xs"
+                value={values.endpoint}
+                onChange={set("endpoint")}
+                aria-invalid={!!errors.endpoint}
+                className={cn("font-mono text-xs", invalid)}
               />
-            </div>
+            </Field>
           </div>
-          <div className="grid gap-2">
-            <Label>Authentication Type</Label>
+          <Field label="Authentication Type">
             <NativeSelect className="w-full" value={auth} onChange={(e) => setAuth(e.target.value)}>
               <option>None</option>
               <option>Bearer Token</option>
               <option>Basic Auth</option>
               <option>API Key</option>
             </NativeSelect>
-          </div>
+          </Field>
           {auth === "Bearer Token" && (
-            <div className="grid gap-2">
-              <Label>Bearer Token</Label>
+            <Field label="Bearer Token">
               <Input type="password" placeholder="Enter your bearer token" />
-            </div>
+            </Field>
           )}
           {auth === "Basic Auth" && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>Username</Label>
+              <Field label="Username">
                 <Input placeholder="Enter username" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Password</Label>
+              </Field>
+              <Field label="Password">
                 <Input type="password" placeholder="Enter password" />
-              </div>
+              </Field>
             </div>
           )}
           {auth === "API Key" && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label>Header Name</Label>
+              <Field label="Header Name">
                 <Input placeholder="X-API-Key" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Header Value</Label>
+              </Field>
+              <Field label="Header Value">
                 <Input type="password" placeholder="Enter API key value" />
-              </div>
+              </Field>
             </div>
           )}
           <div className="grid gap-2">
@@ -277,55 +467,93 @@ export function ToolDialog({ open, onOpenChange, tool }: DialogProps & { tool?: 
             <p className="text-muted-foreground text-xs">
               Define the parameters that will be extracted from user queries
             </p>
-            <div className="grid gap-2 rounded-lg border p-3">
-              <div className="grid grid-cols-[1fr_110px] gap-2">
-                <Input placeholder="Parameter name (e.g., order_id)" defaultValue={tool ? "order_id" : ""} />
-                <NativeSelect className="w-full" defaultValue="string">
-                  <option value="string">String</option>
-                  <option value="number">Number</option>
-                  <option value="boolean">Boolean</option>
-                  <option value="array">Array</option>
-                  <option value="object">Object</option>
-                </NativeSelect>
+            {params.map((p) => (
+              <div key={p.pid} className="grid gap-2 rounded-lg border p-3">
+                <div className="grid grid-cols-[1fr_110px] gap-2">
+                  <Input
+                    placeholder="Parameter name (e.g., order_id)"
+                    value={p.name}
+                    aria-invalid={paramErrors.includes(p.pid)}
+                    className={invalid}
+                    onChange={(e) => {
+                      updateParam(p.pid, { name: e.target.value });
+                      setParamErrors((x) => x.filter((k) => k !== p.pid));
+                    }}
+                  />
+                  <NativeSelect
+                    className="w-full"
+                    value={p.type}
+                    onChange={(e) => updateParam(p.pid, { type: e.target.value })}
+                  >
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Boolean</option>
+                    <option value="array">Array</option>
+                    <option value="object">Object</option>
+                  </NativeSelect>
+                </div>
+                {paramErrors.includes(p.pid) && <p className="text-destructive text-xs">Parameter name is required</p>}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Description of the parameter"
+                    value={p.description}
+                    onChange={(e) => updateParam(p.pid, { description: e.target.value })}
+                  />
+                  <Label className="flex items-center gap-2 whitespace-nowrap font-normal">
+                    <Checkbox
+                      checked={p.required}
+                      onCheckedChange={(c) => updateParam(p.pid, { required: c === true })}
+                    />
+                    Required
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Remove parameter"
+                    onClick={() => setParams((x) => x.filter((y) => y.pid !== p.pid))}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Description of the parameter"
-                  defaultValue={tool ? "The order number shared by the customer" : ""}
-                />
-                <Label className="flex items-center gap-2 whitespace-nowrap font-normal">
-                  <Checkbox defaultChecked /> Required
-                </Label>
-                <Button variant="ghost" size="icon-sm" aria-label="Remove parameter">
-                  <Trash2 />
-                </Button>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-fit">
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              onClick={() =>
+                setParams((x) => [
+                  ...x,
+                  { pid: Date.now(), name: "", type: "string", description: "", required: false },
+                ])
+              }
+            >
               <Plus /> Add Parameter
             </Button>
           </div>
-          <div className="grid gap-2">
-            <Label>Request Body Template (Optional)</Label>
+          <Field label="Request Body Template (Optional)">
             <Textarea placeholder={'{\n  "order_id": "{{ order_id }}"\n}'} className="min-h-20 font-mono text-xs" />
-          </div>
-          <div className="grid gap-2">
-            <Label>Response Template (Optional)</Label>
-            <Textarea
-              placeholder="Order {{ order_id }} status: {{ status }}"
-              className="min-h-16 font-mono text-xs"
-            />
-          </div>
+          </Field>
+          <Field label="Response Template (Optional)">
+            <Textarea placeholder="Order {{ order_id }} status: {{ status }}" className="min-h-16 font-mono text-xs" />
+          </Field>
         </div>
         <DialogFooter className="sm:justify-between">
-          <Button variant="outline">Test connection</Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              isUrl(values.endpoint)
+                ? toast.success("Connection successful: 200 OK in 182 ms")
+                : toast.error("Valid URL is required")
+            }
+          >
+            Test connection
+          </Button>
           <div className="flex gap-2">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <DialogClose asChild>
-              <Button>{tool ? "Update" : "Create"}</Button>
-            </DialogClose>
+            <Button onClick={submit}>{tool ? "Update" : "Create"}</Button>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -333,38 +561,101 @@ export function ToolDialog({ open, onOpenChange, tool }: DialogProps & { tool?: 
   );
 }
 
-export function ScenarioDialog({ open, onOpenChange }: DialogProps) {
+export function ScenarioDialog({ open, onOpenChange, scenario }: DialogProps & { scenario?: Scenario }) {
+  const { values, errors, set, validate, setValues } = useForm({
+    title: scenario?.title ?? "",
+    description: scenario?.description ?? "",
+    instruction: scenario?.instruction ?? "",
+  });
+  const [toolsOpen, setToolsOpen] = React.useState(false);
+  function submit() {
+    if (
+      !validate({
+        title: "Scenario name is required",
+        description: "Scenario description is required",
+        instruction: "Scenario content is required",
+      })
+    )
+      return;
+    toast.success(scenario ? "Scenarios updated successfully" : "Scenarios added successfully");
+    onOpenChange(false);
+  }
+  function insertTool(name: string) {
+    setValues((p) => ({ ...p, instruction: `${p.instruction.replace(/@$/, "")}[@${name}] ` }));
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create a scenario</DialogTitle>
+          <DialogTitle>{scenario ? "Update scenario" : "Create a scenario"}</DialogTitle>
           <DialogDescription>
             Give your assistant some context—like “what to do when a user is stuck,” or “how to act during a refund
             request.”
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Title</Label>
-            <Input placeholder="Enter a name for the scenario" />
-          </div>
-          <div className="grid gap-2">
-            <Label>Description</Label>
-            <Textarea placeholder="Describe how and where this scenario will be used" className="min-h-16" />
-          </div>
-          <div className="grid gap-2">
-            <Label>How to handle</Label>
-            <Textarea placeholder="Describe how and where this scenario will be handled" className="min-h-24" />
-          </div>
+          <Field label="Title" error={errors.title}>
+            <Input
+              placeholder="Enter a name for the scenario"
+              value={values.title}
+              onChange={set("title")}
+              aria-invalid={!!errors.title}
+              className={invalid}
+            />
+          </Field>
+          <Field label="Description" error={errors.description}>
+            <Textarea
+              placeholder="Describe how and where this scenario will be used"
+              value={values.description}
+              onChange={set("description")}
+              aria-invalid={!!errors.description}
+              className={cn("min-h-16", invalid)}
+            />
+          </Field>
+          <Field label="How to handle" error={errors.instruction}>
+            <div className="relative">
+              <Textarea
+                placeholder="Describe how and where this scenario will be handled"
+                value={values.instruction}
+                onChange={(e) => {
+                  set("instruction")(e);
+                  if (e.target.value.endsWith("@")) setToolsOpen(true);
+                }}
+                aria-invalid={!!errors.instruction}
+                className={cn("min-h-24 pb-9", invalid)}
+              />
+              <DropdownMenu open={toolsOpen} onOpenChange={setToolsOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="xs" className="absolute bottom-1.5 left-1.5 text-muted-foreground">
+                    <AtSign /> Tools
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuLabel>Insert a tool</DropdownMenuLabel>
+                  {tools.map((t) => (
+                    <DropdownMenuItem key={t.id} onSelect={() => insertTool(t.title)}>
+                      {t.title}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <p className="text-muted-foreground text-xs">Type @ to reference one of your tools.</p>
+          </Field>
         </div>
-        <Footer submit="Create" />
+        <Footer submit={scenario ? "Update changes" : "Create"} onSubmit={submit} />
       </DialogContent>
     </Dialog>
   );
 }
 
 export function InboxDialog({ open, onOpenChange }: DialogProps) {
+  const { values, errors, set, validate } = useForm({ inbox: "" });
+  function submit() {
+    if (!validate({ inbox: "An inbox selection is required." })) return;
+    toast.success("Inbox connected successfully");
+    onOpenChange(false);
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -372,9 +663,12 @@ export function InboxDialog({ open, onOpenChange }: DialogProps) {
           <DialogTitle>Connect an Inbox</DialogTitle>
           <DialogDescription>Choose an inbox to connect with the assistant.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-2">
-          <Label>Inbox</Label>
-          <NativeSelect className="w-full" defaultValue="">
+        <Field label="Inbox" error={errors.inbox}>
+          <NativeSelect
+            className={cn("w-full", errors.inbox && "[&_select]:border-destructive")}
+            value={values.inbox}
+            onChange={set("inbox")}
+          >
             <option value="" disabled>
               Choose the inbox to deploy the assistant.
             </option>
@@ -382,8 +676,8 @@ export function InboxDialog({ open, onOpenChange }: DialogProps) {
               <option key={i}>{i}</option>
             ))}
           </NativeSelect>
-        </div>
-        <Footer submit="Create" />
+        </Field>
+        <Footer submit="Create" onSubmit={submit} />
       </DialogContent>
     </Dialog>
   );
@@ -395,7 +689,15 @@ export function ConfirmDialog({
   title,
   description,
   confirm = "Yes, delete",
-}: DialogProps & { title: string; description?: string; confirm?: string }) {
+  onConfirm,
+  success,
+}: DialogProps & {
+  title: string;
+  description?: string;
+  confirm?: string;
+  onConfirm?: () => void;
+  success?: string;
+}) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -405,7 +707,15 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive">{confirm}</AlertDialogAction>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={() => {
+              onConfirm?.();
+              if (success) toast.success(success);
+            }}
+          >
+            {confirm}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
