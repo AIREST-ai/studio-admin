@@ -3,6 +3,7 @@ import * as React from "react";
 
 import { cn } from "cn";
 import { ExternalLink, MessageCircle, RefreshCw, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
+
+import { PageHeader } from "../../labels/_shared/settings-shell";
 
 const packages = [
   { credits: "1,000", price: "$20" },
@@ -54,19 +59,52 @@ function Meter({ label, used, total }: { label: string; used: number; total: num
 export function BillingSettings() {
   const [buyOpen, setBuyOpen] = React.useState(false);
   const [pick, setPick] = React.useState("2,500");
+  const [step, setStep] = React.useState<"pick" | "confirm">("pick");
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [credits, setCredits] = React.useState({ used: 3420, total: 5000 });
+  const [currency, setCurrency] = React.useState("USD");
+  const picked = packages.find((p) => p.credits === pick) ?? packages[1];
+
+  function refresh() {
+    setRefreshing(true);
+    window.setTimeout(() => setRefreshing(false), 700);
+  }
+
+  function confirmPurchase() {
+    const added = Number(picked.credits.replace(",", ""));
+    setCredits((c) => ({ ...c, total: c.total + added }));
+    setBuyOpen(false);
+    toast.success(`Successfully added ${picked.credits} credits to your account`);
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="grid max-w-2xl gap-1.5">
-          <h1 className="font-semibold text-xl">Billing</h1>
-          <p className="text-muted-foreground text-sm">
-            Manage your subscription here, upgrade your plan and get more for your team.
-          </p>
-        </div>
-        <Button variant="outline">
-          View Pricing <ExternalLink />
-        </Button>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Billing"
+        description="Manage your subscription here, upgrade your plan and get more for your team."
+        actions={
+          <Button variant="outline" asChild>
+            <a href="https://www.chatwoot.com/pricing" target="_blank" rel="noreferrer">
+              View Pricing <ExternalLink />
+            </a>
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[
+          { label: "Current Plan", value: "Business" },
+          { label: "Number of seats", value: "12" },
+          { label: "Renews on", value: "Nov 3, 2026" },
+          { label: "Captain credits left", value: (credits.total - credits.used).toLocaleString() },
+        ].map((stat) => (
+          <Card key={stat.label} className="gap-1 py-4">
+            <CardHeader className="px-4">
+              <CardDescription>{stat.label}</CardDescription>
+              <CardTitle className="text-2xl tabular-nums">{stat.value}</CardTitle>
+            </CardHeader>
+          </Card>
+        ))}
       </div>
 
       <Card>
@@ -90,7 +128,7 @@ export function BillingSettings() {
             <DetailItem label="Current Plan" value="Business" />
             <DetailItem label="Number of seats" value="12" />
             <DetailItem label="Renews on" value="Nov 3, 2026" />
-            <DetailItem label="Currency" value="US Dollar (USD)" />
+            <DetailItem label="Currency" value={currency === "USD" ? "US Dollar (USD)" : "Brazilian Real (BRL)"} />
           </div>
         </CardContent>
       </Card>
@@ -103,16 +141,22 @@ export function BillingSettings() {
             </CardTitle>
             <CardDescription>Manage usage and credits for Captain AI.</CardDescription>
             <CardAction className="flex gap-2">
-              <Button variant="ghost" size="sm">
-                <RefreshCw /> Refresh
+              <Button variant="ghost" size="sm" onClick={refresh} disabled={refreshing}>
+                <RefreshCw className={cn(refreshing && "animate-spin")} /> Refresh
               </Button>
-              <Button size="sm" onClick={() => setBuyOpen(true)}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setStep("pick");
+                  setBuyOpen(true);
+                }}
+              >
                 Buy more credits
               </Button>
             </CardAction>
           </CardHeader>
           <CardContent className="grid gap-5">
-            <Meter label="Credits" used={3420} total={5000} />
+            <Meter label="Credits" used={credits.used} total={credits.total} />
             <Meter label="Documents" used={46} total={200} />
           </CardContent>
         </Card>
@@ -126,7 +170,7 @@ export function BillingSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => toast("Opening the billing portal...")}>
                 Go to the billing portal <ExternalLink />
               </Button>
             </CardContent>
@@ -136,7 +180,7 @@ export function BillingSettings() {
               <CardTitle>Need help?</CardTitle>
               <CardDescription>Do you face any issues in billing? We are here to help.</CardDescription>
               <CardAction>
-                <Button variant="secondary">
+                <Button variant="secondary" onClick={() => toast("Support chat opened")}>
                   <MessageCircle /> Chat with us
                 </Button>
               </CardAction>
@@ -145,8 +189,53 @@ export function BillingSettings() {
         </div>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Choose your billing currency</CardTitle>
+          <CardDescription>
+            Select the currency you'd like to be billed in. This can't be changed once your subscription is created.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={currency} onValueChange={setCurrency} className="grid gap-3 sm:grid-cols-2">
+            {[
+              { value: "USD", label: "US Dollar (USD)" },
+              { value: "BRL", label: "Brazilian Real (BRL)" },
+            ].map((option) => (
+              <Label
+                key={option.value}
+                className="items-center gap-3 rounded-lg border p-3 font-normal has-data-[state=checked]:border-primary"
+              >
+                <RadioGroupItem value={option.value} />
+                {option.label}
+              </Label>
+            ))}
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
       <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
         <DialogContent className="sm:max-w-lg">
+          {step === "confirm" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirm Purchase</DialogTitle>
+                <DialogDescription>
+                  You are about to purchase {picked.credits} credits for {picked.price}.
+                </DialogDescription>
+              </DialogHeader>
+              <p className="rounded-lg border bg-muted/30 p-3 text-muted-foreground text-sm">
+                Your saved card will be charged immediately upon confirmation.
+              </p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setStep("pick")}>
+                  Go Back
+                </Button>
+                <Button onClick={confirmPurchase}>Confirm Purchase</Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
           <DialogHeader>
             <DialogTitle>Buy AI Credits</DialogTitle>
             <DialogDescription>Purchase additional credits for Captain AI.</DialogDescription>
@@ -184,10 +273,10 @@ export function BillingSettings() {
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <DialogClose asChild>
-              <Button>Purchase Credits</Button>
-            </DialogClose>
+            <Button onClick={() => setStep("confirm")}>Purchase Credits</Button>
           </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

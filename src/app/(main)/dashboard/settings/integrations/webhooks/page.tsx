@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { WebhooksList } from "../_components/webhooks-list";
+import { WebhooksPage } from "../_components/webhooks-page";
 
 export const metadata: Metadata = {
   title: "Webhooks",
 };
 
 export default function Page() {
-  return <WebhooksList />;
+  return <WebhooksPage />;
 }

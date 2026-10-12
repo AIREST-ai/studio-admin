@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { IntegrationsList } from "./_components/integrations-list";
+import { IntegrationsIndex } from "./_components/integrations-index";
 
 export const metadata: Metadata = {
   title: "Integrations",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <IntegrationsList />;
+  return <IntegrationsIndex />;
 }

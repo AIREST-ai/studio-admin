@@ -1,7 +1,10 @@
 "use client";
 import * as React from "react";
 
-import { ChevronDown, Copy, ExternalLink, Info } from "lucide-react";
+import Link from "next/link";
+
+import { ChevronDown, Copy, Info, Lock } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+import { PageHeader } from "../../labels/_shared/settings-shell";
 
 const spInfo = [
   {
@@ -31,19 +36,69 @@ const spInfo = [
   },
 ];
 
-export function SecuritySettings() {
+function copy(value: string) {
+  void navigator.clipboard?.writeText(value).catch(() => undefined);
+  toast.success("Copied to clipboard");
+}
+
+export function SecuritySettings({ paywall = false }: { paywall?: boolean }) {
   const [enabled, setEnabled] = React.useState(true);
+  const [ssoUrl, setSsoUrl] = React.useState("https://login.microsoftonline.com/9c1f-doharetail/saml2");
+  const [idpEntityId, setIdpEntityId] = React.useState("https://sts.windows.net/9c1f-doharetail/");
+  const [certificate, setCertificate] = React.useState(
+    "-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQGq0xV2l4mUeTj7n0bE1d3TANBgkqhkiG9w0BAQsFADA0\n-----END CERTIFICATE-----",
+  );
+  const [errors, setErrors] = React.useState<{ ssoUrl?: string; idp?: string; cert?: string }>({});
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const next: typeof errors = {};
+    try {
+      const parsed = new URL(ssoUrl.trim());
+      if (!/^https?:$/.test(parsed.protocol)) throw new Error("bad");
+    } catch {
+      next.ssoUrl = "Please enter a valid SSO URL";
+    }
+    if (!idpEntityId.trim()) next.idp = "Identity Provider Entity ID is required";
+    if (!certificate.trim()) next.cert = "Certificate is required";
+    setErrors(next);
+    if (Object.keys(next).length) {
+      toast.error("SSO URL, Identity Provider Entity ID, and Certificate are required fields");
+      return;
+    }
+    toast.success("SAML settings updated successfully");
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid max-w-2xl gap-1.5">
-        <h1 className="font-semibold text-xl">Security</h1>
-        <p className="text-muted-foreground text-sm">Manage your account security settings.</p>
-        <Button variant="link" size="sm" className="h-auto w-fit px-0">
-          Learn more about SAML SSO <ExternalLink />
-        </Button>
-      </div>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Security"
+        description="Manage your account security settings."
+        learnMore="Learn more about SAML SSO"
+      />
 
+      {paywall ? (
+        <Card className="items-center py-10 text-center">
+          <CardHeader className="w-full max-w-lg justify-items-center">
+            <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="size-5" />
+            </div>
+            <CardTitle>Upgrade to enable SAML SSO</CardTitle>
+            <CardDescription>
+              The SAML SSO feature is only available in the Enterprise plans. Upgrade your plan to get access to SAML
+              single sign-on and other advanced features.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid justify-items-center gap-2">
+            <Button asChild>
+              <Link href="/dashboard/settings/billing">Upgrade now</Link>
+            </Button>
+            <span className="text-muted-foreground text-xs">You can change or cancel your plan anytime</span>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {paywall ? null : (
       <Card>
         <CardHeader>
           <CardTitle>SAML SSO</CardTitle>
@@ -52,9 +107,23 @@ export function SecuritySettings() {
             instead of using email/password.
           </CardDescription>
           <CardAction>
-            <Switch checked={enabled} onCheckedChange={setEnabled} aria-label="Enable SAML SSO" />
+            <Switch
+              checked={enabled}
+              onCheckedChange={(checked) => {
+                setEnabled(checked);
+                if (!checked) toast.success("SAML settings disabled successfully");
+              }}
+              aria-label="Enable SAML SSO"
+            />
           </CardAction>
         </CardHeader>
+        {!enabled ? (
+          <CardContent>
+            <p className="rounded-lg border bg-muted/30 p-3 text-muted-foreground text-sm">
+              SAML SSO is currently disabled. Please contact your administrator to enable this feature.
+            </p>
+          </CardContent>
+        ) : null}
         {enabled && (
           <CardContent className="grid gap-6">
             <div className="rounded-xl border bg-muted/30">
@@ -84,7 +153,12 @@ export function SecuritySettings() {
                     </span>
                     <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-1.5">
                       <code className="flex-1 truncate text-xs">{item.value}</code>
-                      <Button variant="ghost" size="icon-xs" aria-label={`Copy ${item.label}`}>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={`Copy ${item.label}`}
+                        onClick={() => copy(item.value)}
+                      >
                         <Copy />
                       </Button>
                     </div>
@@ -112,40 +186,55 @@ export function SecuritySettings() {
               </CollapsibleContent>
             </Collapsible>
 
-            <div className="grid max-w-2xl gap-5">
+            <form className="grid max-w-2xl gap-5" onSubmit={submit} noValidate>
               <div className="grid gap-2">
-                <Label>SSO URL</Label>
+                <Label htmlFor="saml-sso-url">SSO URL</Label>
                 <Input
+                  id="saml-sso-url"
                   placeholder="https://sso.example.com/saml/sso"
-                  defaultValue="https://login.microsoftonline.com/9c1f-doharetail/saml2"
+                  value={ssoUrl}
+                  aria-invalid={Boolean(errors.ssoUrl)}
+                  onChange={(e) => setSsoUrl(e.target.value)}
                 />
-                <p className="text-muted-foreground text-xs">The URL where SAML authentication requests will be sent</p>
-              </div>
-              <div className="grid gap-2">
-                <Label>Identity Provider Entity ID</Label>
-                <Input
-                  placeholder="https://sso.example.com/saml"
-                  defaultValue="https://sts.windows.net/9c1f-doharetail/"
-                />
-                <p className="text-muted-foreground text-xs">
-                  Unique identifier for your identity provider (usually found in IdP configuration)
+                <p className={errors.ssoUrl ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
+                  {errors.ssoUrl ?? "The URL where SAML authentication requests will be sent"}
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label>Signing certificate in PEM format</Label>
+                <Label htmlFor="saml-idp">Identity Provider Entity ID</Label>
+                <Input
+                  id="saml-idp"
+                  placeholder="https://sso.example.com/saml"
+                  value={idpEntityId}
+                  aria-invalid={Boolean(errors.idp)}
+                  onChange={(e) => setIdpEntityId(e.target.value)}
+                />
+                <p className={errors.idp ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
+                  {errors.idp ?? "Unique identifier for your identity provider (usually found in IdP configuration)"}
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="saml-cert">Signing certificate in PEM format</Label>
                 <Textarea
+                  id="saml-cert"
                   className="min-h-28 font-mono text-xs"
                   placeholder={"-----BEGIN CERTIFICATE-----\nMIIC..."}
+                  value={certificate}
+                  aria-invalid={Boolean(errors.cert)}
+                  onChange={(e) => setCertificate(e.target.value)}
                 />
-                <p className="text-muted-foreground text-xs">
-                  The public certificate from your identity provider used to verify SAML responses
+                <p className={errors.cert ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
+                  {errors.cert ?? "The public certificate from your identity provider used to verify SAML responses"}
                 </p>
               </div>
-              <Button className="w-fit">Update SAML Settings</Button>
-            </div>
+              <Button type="submit" className="w-fit">
+                Update SAML Settings
+              </Button>
+            </form>
           </CardContent>
         )}
       </Card>
+      )}
     </div>
   );
 }

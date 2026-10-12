@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { ProfileSettings } from "./_components/profile-settings";
+import { ProfilePage } from "./_components/profile-page";
 
 export const metadata: Metadata = {
   title: "Profile Settings",
 };
 
 export default function Page() {
-  return <ProfileSettings />;
+  return <ProfilePage />;
 }

@@ -2,12 +2,11 @@
 import * as React from "react";
 
 import { cn } from "cn";
-import { ArrowDownUp, CalendarDays, ChevronLeft, ChevronRight, ExternalLink, ListFilter, Search, X } from "lucide-react";
+import { ArrowDownUp, CalendarDays, ChevronLeft, ChevronRight, ListFilter, Search, X } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -22,6 +21,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getInitials } from "@/lib/utils";
+
+import { CountTabs, PageHeader } from "../../labels/_shared/settings-shell";
 
 const tones = [
   "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
@@ -64,7 +65,20 @@ const logs: Log[] = [
   { id: 14, agent: "Reem Al-Otaibi", text: "Reem Al-Otaibi created a new team (#4)", type: "Teams", time: "Oct 9, 9:05 AM", location: "Riyadh, Saudi Arabia" },
 ];
 
+// Mock request details per event (Chatwoot shows remote_address and the geocoded location).
+const ips = ["37.210.14.82", "37.210.88.5", "37.210.14.82", "94.200.31.117", "188.48.22.9", "37.210.88.5", "37.210.14.82", "94.200.31.117", "188.48.22.9", "89.211.4.63", "37.210.88.5", "37.210.14.82", "94.56.120.40", "188.48.22.9"];
+const hoursAgo = [2, 3, 3, 18, 20, 22, 25, 42, 44, 46, 49, 62, 65, 72];
+const emails: Record<string, string> = {
+  "Fahad Al-Kuwari": "fahad@qatarcart.qa",
+  "Mariam Al-Sulaiti": "mariam@qatarcart.qa",
+  "Khalid Al-Mansoori": "khalid@qatarcart.qa",
+  "Reem Al-Otaibi": "reem@qatarcart.qa",
+  "Omar Haddad": "omar@qatarcart.qa",
+};
+
 const agentIds = Array.from(new Set(logs.map((l) => l.agent)));
+const groupOf = (type: string) => eventGroups.find((g) => g.types.includes(type))?.label ?? "Other";
+const tabs = [{ value: "all", label: "All events" }, ...eventGroups.map((g) => ({ value: g.label, label: g.label }))];
 const PAGE_SIZE = 8;
 
 export function AuditLogsList() {
@@ -73,40 +87,66 @@ export function AuditLogsList() {
   const [since, setSince] = React.useState("all");
   const [sort, setSort] = React.useState("newest");
   const [page, setPage] = React.useState(0);
+  const [tab, setTab] = React.useState("all");
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = logs.filter((l) => (q.length >= 3 ? l.text.toLowerCase().includes(q) : true));
+    const ranges: Record<string, number> = { all: Infinity, "24h": 24, "7d": 24 * 7, "30d": 24 * 30 };
+    const maxHours = ranges[since] ?? Infinity;
+    let list = logs.filter((l) =>
+      q ? `${l.agent} ${emails[l.agent] ?? ""} ${l.text}`.toLowerCase().includes(q) : true,
+    );
+    if (tab !== "all") list = list.filter((l) => groupOf(l.type) === tab);
     if (types.length) list = list.filter((l) => types.includes(l.type));
+    list = list.filter((l) => hoursAgo[l.id - 1] <= maxHours);
     return sort === "oldest" ? [...list].reverse() : list;
-  }, [query, types, sort]);
+  }, [query, types, sort, since, tab]);
 
   const pageCount = Math.max(Math.ceil(rows.length / PAGE_SIZE), 1);
   const current = Math.min(page, pageCount - 1);
   const pageRows = rows.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
-  const hasFilters = Boolean(query || types.length || since !== "all" || sort !== "newest");
-  const sinceLabel = { all: "Date range", "24h": "Last 24 hours", "7d": "Last 7 days", "30d": "Last 30 days" }[since];
+  const hasFilters = Boolean(query || types.length || since !== "all" || sort !== "newest" || tab !== "all");
+  const sinceLabels: Record<string, string> = {
+    all: "Date range",
+    "24h": "Last 24 hours",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+  };
+  const sinceLabel = sinceLabels[since];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid max-w-2xl gap-1.5">
-        <div className="flex items-center gap-2">
-          <h1 className="font-semibold text-xl">Audit Logs</h1>
-          <Badge variant="outline" className="font-normal text-muted-foreground tabular-nums">
-            {rows.length} events
-          </Badge>
-        </div>
-        <p className="text-muted-foreground text-sm">
-          Audit Logs maintain a record of activities in your account, allowing you to track and audit your account,
-          team, or services.
-        </p>
-        <Button variant="link" size="sm" className="h-auto w-fit px-0">
-          Learn more about audit logs <ExternalLink />
-        </Button>
-      </div>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Audit Logs"
+        description="Audit Logs maintain a record of activities in your account, allowing you to track and audit your account, team, or services."
+        learnMore="Learn more about audit logs"
+      />
+      <CountTabs
+        value={tab}
+        onValueChange={(v) => {
+          setTab(v);
+          setPage(0);
+        }}
+        items={tabs.map((t) => ({
+          value: t.value,
+          label: t.label,
+          count: t.value === "all" ? logs.length : logs.filter((l) => groupOf(l.type) === t.value).length,
+        }))}
+      />
 
-      <Card className="gap-0 py-0">
-        <div className="flex flex-wrap items-center gap-2 border-b p-3">
+      <Card className="gap-0 pb-0">
+        <CardHeader className="border-b pb-4 has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+          <CardTitle className="text-xl leading-none">Manage Audit Logs</CardTitle>
+          <CardDescription className="max-w-md leading-snug">
+            Audit Logs are trails for events and actions in a Chatwoot System.
+          </CardDescription>
+          <CardAction className="col-start-1 row-start-auto self-center md:col-start-2 md:row-span-2 md:row-start-1">
+            <span className="text-muted-foreground text-sm tabular-nums">
+              {rows.length} {rows.length === 1 ? "event" : "events"}
+            </span>
+          </CardAction>
+        </CardHeader>
+        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
           <InputGroup className="h-8 w-full md:w-72">
             <InputGroupAddon align="inline-start">
               <Search className="size-3.5" />
@@ -155,7 +195,10 @@ export function AuditLogsList() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuRadioGroup value={since} onValueChange={setSince}>
+              <DropdownMenuRadioGroup value={since} onValueChange={(v) => {
+                  setSince(v);
+                  setPage(0);
+                }}>
                 <DropdownMenuRadioItem value="all">All time</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="24h">Last 24 hours</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="7d">Last 7 days</DropdownMenuRadioItem>
@@ -185,6 +228,7 @@ export function AuditLogsList() {
                 setTypes([]);
                 setSince("all");
                 setSort("newest");
+                setTab("all");
               }}
             >
               <X /> Clear filters
@@ -197,6 +241,7 @@ export function AuditLogsList() {
               <TableRow>
                 <TableHead className="py-3 font-normal">Activity</TableHead>
                 <TableHead className="w-44 py-3 font-normal">Time</TableHead>
+                <TableHead className="w-36 py-3 font-normal">IP address</TableHead>
                 <TableHead className="w-64 py-3 font-normal">Location</TableHead>
               </TableRow>
             </TableHeader>
@@ -217,12 +262,13 @@ export function AuditLogsList() {
                       </div>
                     </TableCell>
                     <TableCell className="py-3.5 text-muted-foreground tabular-nums">{log.time}</TableCell>
+                    <TableCell className="py-3.5 font-mono text-muted-foreground text-xs">{ips[log.id - 1]}</TableCell>
                     <TableCell className="py-3.5 text-muted-foreground">{log.location}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                     There are no items matching this query
                   </TableCell>
                 </TableRow>

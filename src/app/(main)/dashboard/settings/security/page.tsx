@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Security",
 };
 
-export default function Page() {
-  return <SecuritySettings />;
+export default async function Page({ searchParams }: { searchParams: Promise<{ paywall?: string }> }) {
+  const { paywall } = await searchParams;
+  return <SecuritySettings paywall={paywall === "1"} />;
 }

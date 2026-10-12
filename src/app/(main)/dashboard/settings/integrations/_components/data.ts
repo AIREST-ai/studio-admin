@@ -35,7 +35,7 @@ export const integrations: Integration[] = [
     description:
       "Leverage the power of large language models from OpenAI with the features such as reply suggestions, summarization, message rephrasing, spell-checking, and label classification.",
     enabled: true,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/openai",
     mark: "AI",
     tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
   },
@@ -55,7 +55,7 @@ export const integrations: Integration[] = [
     description:
       "Build chatbots using Dialogflow and connect them to your inbox quickly. Let the bots handle the queries before handing them off to a customer service agent.",
     enabled: false,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/dialogflow",
     mark: "DF",
     tone: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   },
@@ -65,7 +65,7 @@ export const integrations: Integration[] = [
     description:
       "Make it easier for agents to translate messages by adding a Google Translate Integration. Google translate helps to identify the language automatically and convert it to the language chosen by the agent/account admin.",
     enabled: false,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/google_translate",
     mark: "GT",
     tone: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
   },
@@ -75,7 +75,7 @@ export const integrations: Integration[] = [
     description:
       "Create issues in Linear directly from your conversation window. Alternatively, link existing Linear issues for a more streamlined and efficient issue tracking process.",
     enabled: false,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/linear",
     mark: "LN",
     tone: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
   },
@@ -85,7 +85,7 @@ export const integrations: Integration[] = [
     description:
       "Integrate databases, documents and pages directly with Captain. Your agents can reference Notion content while replying to customers.",
     enabled: false,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/notion",
     mark: "NO",
     tone: "bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300",
   },
@@ -95,7 +95,7 @@ export const integrations: Integration[] = [
     description:
       "Connect your Shopify store to access order details, customer information, and product data directly within your conversations and helps your support team provide faster, more contextual assistance to your customers.",
     enabled: true,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/shopify",
     mark: "SH",
     tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
   },
@@ -105,7 +105,7 @@ export const integrations: Integration[] = [
     description:
       "Dyte is a product that integrates audio and video functionalities into your application. With this integration, your agents can start video/voice calls with your customers directly from Chatwoot.",
     enabled: false,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/dyte",
     mark: "DY",
     tone: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
   },
@@ -115,7 +115,7 @@ export const integrations: Integration[] = [
     description:
       "Sync your contacts and conversations with LeadSquared CRM. This integration automatically creates leads in LeadSquared when new contacts are added, and logs conversation activity to provide your sales team with complete context.",
     enabled: false,
-    href: "/dashboard/settings/integrations",
+    href: "/dashboard/settings/integrations/leadsquared",
     mark: "LS",
     tone: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
   },
@@ -179,4 +179,164 @@ export const dashboardApps: DashboardApp[] = [
   { id: 1, title: "Order history", url: "https://admin.qatarcart.qa/embed/orders" },
   { id: 2, title: "Loyalty points", url: "https://loyalty.alnoordental.ae/agent-view" },
   { id: 3, title: "Shipment tracker", url: "https://track.riyadhexpress.sa/embed" },
+];
+
+// Hook-based apps (Chatwoot IntegrationHooks.vue): "single" = one account-level connection (Connect / Disconnect),
+// "multiple" = one hook per inbox listed in a table. Fields follow each app's settings form in Chatwoot.
+export type HookFieldType = "text" | "password" | "textarea" | "select" | "checkbox" | "number";
+
+export interface HookField {
+  name: string;
+  label: string;
+  type: HookFieldType;
+  placeholder?: string;
+  help?: string;
+  required?: boolean;
+  options?: string[];
+}
+
+export interface IntegrationHook {
+  id: number;
+  inbox?: string;
+  properties: string[];
+}
+
+export interface HookApp {
+  id: string;
+  hookType: "account" | "inbox";
+  mode: "single" | "multiple";
+  shortDescription: string;
+  fields: HookField[];
+  /** Table headers for the multiple mode, one per property, with the form field each one comes from. */
+  headers?: { label: string; field: string }[];
+  hooks: IntegrationHook[];
+}
+
+export const hookApps: Record<string, HookApp> = {
+  openai: {
+    id: "openai",
+    hookType: "account",
+    mode: "single",
+    shortDescription: "AI-powered reply suggestions, summarization, and message enhancement.",
+    fields: [
+      {
+        name: "api_key",
+        label: "API Key",
+        type: "password",
+        placeholder: "Enter your OpenAI API key",
+        help: "Get your API key from platform.openai.com/api-keys",
+        required: true,
+      },
+      { name: "label_suggestion", label: "Show label suggestions", type: "checkbox" },
+    ],
+    hooks: [{ id: 11, properties: ["sk-••••••••••••3fQa"] }],
+  },
+  dialogflow: {
+    id: "dialogflow",
+    hookType: "inbox",
+    mode: "multiple",
+    shortDescription: "Build chatbots with Dialogflow and hand off to agents when needed.",
+    fields: [
+      {
+        name: "project_id",
+        label: "Dialogflow Project ID",
+        type: "text",
+        placeholder: "my-dialogflow-project",
+        required: true,
+      },
+      {
+        name: "credentials",
+        label: "Dialogflow Project Key File",
+        type: "textarea",
+        placeholder: '{ "type": "service_account", ... }',
+        help: "Paste the contents of the service account JSON key file.",
+        required: true,
+      },
+      {
+        name: "region",
+        label: "Dialogflow Region",
+        type: "select",
+        options: [
+          "Global - Default",
+          "AS-NE1 - Tokyo, Japan",
+          "AU-SE1 - Sydney, Australia",
+          "EU-W1 - St. Ghislain, Belgium",
+          "EU-W2 - London, England",
+        ],
+      },
+    ],
+    headers: [
+      { label: "Project ID", field: "project_id" },
+      { label: "Region", field: "region" },
+    ],
+    hooks: [
+      { id: 21, inbox: "Doha Store WhatsApp", properties: ["qatarcart-support-bot", "Global - Default"] },
+      { id: 22, inbox: "Website chat", properties: ["qatarcart-faq-agent", "EU-W2 - London, England"] },
+    ],
+  },
+  google_translate: {
+    id: "google_translate",
+    hookType: "account",
+    mode: "single",
+    shortDescription: "Translate messages automatically with Google Cloud Translation.",
+    fields: [
+      { name: "project_id", label: "Project ID", type: "text", placeholder: "my-gcp-project", required: true },
+      {
+        name: "credentials",
+        label: "Google Cloud Key File",
+        type: "textarea",
+        placeholder: '{ "type": "service_account", ... }',
+        help: "Paste the contents of the service account JSON key file.",
+        required: true,
+      },
+    ],
+    hooks: [],
+  },
+  dyte: {
+    id: "dyte",
+    hookType: "account",
+    mode: "single",
+    shortDescription: "Start audio and video calls with customers from a conversation.",
+    fields: [
+      { name: "organization_id", label: "Organization ID", type: "text", placeholder: "Dyte organization ID", required: true },
+      { name: "api_key", label: "API Key", type: "password", placeholder: "Dyte API key", required: true },
+    ],
+    hooks: [],
+  },
+  leadsquared: {
+    id: "leadsquared",
+    hookType: "account",
+    mode: "single",
+    shortDescription: "Sync contacts and conversation activity to LeadSquared CRM.",
+    fields: [
+      { name: "access_key", label: "Access Key", type: "password", placeholder: "LeadSquared access key", required: true },
+      { name: "secret_key", label: "Secret Key", type: "password", placeholder: "LeadSquared secret key", required: true },
+      {
+        name: "endpoint_url",
+        label: "API Host",
+        type: "text",
+        placeholder: "https://api-in21.leadsquared.com/v2/",
+        help: "The API host shown in your LeadSquared settings.",
+      },
+      { name: "enable_conversation_activity", label: "Log conversation activity", type: "checkbox" },
+      { name: "conversation_activity_score", label: "Conversation activity score", type: "number", placeholder: "0" },
+      { name: "enable_transcript_activity", label: "Log transcript activity", type: "checkbox" },
+      { name: "transcript_activity_score", label: "Transcript activity score", type: "number", placeholder: "0" },
+    ],
+    hooks: [],
+  },
+};
+
+export const hookInboxes = ["Doha Store WhatsApp", "Website chat", "Instagram DM", "Support email", "Telegram bot"];
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+}
+
+export const slackChannels: SlackChannel[] = [
+  { id: "C01", name: "customer-support" },
+  { id: "C02", name: "orders-escalations" },
+  { id: "C03", name: "vip-customers" },
+  { id: "C04", name: "general" },
 ];
