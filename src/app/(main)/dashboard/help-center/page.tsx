@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ArticlesList } from "./_components/articles-list";
+import { PortalGate } from "./_components/portal-title";
 
 export const metadata: Metadata = {
   title: "Help Center",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <ArticlesList />;
+  return (
+    <PortalGate>
+      <ArticlesList />
+    </PortalGate>
+  );
 }

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getInitials } from "@/lib/utils";
 
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
+
 import { articles, authorOf, categoryOf, statusLabel, statusTone } from "./data";
 import { CreatePortalDialog } from "./help-center-dialogs";
 
@@ -32,7 +34,7 @@ export function PortalsEmpty() {
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground text-xs">
                   <span className="flex items-center gap-1">
-                    <Avatar className="size-4">
+                    <Avatar className={`size-4 font-medium ${author ? personToneClass(author.name) : ""}`}>
                       <AvatarFallback className="text-[8px]">{getInitials(author?.name ?? "-")}</AvatarFallback>
                     </Avatar>
                     {author?.name}

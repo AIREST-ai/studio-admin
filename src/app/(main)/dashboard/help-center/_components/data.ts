@@ -35,6 +35,14 @@ export interface Article {
   views: number;
   updated: string;
   pendingEdits?: boolean;
+  /** Locale code of the article; English when left out. */
+  locale?: string;
+  /** Live title when the draft title differs (published article with unpublished edits). */
+  liveTitle?: string;
+  metaDescription?: string;
+  metaTags?: string[];
+  /** Body as [intro, heading, numbered steps, note]; an empty array is an article without content yet. */
+  body?: string[];
 }
 
 export interface Locale {
@@ -46,49 +54,52 @@ export interface Locale {
   isDraft?: boolean;
 }
 
+// F159: the help center of Weblabs Studio, the same company as Conversations (support@weblabs.studio) and Settings >
+// Inboxes. The reply box "Insert article" and the search Articles tab read these articles (cw-data.ts helpArticles).
 export const portals: Portal[] = [
   {
     id: 1,
-    name: "Noor Clinics Help Center",
-    slug: "noor-clinics",
-    customDomain: "help.noorclinics.qa",
+    name: "Weblabs Studio Help Center",
+    slug: "weblabs",
+    customDomain: "help.weblabs.studio",
     articles: 24,
     color: "#1f93ff",
-    pageTitle: "Noor Clinics — Patient Help",
+    pageTitle: "Weblabs Studio — Help Center",
     headerText: "How can we help you today?",
-    homePageLink: "https://www.noorclinics.qa",
+    homePageLink: "https://weblabs.studio",
   },
   {
     id: 2,
-    name: "Rawabi Delivery Guide",
-    slug: "rawabi-guide",
+    name: "Weblabs Developer Docs",
+    slug: "weblabs-developers",
     customDomain: "",
     articles: 11,
     color: "#10b981",
-    pageTitle: "Rawabi Delivery — Guide",
-    headerText: "Answers for riders and stores",
-    homePageLink: "https://rawabi-delivery.ae",
+    pageTitle: "Weblabs Studio — Developer Docs",
+    headerText: "Build on the Weblabs API",
+    homePageLink: "https://weblabs.studio/developers",
   },
   {
     id: 3,
-    name: "Dar Al Majd Tenants FAQ",
-    slug: "dar-al-majd",
-    customDomain: "faq.daralmajd.sa",
+    name: "Weblabs Partner Hub",
+    slug: "weblabs-partners",
+    customDomain: "partners.weblabs.studio",
     articles: 7,
     color: "#f59e0b",
-    pageTitle: "Dar Al Majd — Tenant FAQ",
-    headerText: "Everything about your lease",
-    homePageLink: "https://daralmajd.sa",
+    pageTitle: "Weblabs Studio — Partner Hub",
+    headerText: "Resources for resellers and agencies",
+    homePageLink: "https://weblabs.studio/partners",
   },
 ];
 
 export const activePortal = portals[0];
 
+// F159: the same agents as Conversations and Settings (cw-data.ts); id 1 is Arham Khan, the signed-in agent.
 export const authors: Author[] = [
-  { id: 1, name: "Fatima Al-Kuwari" },
-  { id: 2, name: "Omar Haddad" },
-  { id: 3, name: "Aisha Rahman" },
-  { id: 4, name: "Yousef Al-Marri" },
+  { id: 1, name: "Arham Khan" },
+  { id: 2, name: "Lina Haddad" },
+  { id: 3, name: "Priya Nair" },
+  { id: 4, name: "Yousef Al-Harbi" },
 ];
 
 export const currentUserId = 1;
@@ -96,49 +107,49 @@ export const currentUserId = 1;
 export const categories: Category[] = [
   {
     id: 1,
-    name: "Appointments",
-    slug: "appointments",
-    icon: "🗓️",
-    description: "Booking, rescheduling and cancelling visits at any Noor branch or by video call.",
+    name: "Getting started",
+    slug: "getting-started",
+    icon: "🚀",
+    description: "First steps for a new workspace: your team, your domain and your first project.",
     articles: 6,
   },
   {
     id: 2,
-    name: "Billing & insurance",
-    slug: "billing-insurance",
+    name: "Billing & plans",
+    slug: "billing-plans",
     icon: "💳",
-    description: "Accepted insurers in Qatar, co-payments, invoices and paying with card or Apple Pay.",
+    description: "Plans, invoices, refunds, annual billing and changing or cancelling your subscription.",
     articles: 5,
   },
   {
     id: 3,
-    name: "Lab results",
-    slug: "lab-results",
-    icon: "🧪",
-    description: "When results are ready, how to read them in the app and how to share them with your doctor.",
+    name: "Reports & exports",
+    slug: "reports-exports",
+    icon: "📊",
+    description: "Building reports, filtering by date and downloading your data as CSV.",
     articles: 4,
   },
   {
     id: 4,
-    name: "App & account",
-    slug: "app-account",
-    icon: "📱",
-    description: "Signing in with your QID, family profiles, notifications and changing your phone number.",
+    name: "Account & security",
+    slug: "account-security",
+    icon: "🔐",
+    description: "Passwords, single sign-on, two-factor authentication and roles for your team.",
     articles: 5,
   },
   {
     id: 5,
-    name: "Clinics & locations",
-    slug: "clinics-locations",
-    icon: "🏥",
-    description: "Branches in West Bay, Al Waab and Lusail, parking, and opening hours.",
+    name: "Integrations & API",
+    slug: "integrations-api",
+    icon: "🔌",
+    description: "API keys, rate limits, webhooks and connecting Zapier and other tools.",
     articles: 3,
   },
   {
     id: 6,
-    name: "Ramadan & holidays",
-    slug: "ramadan-holidays",
-    icon: "🌙",
+    name: "Release notes",
+    slug: "release-notes",
+    icon: "📣",
     description: "",
     articles: 1,
   },
@@ -146,8 +157,8 @@ export const categories: Category[] = [
 
 export const articles: Article[] = [
   {
-    id: 101,
-    title: "How to book an appointment in the Noor app",
+    id: 1,
+    title: "Getting started with your Weblabs workspace",
     status: "published",
     authorId: 1,
     categoryId: 1,
@@ -155,18 +166,21 @@ export const articles: Article[] = [
     updated: "2 hours ago",
   },
   {
-    id: 102,
-    title: "Which insurance providers do you accept in Qatar?",
+    id: 2,
+    title: "Understanding your invoice",
     status: "published",
     authorId: 2,
     categoryId: 2,
     views: 3175,
     updated: "5 hours ago",
     pendingEdits: true,
+    liveTitle: "Reading your invoice",
+    metaDescription: "What each line of your Weblabs invoice means, and where to download past invoices.",
+    metaTags: ["billing", "invoice"],
   },
   {
-    id: 103,
-    title: "Ramadan 2027 clinic opening hours",
+    id: 3,
+    title: "Release notes: October 2026",
     status: "draft",
     authorId: 1,
     categoryId: 6,
@@ -174,8 +188,8 @@ export const articles: Article[] = [
     updated: "Yesterday",
   },
   {
-    id: 104,
-    title: "Reading your blood test results in the app",
+    id: 4,
+    title: "Exporting reports to CSV",
     status: "published",
     authorId: 3,
     categoryId: 3,
@@ -183,8 +197,8 @@ export const articles: Article[] = [
     updated: "2 days ago",
   },
   {
-    id: 105,
-    title: "Adding your children to a family profile",
+    id: 5,
+    title: "How to reset your password",
     status: "published",
     authorId: 4,
     categoryId: 4,
@@ -192,8 +206,8 @@ export const articles: Article[] = [
     updated: "3 days ago",
   },
   {
-    id: 106,
-    title: "Paying your invoice with Apple Pay or a debit card",
+    id: 6,
+    title: "Switching to annual billing",
     status: "published",
     authorId: 2,
     categoryId: 2,
@@ -201,8 +215,8 @@ export const articles: Article[] = [
     updated: "4 days ago",
   },
   {
-    id: 107,
-    title: "Rescheduling or cancelling a video consultation",
+    id: 7,
+    title: "Inviting your team and choosing roles",
     status: "draft",
     authorId: 1,
     categoryId: 1,
@@ -210,8 +224,8 @@ export const articles: Article[] = [
     updated: "5 days ago",
   },
   {
-    id: 108,
-    title: "Parking at the Lusail Marina branch",
+    id: 8,
+    title: "API rate limits explained",
     status: "published",
     authorId: 3,
     categoryId: 5,
@@ -219,8 +233,8 @@ export const articles: Article[] = [
     updated: "1 week ago",
   },
   {
-    id: 109,
-    title: "Signing in with your Qatar ID (QID)",
+    id: 9,
+    title: "Setting up SSO with Azure AD",
     status: "published",
     authorId: 4,
     categoryId: 4,
@@ -228,8 +242,8 @@ export const articles: Article[] = [
     updated: "1 week ago",
   },
   {
-    id: 110,
-    title: "Old COVID-19 PCR booking steps",
+    id: 10,
+    title: "Exporting data from the old reports page",
     status: "archived",
     authorId: 2,
     categoryId: 3,
@@ -237,8 +251,8 @@ export const articles: Article[] = [
     updated: "3 months ago",
   },
   {
-    id: 111,
-    title: "Getting a sick leave certificate after your visit",
+    id: 11,
+    title: "Connecting a custom domain and SSL certificate",
     status: "published",
     authorId: 1,
     categoryId: null,
@@ -246,8 +260,8 @@ export const articles: Article[] = [
     updated: "2 weeks ago",
   },
   {
-    id: 112,
-    title: "Changing the phone number on your account",
+    id: 12,
+    title: "Turning on two-factor authentication for your team",
     status: "draft",
     authorId: 3,
     categoryId: 4,
@@ -255,8 +269,8 @@ export const articles: Article[] = [
     updated: "2 weeks ago",
   },
   {
-    id: 113,
-    title: "What to bring to your first visit",
+    id: 13,
+    title: "Onboarding checklist for new team members",
     status: "published",
     authorId: 4,
     categoryId: 1,
@@ -264,8 +278,8 @@ export const articles: Article[] = [
     updated: "3 weeks ago",
   },
   {
-    id: 114,
-    title: "Claiming a refund for a cancelled lab test",
+    id: 14,
+    title: "Getting a refund for a double charge",
     status: "published",
     authorId: 2,
     categoryId: 2,
@@ -273,14 +287,27 @@ export const articles: Article[] = [
     updated: "1 month ago",
   },
   {
-    id: 115,
-    title: "Eid Al Adha emergency contact numbers",
+    id: 15,
+    title: "Release notes: Android app 3.2",
     status: "archived",
     authorId: 1,
     categoryId: 6,
     views: 2105,
     updated: "4 months ago",
   },
+];
+
+// F159: translations of the English articles, shown when the Locale filter is Arabic or Urdu. Kept apart from
+// `articles` so the reply box "Insert article" (cw-data.ts) keeps listing the English ones only.
+export const translatedArticles: Article[] = [
+  { id: 101, title: "البدء مع مساحة عمل ويبلابس", status: "published", authorId: 2, categoryId: 1, views: 1240, updated: "3 hours ago", locale: "ar", body: ["مساحة عمل ويبلابس هي المكان الذي يبني فيه فريقك المشاريع ويتابعها ويسلمها. يستغرق هذا الدليل خمس دقائق تقريباً.", "الخطوات", "1. افتح الإعدادات وأضف اسم شركتك وشعارها.\n2. ادعُ زملاءك واختر دوراً لكل واحد منهم.\n3. اربط نطاقك الخاص وفعّل شهادة SSL.\n4. أنشئ مشروعك الأول وشارك رابطه مع فريقك.", "هل تنتقل من أداة أخرى؟ استخدم استيراد البيانات في صفحة المشاريع لنقل مشاريعك وسجلها."] },
+  { id: 102, title: "فهم فاتورتك", status: "published", authorId: 2, categoryId: 2, views: 860, updated: "1 day ago", locale: "ar", body: ["توضح هذه المقالة معنى كل سطر في فاتورة ويبلابس، وأين تجد فواتيرك السابقة.", "قراءة الفاتورة", "1. رقم الفاتورة وتاريخها في أعلى الصفحة.\n2. الخطة وعدد المقاعد في جدول البنود.\n3. الضريبة والإجمالي في أسفل الفاتورة.", "تجد كل الفواتير السابقة في الإعدادات ثم الفوترة، ويمكنك تنزيلها بصيغة PDF."] },
+  { id: 103, title: "كيفية إعادة تعيين كلمة المرور", status: "published", authorId: 4, categoryId: 4, views: 705, updated: "2 days ago", locale: "ar", body: ["إذا نسيت كلمة المرور يمكنك تعيين كلمة جديدة خلال دقيقة واحدة.", "الخطوات", "1. اضغط «نسيت كلمة المرور» في صفحة الدخول.\n2. اكتب بريدك الإلكتروني واضغط إرسال.\n3. افتح الرابط في بريدك واختر كلمة مرور جديدة.", "لم تصلك الرسالة؟ تحقق من مجلد الرسائل غير المرغوبة أو تواصل معنا."] },
+  { id: 104, title: "تصدير التقارير بصيغة CSV", status: "draft", authorId: 4, categoryId: 3, views: 0, updated: "4 days ago", locale: "ar", body: ["يمكنك تنزيل أي تقرير بصيغة CSV لفتحه في جداول البيانات.", "الخطوات", "1. افتح صفحة التقارير.\n2. اختر الفترة الزمنية والمرشحات.\n3. اضغط تصدير ثم CSV.", "يصل ملف التقارير الكبيرة إلى بريدك عند اكتماله."] },
+  { id: 105, title: "التحويل إلى الفوترة السنوية", status: "published", authorId: 2, categoryId: 2, views: 312, updated: "1 week ago", locale: "ar", body: ["الفوترة السنوية توفر عليك شهرين مقارنة بالدفع الشهري.", "الخطوات", "1. افتح الإعدادات ثم الفوترة.\n2. اضغط تغيير الخطة واختر سنوي.\n3. أكد الدفع.", "يُحسب الرصيد المتبقي من شهرك الحالي تلقائياً."] },
+  { id: 106, title: "إعداد الدخول الموحد مع Azure AD", status: "draft", authorId: 1, categoryId: 4, views: 0, updated: "2 weeks ago", locale: "ar", body: ["يتيح الدخول الموحد لفريقك الدخول بحسابات Azure AD نفسها.", "الخطوات", "1. أنشئ تطبيقاً جديداً في Azure AD.\n2. انسخ معرّف التطبيق والسر إلى إعدادات الأمان في ويبلابس.\n3. فعّل الدخول الموحد واختبره بحساب واحد.", "يحتاج هذا الإعداد إلى صلاحية مدير في الحسابين."] },
+  { id: 107, title: "Apna Weblabs workspace shuru karein", status: "published", authorId: 3, categoryId: 1, views: 188, updated: "1 week ago", locale: "ur", body: ["آپ کا ویب لیبز ورک اسپیس وہ جگہ ہے جہاں آپ کی ٹیم پروجیکٹ بناتی اور مکمل کرتی ہے۔", "مراحل", "1. سیٹنگز کھولیں اور کمپنی کا نام اور لوگو شامل کریں۔\n2. اپنی ٹیم کو مدعو کریں اور ہر ایک کا کردار منتخب کریں۔\n3. اپنا پہلا پروجیکٹ بنائیں۔", "کسی اور ٹول سے آ رہے ہیں؟ پروجیکٹس کے صفحے پر امپورٹ استعمال کریں۔"] },
+  { id: 108, title: "Password reset karne ka tareeqa", status: "draft", authorId: 3, categoryId: 4, views: 0, updated: "3 weeks ago", locale: "ur", body: ["اگر آپ پاس ورڈ بھول گئے ہیں تو ایک منٹ میں نیا پاس ورڈ بنا سکتے ہیں۔", "مراحل", "1. لاگ ان صفحے پر «پاس ورڈ بھول گئے» دبائیں۔\n2. اپنا ای میل لکھیں اور بھیجیں۔\n3. ای میل میں موجود لنک کھول کر نیا پاس ورڈ منتخب کریں۔", "ای میل نہیں ملی؟ اسپام فولڈر دیکھیں۔"] },
 ];
 
 export const locales: Locale[] = [
@@ -323,8 +350,8 @@ export const statusTone: Record<ArticleStatus, string> = {
 };
 
 export const sampleArticleBody = [
-  "You can book a visit with any Noor doctor in under a minute from the Noor app. Bookings are free, and you will get a reminder by SMS and WhatsApp the day before.",
+  "Your Weblabs workspace is where your team builds, tracks and ships projects. This guide takes about five minutes and covers what every new workspace owner sets up first.",
   "Steps",
-  "1. Open the Noor app and tap Book appointment on the home screen.\n2. Choose the speciality, for example Paediatrics or Dermatology.\n3. Pick a branch (West Bay, Al Waab or Lusail Marina) or choose Video consultation.\n4. Select a doctor and a time that suits you, then tap Confirm.",
-  "Booking for your child? Switch to their profile from the top of the screen first, so the visit is saved to the right medical record.",
+  "1. Open Settings and add your company name and logo.\n2. Invite your teammates from Settings and choose a role for each one.\n3. Connect your custom domain and turn on SSL.\n4. Create your first project and share the link with your team.",
+  "Moving from another tool? Use Import data on the Projects page to bring in your existing projects and their history.",
 ];
