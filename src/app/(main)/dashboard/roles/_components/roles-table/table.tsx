@@ -39,7 +39,13 @@ function groupRowsByRoleGroup(rows: RoleTableRow[]) {
   );
 }
 
-export function RolesTable({ table }: { table: ReactTable<DataTableFeatures, Role> }) {
+export function RolesTable({
+  table,
+  emptyMessage = "No results.",
+}: {
+  table: ReactTable<DataTableFeatures, Role>;
+  emptyMessage?: string;
+}) {
   const { pageIndex, pageSize } = table.state.pagination;
   const pageRows = table.getRowModel().rows;
   const filteredRows = table.getFilteredRowModel().rows;
@@ -86,7 +92,7 @@ export function RolesTable({ table }: { table: ReactTable<DataTableFeatures, Rol
           ) : (
             <TableRow>
               <TableCell colSpan={colCount} className="h-24 text-center text-muted-foreground">
-                No results.
+                {emptyMessage}
               </TableCell>
             </TableRow>
           )}

@@ -34,7 +34,13 @@ function getPageNumbers(currentPage: number, pageCount: number) {
   return [currentPage - 1, currentPage, currentPage + 1];
 }
 
-export function UsersTable({ table }: { table: ReactTable<DataTableFeatures, UserRow> }) {
+export function UsersTable({
+  table,
+  emptyMessage = "No results.",
+}: {
+  table: ReactTable<DataTableFeatures, UserRow>;
+  emptyMessage?: string;
+}) {
   const pageCount = Math.max(table.getPageCount(), 1);
   const currentPage = Math.min(table.state.pagination.pageIndex + 1, pageCount);
   const pageNumbers = getPageNumbers(currentPage, pageCount);
@@ -73,8 +79,8 @@ export function UsersTable({ table }: { table: ReactTable<DataTableFeatures, Use
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={table.getVisibleLeafColumns().length} className="h-24 text-center">
-                  No results.
+                <TableCell colSpan={table.getVisibleLeafColumns().length} className="h-24 text-center text-muted-foreground">
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             )}

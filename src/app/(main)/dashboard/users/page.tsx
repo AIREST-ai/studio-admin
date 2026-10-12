@@ -8,7 +8,7 @@ import { UsersRoles } from "./_components/users-roles";
 
 export const metadata: Metadata = {
   title: "Users & Roles",
-  description: "Your team, and what each person can see and do.",
+  description: "Your agents, and the roles that decide what each one can see and do.",
   alternates: {
     canonical: "/dashboard/users",
   },
