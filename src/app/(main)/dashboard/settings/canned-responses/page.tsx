@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { CannedSettings } from "./_components/canned-settings";
+import { CannedList } from "./_components/canned-list";
 
 export const metadata: Metadata = {
   title: "Canned Responses",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <CannedSettings />;
+  return <CannedList />;
 }

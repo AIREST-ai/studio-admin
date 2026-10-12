@@ -27,49 +27,58 @@ export const macroActionTypes = [
   "Send a Message",
   "Add a Private Note",
   "Change Priority",
+  "Send Webhook Event",
 ];
 
+// F159: creators are the agents of the Conversations area (cw-data.ts), teams and labels are the ones its sidebar
+// shows. The two private macros belong to Arham Khan, the signed-in agent, so he can see and run them.
 export const macros: Macro[] = [
   {
     id: 1,
     name: "Refund approved",
-    createdBy: "Noura Al-Thani",
-    updatedBy: "Noura Al-Thani",
+    createdBy: "Arham Khan",
+    updatedBy: "Yousef Al-Harbi",
     visibility: "Public",
     actions: [
       { action: "Add a Label", value: "billing" },
-      { action: "Send a Message", value: "Your refund has been approved. It will reach your card in 5 to 7 working days." },
+      {
+        action: "Send a Message",
+        value: "Your refund has been approved. It will reach your card in 5 to 7 working days.",
+      },
       { action: "Resolve Conversation", value: "" },
     ],
   },
   {
     id: 2,
-    name: "Escalate to Riyadh showroom",
-    createdBy: "Faisal Al-Otaibi",
-    updatedBy: "Mariam Al-Kuwari",
+    name: "Escalate to Technical",
+    createdBy: "Lina Haddad",
+    updatedBy: "Arham Khan",
     visibility: "Public",
     actions: [
-      { action: "Assign a Team", value: "Riyadh Showroom" },
-      { action: "Add a Private Note", value: "Customer wants an in-store visit. Please call within 2 hours." },
+      { action: "Assign a Team", value: "Technical" },
+      { action: "Add a Private Note", value: "Customer needs an engineer on a call. Please call within 2 hours." },
       { action: "Change Priority", value: "High" },
     ],
   },
   {
     id: 3,
     name: "Late delivery apology",
-    createdBy: "Mariam Al-Kuwari",
-    updatedBy: "Ahmed Al-Mansoori",
+    createdBy: "Priya Nair",
+    updatedBy: "Yousef Al-Harbi",
     visibility: "Public",
     actions: [
-      { action: "Add a Label", value: "delivery-delay" },
-      { action: "Send a Message", value: "We are sorry for the delay. Your order is now with the driver and arrives today." },
+      { action: "Add a Label", value: "support" },
+      {
+        action: "Send a Message",
+        value: "We are sorry for the delay. Your order is now with the driver and arrives today.",
+      },
     ],
   },
   {
     id: 4,
     name: "Send transcript and close",
-    createdBy: "Ahmed Al-Mansoori",
-    updatedBy: "Ahmed Al-Mansoori",
+    createdBy: "Arham Khan",
+    updatedBy: "Arham Khan",
     visibility: "Private",
     actions: [
       { action: "Send an Email Transcript", value: "Customer email" },
@@ -79,21 +88,21 @@ export const macros: Macro[] = [
   {
     id: 5,
     name: "Snooze until Sunday",
-    createdBy: "Hessa Al-Marri",
-    updatedBy: "Hessa Al-Marri",
+    createdBy: "Arham Khan",
+    updatedBy: "Arham Khan",
     visibility: "Private",
     actions: [{ action: "Snooze Conversation", value: "Next week" }],
   },
   {
     id: 6,
-    name: "Hand over to Dubai sales",
-    createdBy: "Omar Al-Suwaidi",
-    updatedBy: "Noura Al-Thani",
+    name: "Hand over to Sales",
+    createdBy: "Priya Nair",
+    updatedBy: "Arham Khan",
     visibility: "Public",
     actions: [
       { action: "Remove Assigned Agent", value: "" },
-      { action: "Assign a Team", value: "Dubai Sales" },
-      { action: "Add a Label", value: "lead-uae" },
+      { action: "Assign a Team", value: "Sales" },
+      { action: "Add a Label", value: "lead" },
     ],
   },
 ];

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SlaSettings } from "./_components/sla-settings";
+import { SlaList } from "./_components/sla-list";
 
 export const metadata: Metadata = {
   title: "Service Level Agreements",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SlaSettings />;
+  return <SlaList />;
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LabelsSettings } from "./_components/labels-settings";
+import { LabelsList } from "./_components/labels-list";
 
 export const metadata: Metadata = {
   title: "Labels",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <LabelsSettings />;
+  return <LabelsList />;
 }

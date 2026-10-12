@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { TemplatesSettings } from "./_components/templates-settings";
+import { TemplatesList } from "./_components/templates-list";
 
 export const metadata: Metadata = {
   title: "Templates",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <TemplatesSettings />;
+  return <TemplatesList />;
 }

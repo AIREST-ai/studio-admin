@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MacrosSettings } from "./_components/macros-settings";
+import { MacrosList } from "./_components/macros-list";
 
 export const metadata: Metadata = {
   title: "Macros",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <MacrosSettings />;
+  return <MacrosList />;
 }

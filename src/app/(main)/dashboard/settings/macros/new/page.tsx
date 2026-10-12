@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
-import { macros } from "../_components/data";
-import { MacroEditor } from "../_components/macro-editor";
+import { MacroBuilder } from "../_components/macro-builder";
 
 export const metadata: Metadata = {
   title: "Macro editor",
@@ -10,6 +9,6 @@ export const metadata: Metadata = {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const { id } = await searchParams;
-  const macro = macros.find((m) => String(m.id) === id);
-  return <MacroEditor macro={macro} />;
+  // Older links used /macros/new?id=<id>; Chatwoot's edit route is /macros/<id>/edit (both work).
+  return <MacroBuilder macroId={id ? Number(id) : undefined} />;
 }

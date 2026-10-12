@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AutomationSettings } from "./_components/automation-settings";
+import { AutomationList } from "./_components/automation-list";
 
 export const metadata: Metadata = {
   title: "Automation",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <AutomationSettings />;
+  return <AutomationList />;
 }

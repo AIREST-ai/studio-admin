@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { WorkflowSettings } from "./_components/workflow-settings";
+import { WorkflowPage } from "./_components/workflow-page";
 
 export const metadata: Metadata = {
   title: "Conversation Workflows",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <WorkflowSettings />;
+  return <WorkflowPage />;
 }

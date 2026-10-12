@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AttributesSettings } from "./_components/attributes-settings";
+import { AttributesList } from "./_components/attributes-list";
 
 export const metadata: Metadata = {
   title: "Custom Attributes",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <AttributesSettings />;
+  return <AttributesList />;
 }
