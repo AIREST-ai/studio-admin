@@ -23,8 +23,8 @@ export const assistants: Assistant[] = [
   {
     id: 2,
     name: "Salma",
-    description: "Helps patients book, move or cancel clinic appointments and explains visit preparation.",
-    productName: "Sidra Outpatient Clinics",
+    description: "Answers plan, invoice and refund questions for Weblabs Studio customers and hands disputes to the Billing team.",
+    productName: "Weblabs Studio Billing",
     inboxes: 2,
     documents: 8,
     faqs: 64,

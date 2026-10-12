@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { channelBreakdown } from "./channel-breakdown";
+
 // One point per day: dodges detected and dodges solved (sample data).
 const chartValues = [
   { dodges: 17, solved: 13 },
@@ -167,10 +169,12 @@ export function PerformanceOverview() {
               <SelectGroup>
                 <SelectLabel>Channels</SelectLabel>
                 <SelectItem value="all">All channels</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                <SelectItem value="instagram">Instagram</SelectItem>
-                <SelectItem value="messenger">Messenger</SelectItem>
-                <SelectItem value="tiktok">TikTok</SelectItem>
+                {/* F159: the six inbox channels (channel-breakdown.ts). */}
+                {channelBreakdown.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.title}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -218,6 +222,8 @@ export function PerformanceOverview() {
             />
             <ChartLegend verticalAlign="top" content={<ChartLegendContent className="mb-5 justify-end" />} />
 
+            {/* F159: no draw-in animation. Recharts reveals the area from the left over 1.5 s, so a page caught early
+                showed an empty chart with a thin sliver at the first days (Jul 17). */}
             <Area
               dataKey="dodges"
               type="natural"
@@ -226,8 +232,16 @@ export function PerformanceOverview() {
               strokeWidth={1.25}
               dot={false}
               fillOpacity={1}
+              isAnimationActive={false}
             />
-            <Line dataKey="solved" type="natural" stroke="var(--color-solved)" strokeWidth={1.4} dot={false} />
+            <Line
+              dataKey="solved"
+              type="natural"
+              stroke="var(--color-solved)"
+              strokeWidth={1.4}
+              dot={false}
+              isAnimationActive={false}
+            />
           </ComposedChart>
         </ChartContainer>
       </CardContent>

@@ -127,7 +127,7 @@ export function CreatePortalDialog({ open, onOpenChange }: DialogProps) {
           <Field label="Name" htmlFor="portal-name" help="Choose an name for your portal." error={nameError}>
             <Input
               id="portal-name"
-              placeholder="User Guide | Chatwoot"
+              placeholder="User Guide | Weblabs Studio"
               value={name}
               aria-invalid={Boolean(nameError)}
               onChange={(e) => {
@@ -140,7 +140,7 @@ export function CreatePortalDialog({ open, onOpenChange }: DialogProps) {
             label="Slug"
             htmlFor="portal-slug"
             error={slugError}
-            help={`https://app.chatwoot.com/hc/${slug || "user-guide"}`}
+            help={`https://app.weblabs.studio/hc/${slug || "user-guide"}`}
           >
             <Input
               id="portal-slug"
@@ -450,7 +450,7 @@ export function CategoryDialog({
             label="Slug"
             htmlFor="category-slug"
             error={errors.slug}
-            help={`app.chatwoot.com/hc/${portal?.slug}/${localeCode}/categories/${slug || "my-slug"}`}
+            help={`app.weblabs.studio/hc/${portal?.slug}/${localeCode}/categories/${slug || "my-slug"}`}
           >
             <Input
               id="category-slug"
@@ -889,7 +889,7 @@ export function DnsConfigurationDialog({ open, onOpenChange }: DialogProps) {
   const [email, setEmail] = React.useState("");
   const [touched, setTouched] = React.useState(false);
   const error = touched && !EMAIL_RE.test(email) ? "Enter a valid email address" : null;
-  const record = `${portal?.customDomain || "docs.yourdomain.com"} CNAME chatwoot.help`;
+  const record = `${portal?.customDomain || "docs.yourdomain.com"} CNAME hc.weblabs.studio`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -898,7 +898,7 @@ export function DnsConfigurationDialog({ open, onOpenChange }: DialogProps) {
           <DialogTitle>DNS configuration</DialogTitle>
           <DialogDescription>
             Log in to the account you have with your DNS provider, and add a CNAME record for subdomain pointing to
-            chatwoot.help
+            hc.weblabs.studio
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/50 px-3 py-2 font-mono text-sm">

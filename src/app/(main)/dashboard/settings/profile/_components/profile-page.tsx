@@ -67,7 +67,7 @@ const notificationTypes = [
 
 const seedSessions = [
   { id: 1, device: "Chrome on macOS", icon: Laptop, place: "Doha, Qatar", last: "Active now", current: true },
-  { id: 2, device: "Chatwoot app on iPhone", icon: Smartphone, place: "Doha, Qatar", last: "2 hours ago", current: false },
+  { id: 2, device: "Mobile app on iPhone", icon: Smartphone, place: "Doha, Qatar", last: "2 hours ago", current: false },
   { id: 3, device: "Edge on Windows", icon: Laptop, place: "Dubai, United Arab Emirates", last: "Oct 8, 2026", current: false },
 ];
 
@@ -89,9 +89,9 @@ function copy(text: string, message = "Copied to clipboard") {
 function ProfileTab() {
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [avatar, setAvatar] = React.useState<string | null>(null);
-  const [name, setName] = React.useState("Fahad Al-Kuwari");
-  const [displayName, setDisplayName] = React.useState("Fahad");
-  const [email, setEmail] = React.useState("fahad@doharetail.qa");
+  const [name, setName] = React.useState("Arham Khan");
+  const [displayName, setDisplayName] = React.useState("Arham");
+  const [email, setEmail] = React.useState("arham.khan@weblabs.studio");
   const [errors, setErrors] = React.useState<{ name?: string; displayName?: string; email?: string }>({});
 
   function submit(event: React.FormEvent) {
@@ -112,7 +112,7 @@ function ProfileTab() {
           <Avatar className="size-16">
             {avatar ? <AvatarImage src={avatar} alt="Profile picture" /> : null}
             <AvatarFallback className="bg-sky-100 font-medium text-lg text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
-              FK
+              AK
             </AvatarFallback>
           </Avatar>
           <div className="grid gap-1.5">
@@ -198,14 +198,14 @@ function PreferencesTab() {
   const [fontSize, setFontSize] = React.useState("Default");
   const [language, setLanguage] = React.useState("default");
   const [signature, setSignature] = React.useState(
-    "Best regards,\nFahad Al-Kuwari\nCustomer Care · Doha Retail Group\n+974 4400 1122",
+    "Best regards,\nArham Khan\nCustomer Support · Weblabs Studio\n+974 4400 1122",
   );
   const [hotkey, setHotkey] = React.useState("enter");
   const [signatureError, setSignatureError] = React.useState("");
 
   return (
     <>
-      <Section title="Interface" note="Customize the look and feel of your Chatwoot dashboard.">
+      <Section title="Interface" note="Customize the look and feel of your dashboard.">
         <div className="grid max-w-xl gap-6">
           <div className="grid gap-2">
             <div className="grid gap-0.5">

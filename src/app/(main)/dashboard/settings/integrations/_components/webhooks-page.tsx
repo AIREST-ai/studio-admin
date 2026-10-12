@@ -141,7 +141,7 @@ function WebhookDialog({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit webhook" : "Add new webhook"}</DialogTitle>
             <DialogDescription>
-              Webhook events provide you the realtime information about what's happening in your Chatwoot account.
+              Webhook events provide you the realtime information about what's happening in your Weblabs Studio account.
               Please enter a valid URL to configure a callback.
             </DialogDescription>
           </DialogHeader>
@@ -235,7 +235,7 @@ export function WebhooksPage() {
       <BackToIntegrations />
       <SettingsShell
         title="Webhooks"
-        description="Webhook events provide you the realtime information about what's happening in your Chatwoot account. Please enter a valid URL to configure a callback."
+        description="Webhook events provide you the realtime information about what's happening in your Weblabs Studio account. Please enter a valid URL to configure a callback."
         learnMore="Learn more about webhooks"
         actions={
           <Button onClick={() => setDialog({ open: true, webhook: null })}>

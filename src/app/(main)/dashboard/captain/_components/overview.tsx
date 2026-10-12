@@ -398,7 +398,7 @@ export function CaptainOverview() {
 
       <Card className="bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader>
-          <CardTitle className="text-lg">Hello, Fahad!</CardTitle>
+          <CardTitle className="text-lg">Hello, Arham!</CardTitle>
           <CardDescription>Captain summary · {assistant.name}</CardDescription>
           <CardAction className="flex items-center gap-1">
             <Button

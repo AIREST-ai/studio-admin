@@ -3,6 +3,10 @@ import { CheckCheck, Layers, MessageSquareWarning, MessagesSquare, TrendingDown,
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { channelBreakdown, DODGES_30_DAYS } from "./channel-breakdown";
+
+const [top, ...others] = channelBreakdown;
+
 export function MetricCards() {
   return (
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
@@ -38,7 +42,7 @@ export function MetricCards() {
         </CardHeader>
         <CardContent className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">386</div>
+            <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">{DODGES_30_DAYS}</div>
             <Badge>
               <TrendingDown className="size-3" />
               -21.2%
@@ -80,10 +84,14 @@ export function MetricCards() {
         </CardHeader>
         <CardContent className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">172</div>
-            <Badge>WhatsApp · 45%</Badge>
+            <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">{top.count}</div>
+            <Badge>
+              {top.title} · {Math.round((top.count / DODGES_30_DAYS) * 100)}%
+            </Badge>
           </div>
-          <p className="text-muted-foreground text-sm">Instagram 98 · Messenger 71 · TikTok 45</p>
+          <p className="text-muted-foreground text-sm">
+            {others.map((item) => `${item.title} ${item.count}`).join(" · ")}
+          </p>
         </CardContent>
       </Card>
     </div>

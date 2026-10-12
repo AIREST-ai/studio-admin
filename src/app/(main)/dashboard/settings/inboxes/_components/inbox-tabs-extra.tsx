@@ -100,7 +100,7 @@ export function ApiWebhookFields() {
         <Input
           id="api-webhook"
           placeholder="Please enter your Webhook URL"
-          defaultValue="https://api.weblabs.studio/chatwoot/events"
+          defaultValue="https://api.weblabs.studio/helpdesk/events"
         />
       </Field>
       <Field>
@@ -675,7 +675,7 @@ export function TwilioHealthTab({ inbox }: { inbox: Inbox }) {
     <>
       <Section
         title="Manage your Twilio number"
-        description="Review the Twilio account, sender and webhooks backing this inbox. Anything Chatwoot cannot fix for you is linked to the Twilio Console."
+        description="Review the Twilio account, sender and webhooks backing this inbox. Anything we cannot fix for you is linked to the Twilio Console."
         action={
           <Button size="sm" variant="outline" type="button">
             Go to Twilio Console <ExternalLink />

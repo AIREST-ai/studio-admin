@@ -45,9 +45,9 @@ const deleteTexts: Record<OAuthId, { title: string; message: string; yes: string
 };
 
 const connectedAs: Record<OAuthId, string> = {
-  linear: "Workspace: QatarCart Engineering",
-  notion: "Workspace: QatarCart Help Docs",
-  shopify: "Store: qatarcart.myshopify.com",
+  linear: "Workspace: Weblabs Studio Engineering",
+  notion: "Workspace: Weblabs Studio Help Docs",
+  shopify: "Store: weblabs-studio.myshopify.com",
 };
 
 const SHOPIFY_URL = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i;
@@ -133,7 +133,7 @@ export function OAuthIntegration({ integrationId }: { integrationId: OAuthId }) 
           <CardContent className="grid gap-3 text-muted-foreground text-sm leading-relaxed">
             <p>
               With this integration, your Shopify store{" "}
-              <strong className="text-foreground">qatarcart.myshopify.com</strong> is connected to your Chatwoot
+              <strong className="text-foreground">weblabs-studio.myshopify.com</strong> is connected to your Weblabs Studio
               workspace. Here's what you can do:
             </p>
             <p>

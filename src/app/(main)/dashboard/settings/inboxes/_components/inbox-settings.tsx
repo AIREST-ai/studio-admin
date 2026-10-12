@@ -271,7 +271,7 @@ function ConfigurationTab({ inbox }: { inbox: Inbox }) {
     var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
     g.src=BASE_URL+"/packs/js/sdk.js"; g.async = true;
     s.parentNode.insertBefore(g,s);
-    g.onload=function(){ window.chatwootSDK.run({ websiteToken: 'xK9m2TqP4vRw', baseUrl: BASE_URL }) }
+    g.onload=function(){ window.weblabsSDK.run({ websiteToken: 'xK9m2TqP4vRw', baseUrl: BASE_URL }) }
   })(document,"script");
 </script>`}</pre>
         </Section>

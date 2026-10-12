@@ -4,8 +4,12 @@ import { format } from "date-fns/format";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getInitials } from "@/lib/utils";
 import { RowStar } from "@/app/(main)/chat/_components/chat-mail-actions";
+import { useMailLook } from "@/app/(main)/chat/_components/chat-mail-nav";
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 
 import type { Mail } from "./data";
 import { useMail } from "./use-mail";
@@ -23,15 +27,33 @@ interface MailListProps {
 
 export function MailList({ groups, onSelectMail }: MailListProps) {
   const [mail, setMail] = useMail();
+  // F159: on the Support Email page of /dashboard/chat the group counts are Studio count pills.
+  const studio = useMailLook() === "studio";
 
   return (
     <ScrollArea className="**:data-[slot=scroll-area-viewport]:scroll-fade min-h-0 flex-1">
       <div className="flex flex-col gap-1.5 pt-0">
-        {groups.map((group) => (
+        {studio && groups.every((group) => group.items.length === 0) && (
+          <p className="px-4 py-10 text-center text-muted-foreground text-sm">
+            There are no active conversations in this group.
+          </p>
+        )}
+        {groups
+          .filter((group) => !studio || group.items.length > 0)
+          .map((group) => (
           <section key={group.id} className="flex flex-col gap-1.5">
-            <div className="mx-3 text-muted-foreground text-xs">
-              {group.title} ({group.items.length})
-            </div>
+            {studio ? (
+              <div className="mx-3 flex items-center gap-1.5 text-muted-foreground text-xs">
+                {group.title}
+                <Badge variant="secondary" className="h-4.5 px-1.5 text-[10px] tabular-nums">
+                  {group.items.length}
+                </Badge>
+              </div>
+            ) : (
+              <div className="mx-3 text-muted-foreground text-xs">
+                {group.title} ({group.items.length})
+              </div>
+            )}
 
             <div className="flex flex-col">
               {group.items.map((item) => (
@@ -55,8 +77,9 @@ export function MailList({ groups, onSelectMail }: MailListProps) {
                   }}
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="size-9 after:rounded-sm">
-                      <AvatarFallback className="rounded-sm bg-background">{item.from.name[0]}</AvatarFallback>
+                    {/* F159: round two-letter initials coloured by name, like every other view of these people. */}
+                    <Avatar className={cn("size-9 shrink-0 font-medium", personToneClass(item.from.name))}>
+                      <AvatarFallback className="text-xs">{getInitials(item.from.name)}</AvatarFallback>
                     </Avatar>
 
                     <div className="space-y-2">

@@ -1,7 +1,7 @@
 "use client";
 // F159: Studio Users card = Chatwoot v4.18 Settings > Agents (settings/agents/Index.vue).
 // Header texts, search, Add Agent, Edit / Delete and their rules come from Chatwoot; the card, filter chips,
-// Hide / Export buttons, list-grid toggle and paginated table are Studio's.
+// Hide / Customize / Export buttons, ⌘K hint, list-grid toggle and paginated table are Studio's.
 import * as React from "react";
 
 import {
@@ -11,7 +11,7 @@ import {
   type SortingState,
   useTable,
 } from "@tanstack/react-table";
-import { Download, ExternalLink, Grid, Plus, Rows3, Search, SlidersHorizontal } from "lucide-react";
+import { Cog, Download, ExternalLink, Grid, Plus, Rows3, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { dataTableFeatures } from "@/lib/data-table-features";
@@ -208,6 +209,9 @@ export function Users({
                   table.setPageIndex(0);
                 }}
               />
+              <InputGroupAddon align="inline-end">
+                <Kbd className="h-4 text-[10px]">⌘K</Kbd>
+              </InputGroupAddon>
             </InputGroup>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -234,6 +238,10 @@ export function Users({
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* Studio design-only control, kept by Fahad's rule (shows, no action). */}
+            <Button variant="outline" size="sm">
+              <Cog /> Customize
+            </Button>
             <Button variant="outline" size="sm" onClick={() => exportCsv(filteredRows, roles)}>
               <Download /> Export
             </Button>

@@ -114,7 +114,7 @@ export function PortalsList({ forceEmpty }: { forceEmpty?: boolean }) {
                           </Avatar>
                           <div className="min-w-0">
                             <div className="truncate font-medium text-sm hover:underline">{portal.name}</div>
-                            <div className="truncate text-muted-foreground text-xs">app.chatwoot.com/hc/{portal.slug}</div>
+                            <div className="truncate text-muted-foreground text-xs">app.weblabs.studio/hc/{portal.slug}</div>
                           </div>
                         </button>
                       </TableCell>

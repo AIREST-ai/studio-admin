@@ -46,7 +46,7 @@ function downloadCodes(codes: string[]) {
   const url = URL.createObjectURL(new Blob([codes.join("\n")], { type: "text/plain" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = "chatwoot-backup-codes.txt";
+  a.download = "weblabs-studio-backup-codes.txt";
   a.click();
   URL.revokeObjectURL(url);
 }

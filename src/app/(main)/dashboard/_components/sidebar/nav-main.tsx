@@ -146,6 +146,12 @@ const CHAT_SECTION_ITEMS: Record<string, string> = {
 // folder, a mistyped label) belongs to its own item (Folders, Teams, Channels or Labels) with no sub link marked,
 // not to All Conversations.
 function pageOwner(groups: readonly NavGroup[], path: string): { item: string | null; url: string | null } {
+  // F159 final pass: a plain link item for this exact page (Search) owns it, so its parent group is not marked too.
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (!hasSubItems(item) && item.url === path) return { item: item.id, url: item.url };
+    }
+  }
   let best: { item: string; url: string } | null = null;
   for (const group of groups) {
     for (const item of group.items) {

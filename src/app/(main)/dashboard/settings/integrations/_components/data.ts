@@ -103,7 +103,7 @@ export const integrations: Integration[] = [
     id: "dyte",
     name: "Dyte",
     description:
-      "Dyte is a product that integrates audio and video functionalities into your application. With this integration, your agents can start video/voice calls with your customers directly from Chatwoot.",
+      "Dyte is a product that integrates audio and video functionalities into your application. With this integration, your agents can start video/voice calls with your customers directly from your inbox.",
     enabled: false,
     href: "/dashboard/settings/integrations/dyte",
     mark: "DY",
@@ -146,7 +146,7 @@ export const webhooks: Webhook[] = [
   {
     id: 1,
     name: "Order desk sync",
-    url: "https://hooks.qatarcart.qa/chatwoot/orders",
+    url: "https://hooks.weblabs.studio/helpdesk/orders",
     events: ["conversation_created", "message_created", "contact_created"],
   },
   {
@@ -176,7 +176,7 @@ export interface DashboardApp {
 }
 
 export const dashboardApps: DashboardApp[] = [
-  { id: 1, title: "Order history", url: "https://admin.qatarcart.qa/embed/orders" },
+  { id: 1, title: "Order history", url: "https://admin.weblabs.studio/embed/orders" },
   { id: 2, title: "Loyalty points", url: "https://loyalty.alnoordental.ae/agent-view" },
   { id: 3, title: "Shipment tracker", url: "https://track.riyadhexpress.sa/embed" },
 ];
@@ -270,8 +270,8 @@ export const hookApps: Record<string, HookApp> = {
       { label: "Region", field: "region" },
     ],
     hooks: [
-      { id: 21, inbox: "Doha Store WhatsApp", properties: ["qatarcart-support-bot", "Global - Default"] },
-      { id: 22, inbox: "Website chat", properties: ["qatarcart-faq-agent", "EU-W2 - London, England"] },
+      { id: 21, inbox: "WhatsApp Business", properties: ["weblabs-support-bot", "Global - Default"] },
+      { id: 22, inbox: "Website Chat", properties: ["weblabs-faq-agent", "EU-W2 - London, England"] },
     ],
   },
   google_translate: {
@@ -327,7 +327,7 @@ export const hookApps: Record<string, HookApp> = {
   },
 };
 
-export const hookInboxes = ["Doha Store WhatsApp", "Website chat", "Instagram DM", "Support email", "Telegram bot"];
+export const hookInboxes = ["Support Email", "Website Chat", "WhatsApp Business", "Instagram", "Facebook Page", "Phone"];
 
 export interface SlackChannel {
   id: string;

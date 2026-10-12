@@ -15,7 +15,6 @@ const PUBLIC_ROUTES = [
   "/auth/v2/login",
   "/auth/v1/register",
   "/auth/v2/register",
-  "/chat",
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {

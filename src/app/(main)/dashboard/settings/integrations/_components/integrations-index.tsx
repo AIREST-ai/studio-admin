@@ -40,7 +40,7 @@ export function IntegrationsIndex() {
   return (
     <SettingsShell
       title="Integrations"
-      description="Chatwoot integrates with multiple tools and services to improve your team's efficiency. Explore the list below to configure your favorite apps."
+      description="Weblabs Studio integrates with multiple tools and services to improve your team's efficiency. Explore the list below to configure your favorite apps."
       learnMore="Learn more about integrations"
       tabs={{
         value: view,

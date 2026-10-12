@@ -490,7 +490,7 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
                       </TableCell>
                       <TableCell className="align-middle">
                         <Link
-                          href="/dashboard/chat"
+                          href={`/dashboard/chat?conversation=${call.conversationId}`}
                           className="inline-flex h-6 items-center gap-1 rounded-md border px-2 text-muted-foreground text-xs tabular-nums hover:bg-muted"
                         >
                           <MessageCircle className="size-3.5" />
@@ -523,7 +523,7 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
-                                <Link href="/dashboard/chat">
+                                <Link href={`/dashboard/chat?conversation=${call.conversationId}`}>
                                   <MessageCircle /> Open conversation
                                 </Link>
                               </DropdownMenuItem>

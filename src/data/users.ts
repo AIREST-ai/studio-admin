@@ -3,7 +3,7 @@ export const users = [
     id: "1",
     name: "Arham Khan",
     username: "Aarhamkhnz",
-    email: "hello@arhamkhnz.com",
+    email: "arham.khan@weblabs.studio",
     avatar: "https://avatars.githubusercontent.com/u/43849669",
     role: "administrator",
   },

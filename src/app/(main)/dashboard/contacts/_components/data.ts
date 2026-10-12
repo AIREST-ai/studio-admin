@@ -78,7 +78,7 @@ export const contacts: Contact[] = [
     company: "Hamad Medical Corporation",
     city: "Doha",
     country: "Qatar",
-    bio: "Booked a demo for the clinic front desk.",
+    bio: "Booked a demo for the compliance team.",
     lastActivity: "2 hours ago",
     lastActivityMinutes: 138,
     createdAt: "Apr 1, 2026",

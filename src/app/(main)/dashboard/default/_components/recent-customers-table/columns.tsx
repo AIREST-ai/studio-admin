@@ -1,12 +1,18 @@
 "use client";
+import Link from "next/link";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
-import { addMinutes, differenceInCalendarDays, endOfToday, format, parseISO } from "date-fns";
-import { CircleAlertIcon, CircleCheckIcon, Clock3Icon, LoaderIcon, UserRound } from "lucide-react";
+import { cn } from "cn";
+import { differenceInCalendarDays, endOfToday, format, parseISO } from "date-fns";
+import { CircleAlertIcon, CircleCheckIcon, Clock3Icon, LoaderIcon } from "lucide-react";
 
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { DataTableFeatures } from "@/lib/data-table-features";
+import { getInitials } from "@/lib/utils";
 
 import type { RecentCustomerRow } from "./schema";
 
@@ -67,14 +73,21 @@ export const recentCustomersColumns: ColumnDef<DataTableFeatures, RecentCustomer
     header: "Customer",
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-md border bg-muted">
-          <UserRound className="size-4 text-muted-foreground" />
-        </span>
+        {/* F159: the Contacts people with their own initials colour, not a grey person icon. */}
+        <Avatar className={cn("shrink-0 font-medium", personToneClass(row.original.name))}>
+          <AvatarFallback className="text-xs">{getInitials(row.original.name)}</AvatarFallback>
+        </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex items-end justify-between gap-3">
             <div className="grid min-w-0 gap-0.5">
               <span className="truncate font-medium text-sm leading-none">{row.original.name}</span>
-              <span className="truncate text-muted-foreground text-xs leading-none">Chat #{row.original.id}</span>
+              {/* F159: the inbox conversation the dodge was found in (same id as /dashboard/chat). */}
+              <Link
+                href={`/dashboard/chat?conversation=${row.original.id}`}
+                className="truncate text-muted-foreground text-xs leading-none hover:underline"
+              >
+                Conversation #{row.original.id}
+              </Link>
             </div>
           </div>
         </div>
@@ -136,16 +149,12 @@ export const recentCustomersColumns: ColumnDef<DataTableFeatures, RecentCustomer
   {
     accessorKey: "detected",
     header: "Detected",
-    cell: ({ row }) => {
-      const baseDate = parseISO(row.original.detected);
-      const detectedAt = addMinutes(baseDate, 9 * 60 + (Number(row.original.id) % 12) * 17);
-
-      return (
-        <div className="grid gap-0.5">
-          <span className="text-sm">{format(detectedAt, "do MMMM yyyy")}</span>
-          <span className="text-muted-foreground text-xs">at {format(detectedAt, "h:mm a")}</span>
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      // F159: the date, then the reply's age as the conversation shows it ("14 min ago", "Yesterday").
+      <div className="grid gap-0.5">
+        <span className="text-sm">{format(parseISO(row.original.detected), "do MMMM yyyy")}</span>
+        <span className="text-muted-foreground text-xs">{row.original.ago}</span>
+      </div>
+    ),
   },
 ];

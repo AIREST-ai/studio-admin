@@ -21,13 +21,13 @@ import { PageHeader } from "../../labels/_shared/settings-shell";
 const spInfo = [
   {
     label: "ACS URL",
-    value: "https://support.doharetail.qa/omniauth/saml/callback?account_id=1",
+    value: "https://support.weblabs.studio/omniauth/saml/callback?account_id=1",
     tooltip: "Assertion Consumer Service URL - Configure this URL in your IdP as the destination for SAML responses",
   },
   {
     label: "SP Entity ID",
-    value: "https://support.doharetail.qa/saml/sp/1",
-    tooltip: "Unique identifier for Chatwoot as the Service Provider - Configure this in your IdP settings",
+    value: "https://support.weblabs.studio/saml/sp/1",
+    tooltip: "Unique identifier for Weblabs Studio as the Service Provider - Configure this in your IdP settings",
   },
   {
     label: "Fingerprint",
@@ -43,8 +43,8 @@ function copy(value: string) {
 
 export function SecuritySettings({ paywall = false }: { paywall?: boolean }) {
   const [enabled, setEnabled] = React.useState(true);
-  const [ssoUrl, setSsoUrl] = React.useState("https://login.microsoftonline.com/9c1f-doharetail/saml2");
-  const [idpEntityId, setIdpEntityId] = React.useState("https://sts.windows.net/9c1f-doharetail/");
+  const [ssoUrl, setSsoUrl] = React.useState("https://login.microsoftonline.com/9c1f-weblabs/saml2");
+  const [idpEntityId, setIdpEntityId] = React.useState("https://sts.windows.net/9c1f-weblabs/");
   const [certificate, setCertificate] = React.useState(
     "-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQGq0xV2l4mUeTj7n0bE1d3TANBgkqhkiG9w0BAQsFADA0\n-----END CERTIFICATE-----",
   );

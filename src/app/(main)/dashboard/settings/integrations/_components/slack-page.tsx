@@ -93,12 +93,12 @@ export function SlackPage({ initialState = "active" }: { initialState?: SlackSta
                 "Your Slack integration has expired. To continue receiving messages on Slack, please delete the integration and connect your workspace again."
               ) : (
                 <>
-                  Your Slack workspace is now linked with Chatwoot. However, the integration is currently inactive. To
-                  activate the integration and connect a channel to Chatwoot, please click the button below.
+                  Your Slack workspace is now linked with Weblabs Studio. However, the integration is currently inactive. To
+                  activate the integration and connect a channel to Weblabs Studio, please click the button below.
                   <br />
                   <br />
                   <strong className="text-foreground">Note:</strong> If you are attempting to connect a private
-                  channel, add the Chatwoot app to the Slack channel before proceeding with this step.
+                  channel, add the Weblabs Studio app to the Slack channel before proceeding with this step.
                 </>
               )}
             </CardDescription>
@@ -150,7 +150,7 @@ export function SlackPage({ initialState = "active" }: { initialState?: SlackSta
                     <strong className="text-foreground">Respond to conversations from within Slack:</strong> To respond
                     to a conversation in the <strong className="text-foreground">#{channelName}</strong> Slack channel,
                     simply type out your message and send it as a thread. This will create a response back to the
-                    customer through Chatwoot. It's that simple!
+                    customer through Weblabs Studio. It's that simple!
                   </p>
                   <p>
                     <strong className="text-foreground">Create private notes:</strong> If you want to create private
@@ -160,7 +160,7 @@ export function SlackPage({ initialState = "active" }: { initialState?: SlackSta
                   </p>
                   <p>
                     <strong className="text-foreground">Associate an agent profile:</strong> If the person who replied
-                    on Slack has an agent profile in Chatwoot under the same email, the replies will be associated with
+                    on Slack has an agent profile in Weblabs Studio under the same email, the replies will be associated with
                     that agent profile automatically. This means you can easily track who said what and when. On the
                     other hand, when the replier doesn't have an associated agent profile, the replies will appear from
                     the bot profile to the customer.

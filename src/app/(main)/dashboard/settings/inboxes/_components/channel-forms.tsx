@@ -330,7 +330,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
       <ConnectPanel
         icon={<Icon className="size-7 text-muted-foreground" />}
         title="Continue with Facebook"
-        help="PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by Chatwoot."
+        help="PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by Weblabs Studio."
         button="Continue with Facebook"
         onConnected={() => setConnected(true)}
       />
@@ -350,7 +350,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
     >
       <FormHeading
         title="Inbox Details"
-        description="From the dropdown below, select the Facebook Page you want to connect to Chatwoot. You can also give a custom name to your inbox for better identification."
+        description="From the dropdown below, select the Facebook Page you want to connect to Weblabs Studio. You can also give a custom name to your inbox for better identification."
       />
       <FieldGroup className="gap-4">
         <Field data-invalid={pageError || undefined}>

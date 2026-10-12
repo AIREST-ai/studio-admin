@@ -1265,7 +1265,10 @@ export function ConversationPane({
       {!canReply(conversation) && <ReplyWindowBanner channel={conversation.channel} />}
 
       <MessageScrollerProvider key={conversation.id} autoScroll>
-        <MessageScroller className="min-h-0 flex-1">
+        {/* F159 final pass: a fixed fade at the top edge (1rem hidden, then 2.5rem fade) (mask on the non-scrolling root), so the bubble the
+            edge cuts under the header or the 24h banner fades out instead of showing half cut; the content padding
+            keeps the first item clear of the fade when the thread is at its top (pt-14). */}
+        <MessageScroller className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,transparent_1rem,#000_3.5rem)]">
           {/* The thread opens at the newest message, as in Chatwoot. A fade at the top, only while there is more
               above, says "scroll up for more" and softens whatever the top edge cuts (a bubble, a divider, a meta line). */}
           <div
@@ -1275,7 +1278,7 @@ export function ConversationPane({
           {/* scrollbar-none replaces the viewport's own scrollbar-thin (cn drops it). With "no-scrollbar" alone,
               scrollbar-thin stayed and won in the stylesheet, so Chrome drew its thin bar beside the custom thumb. */}
           <MessageScrollerViewport ref={viewportRef} className="scrollbar-none no-scrollbar">
-            <MessageScrollerContent ref={contentRef} className="gap-5 px-3 pt-3 pb-6">
+            <MessageScrollerContent ref={contentRef} className="gap-5 px-3 pt-14 pb-6">
               {history.older && <ContactConversationLink target={history.older} direction="older" />}
               {thread.map((message, index) => (
                 <Fragment key={message.id}>

@@ -49,31 +49,31 @@ interface Log {
 }
 
 const logs: Log[] = [
-  { id: 1, agent: "Fahad Al-Kuwari", text: "Fahad Al-Kuwari signed in", type: "Sign in / sign out", time: "Oct 12, 9:42 AM", location: "Doha, Qatar" },
-  { id: 2, agent: "Mariam Al-Sulaiti", text: "Mariam Al-Sulaiti created a new automation rule (#38)", type: "Automation rules", time: "Oct 12, 9:15 AM", location: "Doha, Qatar" },
-  { id: 3, agent: "Fahad Al-Kuwari", text: "Fahad Al-Kuwari invited Omar Haddad to the account as an agent", type: "Agents", time: "Oct 12, 8:58 AM", location: "Doha, Qatar" },
-  { id: 4, agent: "Khalid Al-Mansoori", text: "Khalid Al-Mansoori updated a webhook (#4)", type: "Webhooks", time: "Oct 11, 6:21 PM", location: "Dubai, United Arab Emirates" },
-  { id: 5, agent: "Reem Al-Otaibi", text: "Reem Al-Otaibi added Sara Nasser to the team(#3)", type: "Team members", time: "Oct 11, 4:07 PM", location: "Riyadh, Saudi Arabia" },
-  { id: 6, agent: "Mariam Al-Sulaiti", text: "Mariam Al-Sulaiti deleted conversation #2841", type: "Conversation deletions", time: "Oct 11, 2:33 PM", location: "Doha, Qatar" },
-  { id: 7, agent: "Fahad Al-Kuwari", text: "Fahad Al-Kuwari updated the account configuration (#1)", type: "Account settings", time: "Oct 11, 11:10 AM", location: "Doha, Qatar" },
-  { id: 8, agent: "Khalid Al-Mansoori", text: "Khalid Al-Mansoori created a new inbox (#12)", type: "Inboxes", time: "Oct 10, 5:45 PM", location: "Dubai, United Arab Emirates" },
-  { id: 9, agent: "Reem Al-Otaibi", text: "Reem Al-Otaibi changed availability of Omar Haddad to busy", type: "Agents", time: "Oct 10, 3:12 PM", location: "Riyadh, Saudi Arabia" },
-  { id: 10, agent: "Omar Haddad", text: "Omar Haddad signed out", type: "Sign in / sign out", time: "Oct 10, 1:02 PM", location: "Al Wakrah, Qatar" },
-  { id: 11, agent: "Mariam Al-Sulaiti", text: "Mariam Al-Sulaiti updated a macro (#7)", type: "Macros", time: "Oct 10, 10:26 AM", location: "Doha, Qatar" },
-  { id: 12, agent: "Fahad Al-Kuwari", text: "Fahad Al-Kuwari added Reem Al-Otaibi to the inbox(#5)", type: "Inbox collaborators", time: "Oct 9, 7:48 PM", location: "Doha, Qatar" },
-  { id: 13, agent: "Khalid Al-Mansoori", text: "Khalid Al-Mansoori deleted a message in conversation #2790", type: "Message deletions", time: "Oct 9, 4:30 PM", location: "Abu Dhabi, United Arab Emirates" },
-  { id: 14, agent: "Reem Al-Otaibi", text: "Reem Al-Otaibi created a new team (#4)", type: "Teams", time: "Oct 9, 9:05 AM", location: "Riyadh, Saudi Arabia" },
+  { id: 1, agent: "Arham Khan", text: "Arham Khan signed in", type: "Sign in / sign out", time: "Oct 12, 9:42 AM", location: "Doha, Qatar" },
+  { id: 2, agent: "Priya Nair", text: "Priya Nair created a new automation rule (#38)", type: "Automation rules", time: "Oct 12, 9:15 AM", location: "Doha, Qatar" },
+  { id: 3, agent: "Arham Khan", text: "Arham Khan invited Ravi Menon to the account as an agent", type: "Agents", time: "Oct 12, 8:58 AM", location: "Doha, Qatar" },
+  { id: 4, agent: "Yousef Al-Harbi", text: "Yousef Al-Harbi updated a webhook (#4)", type: "Webhooks", time: "Oct 11, 6:21 PM", location: "Dubai, United Arab Emirates" },
+  { id: 5, agent: "Lina Haddad", text: "Lina Haddad added Priya Nair to the team(#3)", type: "Team members", time: "Oct 11, 4:07 PM", location: "Riyadh, Saudi Arabia" },
+  { id: 6, agent: "Priya Nair", text: "Priya Nair deleted conversation #2841", type: "Conversation deletions", time: "Oct 11, 2:33 PM", location: "Doha, Qatar" },
+  { id: 7, agent: "Arham Khan", text: "Arham Khan updated the account configuration (#1)", type: "Account settings", time: "Oct 11, 11:10 AM", location: "Doha, Qatar" },
+  { id: 8, agent: "Yousef Al-Harbi", text: "Yousef Al-Harbi created a new inbox (#12)", type: "Inboxes", time: "Oct 10, 5:45 PM", location: "Dubai, United Arab Emirates" },
+  { id: 9, agent: "Lina Haddad", text: "Lina Haddad changed availability of Ravi Menon to busy", type: "Agents", time: "Oct 10, 3:12 PM", location: "Riyadh, Saudi Arabia" },
+  { id: 10, agent: "Ravi Menon", text: "Ravi Menon signed out", type: "Sign in / sign out", time: "Oct 10, 1:02 PM", location: "Al Wakrah, Qatar" },
+  { id: 11, agent: "Priya Nair", text: "Priya Nair updated a macro (#7)", type: "Macros", time: "Oct 10, 10:26 AM", location: "Doha, Qatar" },
+  { id: 12, agent: "Arham Khan", text: "Arham Khan added Lina Haddad to the inbox(#5)", type: "Inbox collaborators", time: "Oct 9, 7:48 PM", location: "Doha, Qatar" },
+  { id: 13, agent: "Yousef Al-Harbi", text: "Yousef Al-Harbi deleted a message in conversation #2790", type: "Message deletions", time: "Oct 9, 4:30 PM", location: "Abu Dhabi, United Arab Emirates" },
+  { id: 14, agent: "Lina Haddad", text: "Lina Haddad created a new team (#4)", type: "Teams", time: "Oct 9, 9:05 AM", location: "Riyadh, Saudi Arabia" },
 ];
 
 // Mock request details per event (Chatwoot shows remote_address and the geocoded location).
 const ips = ["37.210.14.82", "37.210.88.5", "37.210.14.82", "94.200.31.117", "188.48.22.9", "37.210.88.5", "37.210.14.82", "94.200.31.117", "188.48.22.9", "89.211.4.63", "37.210.88.5", "37.210.14.82", "94.56.120.40", "188.48.22.9"];
 const hoursAgo = [2, 3, 3, 18, 20, 22, 25, 42, 44, 46, 49, 62, 65, 72];
 const emails: Record<string, string> = {
-  "Fahad Al-Kuwari": "fahad@qatarcart.qa",
-  "Mariam Al-Sulaiti": "mariam@qatarcart.qa",
-  "Khalid Al-Mansoori": "khalid@qatarcart.qa",
-  "Reem Al-Otaibi": "reem@qatarcart.qa",
-  "Omar Haddad": "omar@qatarcart.qa",
+  "Arham Khan": "arham.khan@weblabs.studio",
+  "Priya Nair": "priya.nair@weblabs.studio",
+  "Yousef Al-Harbi": "yousef.harbi@weblabs.studio",
+  "Lina Haddad": "lina.haddad@weblabs.studio",
+  "Ravi Menon": "ravi.menon@weblabs.studio",
 };
 
 const agentIds = Array.from(new Set(logs.map((l) => l.agent)));
@@ -138,7 +138,7 @@ export function AuditLogsList() {
         <CardHeader className="border-b pb-4 has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
           <CardTitle className="text-xl leading-none">Manage Audit Logs</CardTitle>
           <CardDescription className="max-w-md leading-snug">
-            Audit Logs are trails for events and actions in a Chatwoot System.
+            Audit Logs are trails for events and actions in your account.
           </CardDescription>
           <CardAction className="col-start-1 row-start-auto self-center md:col-start-2 md:row-span-2 md:row-start-1">
             <span className="text-muted-foreground text-sm tabular-nums">

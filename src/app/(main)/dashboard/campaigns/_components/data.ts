@@ -43,8 +43,8 @@ export const liveChatCampaigns: LiveChatCampaign[] = [
     title: "Ramadan delivery slots",
     message: "Planning your Iftar order? Book a delivery slot now and get free delivery across Doha until Eid.",
     enabled: true,
-    sender: "Noura Al-Kuwari",
-    inbox: "Website — Doha",
+    sender: "Priya Nair",
+    inbox: "Website Chat",
     url: "https://shop.example.qa/ramadan",
     timeOnPage: 10,
     businessHoursOnly: false,
@@ -55,7 +55,7 @@ export const liveChatCampaigns: LiveChatCampaign[] = [
     message: "Comparing plans? Our team in Dubai can help you pick the right one in two minutes.",
     enabled: true,
     sender: null,
-    inbox: "Website — Dubai",
+    inbox: "Website Chat",
     url: "https://example.ae/pricing",
     timeOnPage: 25,
     businessHoursOnly: true,
@@ -65,8 +65,8 @@ export const liveChatCampaigns: LiveChatCampaign[] = [
     title: "Abandoned checkout nudge",
     message: "Still thinking it over? Ask us anything about payment in instalments with Tabby or Tamara.",
     enabled: false,
-    sender: "Omar Al-Harthy",
-    inbox: "Website — Riyadh",
+    sender: "Yousef Al-Harbi",
+    inbox: "Website Chat",
     url: "https://example.sa/checkout",
     timeOnPage: 40,
     businessHoursOnly: false,
@@ -76,8 +76,8 @@ export const liveChatCampaigns: LiveChatCampaign[] = [
     title: "School registration week",
     message: "Registering for the new term? Send us the grade and we will share the fee schedule.",
     enabled: true,
-    sender: "Mariam Al-Sulaiti",
-    inbox: "Website — Doha",
+    sender: "Lina Haddad",
+    inbox: "Website Chat",
     url: "https://example.qa/admissions",
     timeOnPage: 15,
     businessHoursOnly: true,
@@ -88,7 +88,7 @@ export const liveChatCampaigns: LiveChatCampaign[] = [
     message: "Celebrate Qatar National Day with 18% off all annual plans. Offer ends 18 December.",
     enabled: false,
     sender: null,
-    inbox: "Website — Doha",
+    inbox: "Website Chat",
     url: "https://example.qa/national-day",
     timeOnPage: 5,
     businessHoursOnly: false,
@@ -101,16 +101,16 @@ export const smsCampaigns: OneOffCampaign[] = [
     title: "Eid Al-Adha greetings",
     message: "Eid Mubarak from all of us! Our branches in Doha open 4pm-11pm during Eid holidays.",
     status: "scheduled",
-    inbox: "Twilio SMS — Qatar",
+    inbox: "SMS Alerts",
     scheduledAt: "Oct 20, 2026, 9:00 AM",
     audience: ["customers", "vip"],
   },
   {
     id: 12,
-    title: "Appointment reminders — West Bay clinic",
-    message: "Reminder: your appointment at West Bay clinic is tomorrow. Reply 1 to confirm or 2 to reschedule.",
+    title: "Demo reminders — Weblabs Studio",
+    message: "Reminder: your Weblabs Studio product demo is tomorrow. Reply 1 to confirm or 2 to reschedule.",
     status: "processing",
-    inbox: "Twilio SMS — Qatar",
+    inbox: "SMS Alerts",
     scheduledAt: "Oct 12, 2026, 8:30 AM",
     audience: ["appointments"],
   },
@@ -119,7 +119,7 @@ export const smsCampaigns: OneOffCampaign[] = [
     title: "Dubai Mall pop-up store",
     message: "Our pop-up at Dubai Mall is open this weekend. Show this SMS for a free gift with any order.",
     status: "completed",
-    inbox: "Bandwidth SMS — UAE",
+    inbox: "SMS Alerts",
     scheduledAt: "Oct 3, 2026, 6:00 PM",
     audience: ["dubai", "leads"],
   },
@@ -128,7 +128,7 @@ export const smsCampaigns: OneOffCampaign[] = [
     title: "Service outage notice",
     message: "Planned maintenance tonight 1am-3am. Online orders will resume at 3am. Thank you for your patience.",
     status: "completed",
-    inbox: "Twilio SMS — Qatar",
+    inbox: "SMS Alerts",
     scheduledAt: "Sep 28, 2026, 7:15 PM",
     audience: ["customers"],
   },
@@ -140,7 +140,7 @@ export const whatsappCampaigns: OneOffCampaign[] = [
     title: "White Friday early access",
     message: "Hi {{1}}, White Friday starts early for you! Shop 48 hours before everyone else.",
     status: "processing",
-    inbox: "WhatsApp — +974 4410 2200",
+    inbox: "WhatsApp Business",
     scheduledAt: "Oct 12, 2026, 10:00 AM",
     audience: ["vip", "customers"],
     template: "white_friday_early (en)",
@@ -150,7 +150,7 @@ export const whatsappCampaigns: OneOffCampaign[] = [
     title: "Order delivered survey",
     message: "Your order has arrived. How was your delivery? Rate us from 1 to 5.",
     status: "completed",
-    inbox: "WhatsApp — +974 4410 2200",
+    inbox: "WhatsApp Business",
     scheduledAt: "Oct 6, 2026, 4:00 PM",
     audience: ["recent-orders"],
     template: "delivery_feedback (en)",
@@ -160,7 +160,7 @@ export const whatsappCampaigns: OneOffCampaign[] = [
     title: "Riyadh Season tickets",
     message: "مرحباً {{1}}، تذاكر موسم الرياض متاحة الآن. احجز مقعدك قبل نفاد الكمية.",
     status: "scheduled",
-    inbox: "WhatsApp — +966 11 520 8800",
+    inbox: "WhatsApp Business",
     scheduledAt: "Oct 25, 2026, 7:00 PM",
     audience: ["riyadh", "leads"],
     template: "riyadh_season_tickets (ar)",
@@ -170,17 +170,17 @@ export const whatsappCampaigns: OneOffCampaign[] = [
     title: "Back to school bundles",
     message: "Hi {{1}}, back-to-school bundles are now in stock in Abu Dhabi and Dubai stores.",
     status: "completed",
-    inbox: "WhatsApp — +971 4 330 1900",
+    inbox: "WhatsApp Business",
     scheduledAt: "Aug 24, 2026, 11:00 AM",
     audience: ["parents"],
     template: "back_to_school (en)",
   },
 ];
 
-export const websiteInboxes = ["Website — Doha", "Website — Dubai", "Website — Riyadh"];
-export const smsInboxes = ["Twilio SMS — Qatar", "Bandwidth SMS — UAE"];
-export const whatsappInboxes = ["WhatsApp — +974 4410 2200", "WhatsApp — +971 4 330 1900", "WhatsApp — +966 11 520 8800"];
-export const senders = ["Bot", "Noura Al-Kuwari", "Omar Al-Harthy", "Mariam Al-Sulaiti", "Faisal Al-Mutairi"];
+export const websiteInboxes = ["Website Chat"];
+export const smsInboxes = ["SMS Alerts"];
+export const whatsappInboxes = ["WhatsApp Business"];
+export const senders = ["Bot", "Priya Nair", "Yousef Al-Harbi", "Lina Haddad", "Ravi Menon"];
 export const labels = ["customers", "vip", "leads", "appointments", "recent-orders", "dubai", "riyadh", "parents"];
 export const whatsappTemplates = [
   {
@@ -209,11 +209,9 @@ export const whatsappTemplates = [
   },
 ];
 
-// Chatwoot sends the Website inbox members as senders; each Website inbox here has its own team.
+// Chatwoot sends the Website inbox members as senders. The account has one Website inbox (Settings > Inboxes).
 export const inboxMembers: Record<string, string[]> = {
-  "Website — Doha": ["Noura Al-Kuwari", "Mariam Al-Sulaiti", "Faisal Al-Mutairi"],
-  "Website — Dubai": ["Omar Al-Harthy", "Faisal Al-Mutairi"],
-  "Website — Riyadh": ["Omar Al-Harthy", "Mariam Al-Sulaiti"],
+  "Website Chat": ["Priya Nair", "Yousef Al-Harbi", "Lina Haddad", "Ravi Menon"],
 };
 
 export function formatSchedule(value: string) {

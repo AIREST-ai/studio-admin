@@ -3,7 +3,7 @@ import { siFigma, siGoogledocs, siGooglephotos } from "simple-icons";
 
 const arhamKhan = {
   name: "Arham Khan",
-  email: "hello@arhamkhnz.com",
+  email: "arham.khan@weblabs.studio",
 };
 
 const weblabsStudio = {
@@ -471,7 +471,7 @@ export const accounts = [
   {
     id: 1,
     label: "Arham Khan",
-    email: "hello@arhamkhnz.com",
+    email: "arham.khan@weblabs.studio",
   },
   {
     id: 2,

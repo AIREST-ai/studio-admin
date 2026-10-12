@@ -44,12 +44,15 @@ const statusOptions = [
   { value: "Waiting on customer", label: "Waiting on customer" },
   { value: "Solved", label: "Solved" },
 ] as const;
+// F159: the six inbox channels, by the names of the /dashboard/chat channels bar.
 const channelOptions = [
   { value: "all", label: "All" },
+  { value: "Email", label: "Email" },
+  { value: "Chat", label: "Chat" },
   { value: "WhatsApp", label: "WhatsApp" },
   { value: "Instagram", label: "Instagram" },
-  { value: "Messenger", label: "Messenger" },
-  { value: "TikTok", label: "TikTok" },
+  { value: "Facebook", label: "Facebook" },
+  { value: "Phone", label: "Phone" },
 ] as const;
 const detectedDateOptions = [
   { value: "all", label: "All time" },

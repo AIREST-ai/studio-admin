@@ -2,11 +2,13 @@
 // F159: Studio Roles tab = Chatwoot v4.18 Settings > Custom Roles (settings/customRoles/Index.vue).
 // Texts from i18n/locale/en/customRole.json. Studio kept: grouped table (System roles / Custom roles), Type filter,
 // line sub-tabs; the old "Permission sets" placeholder tab now shows a read-only permissions matrix.
+// Fahad's rule (final pass): Studio's design-only Import JSON button, Review required alert and Access reviews tab stay.
 import * as React from "react";
 
 import { type ColumnFiltersState, type PaginationState, useTable } from "@tanstack/react-table";
-import { Check, ExternalLink, Minus, Plus, Search } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, ExternalLink, FileUp, Minus, Plus, Search } from "lucide-react";
 
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -104,10 +106,16 @@ export function Roles({
             </a>
           </p>
         </div>
-        <Button size="sm" onClick={() => setDialog({ mode: "add" })}>
-          <Plus data-icon="inline-start" />
-          Add custom role
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline">
+            <FileUp data-icon="inline-start" />
+            Import JSON
+          </Button>
+          <Button size="sm" onClick={() => setDialog({ mode: "add" })}>
+            <Plus data-icon="inline-start" />
+            Add custom role
+          </Button>
+        </div>
       </div>
 
       <Tabs className="h-full gap-4" defaultValue="roles">
@@ -117,10 +125,23 @@ export function Roles({
         >
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
+          <TabsTrigger value="access-reviews">Access reviews</TabsTrigger>
         </TabsList>
 
         <TabsContent value="roles">
           <div className="flex flex-col gap-4">
+            <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
+              <AlertTriangle className="size-4" />
+              <AlertTitle>Review required</AlertTitle>
+              <AlertDescription>3 roles have unreviewed permission changes.</AlertDescription>
+              <AlertAction>
+                <Button size="sm" variant="link">
+                  Review changes
+                  <ChevronRight data-icon="inline-end" />
+                </Button>
+              </AlertAction>
+            </Alert>
+
             {customRoles.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-10 text-center">
                 <span className="text-muted-foreground text-sm">
@@ -226,6 +247,11 @@ export function Roles({
                 </TableBody>
               </Table>
             </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="access-reviews">
+          <div className="flex h-full min-h-60 items-center justify-center rounded-md border border-dashed text-muted-foreground text-sm">
+            Access Reviews Coming Soon
           </div>
         </TabsContent>
       </Tabs>

@@ -19,7 +19,7 @@ import { type Channel, channelFor, channels } from "./data";
 import { AgentMultiSelect, WizardSteps } from "./settings-ui";
 
 const steps = [
-  { title: "Choose Channel", body: "Choose the provider you want to integrate with Chatwoot." },
+  { title: "Choose Channel", body: "Choose the provider you want to integrate with Weblabs Studio." },
   { title: "Create Inbox", body: "Authenticate your account and create an inbox." },
   { title: "Add Agents", body: "Add agents to the created inbox." },
   { title: "Voilà!", body: "You are all set to go!" },
@@ -30,7 +30,7 @@ function ChannelPicker({ onPick }: { onPick: (channel: Channel) => void }) {
     <div className="grid gap-6">
       <div className="grid gap-1">
         <h2 className="font-medium text-lg">Choose Channel</h2>
-        <p className="text-muted-foreground text-sm">Choose the provider you want to integrate with Chatwoot.</p>
+        <p className="text-muted-foreground text-sm">Choose the provider you want to integrate with Weblabs Studio.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         {channels.map((channel) => {
@@ -134,7 +134,7 @@ function FinishStep({ created }: { created: CreatedInbox }) {
     g.async = true;
     s.parentNode.insertBefore(g,s);
     g.onload=function(){
-      window.chatwootSDK.run({ websiteToken: 'xK9m2TqP4vRw', baseUrl: BASE_URL })
+      window.weblabsSDK.run({ websiteToken: 'xK9m2TqP4vRw', baseUrl: BASE_URL })
     }
   })(document,"script");
 </script>`;

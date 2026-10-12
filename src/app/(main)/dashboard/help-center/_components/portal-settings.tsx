@@ -191,7 +191,7 @@ function GeneralSettings({ portal }: { portal: Portal }) {
         <Row label="Slug" htmlFor="portal-slug-field" error={slugError}>
           <InputGroup>
             <InputGroupAddon align="inline-start">
-              <InputGroupText>app.chatwoot.com/hc/</InputGroupText>
+              <InputGroupText>app.weblabs.studio/hc/</InputGroupText>
             </InputGroupAddon>
             <InputGroupInput
               id="portal-slug-field"
@@ -515,7 +515,7 @@ function IntegrationsSettings() {
       <SectionHeading title="Integrations" description="Connect tools that extend what your help center can do." />
       <div className="grid gap-3 rounded-xl border p-4">
         <div className="grid gap-0.5">
-          <span className="font-medium text-sm">Live chat with Chatwoot</span>
+          <span className="font-medium text-sm">Live chat widget</span>
           <span className="text-muted-foreground text-sm">
             Show a live chat widget on your help center so visitors can reach you while they read.
           </span>

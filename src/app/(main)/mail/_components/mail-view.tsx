@@ -36,6 +36,8 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getInitials } from "@/lib/utils";
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { NotSpamBar, ReportSpamItem, StarToggle } from "@/app/(main)/chat/_components/chat-mail-actions";
 
 import type { Mail } from "./data";
@@ -178,8 +180,8 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
             <Separator />
 
             <div className="flex gap-2">
-              <Avatar className="size-9 after:rounded-sm">
-                <AvatarFallback className="rounded-sm bg-background">{mail.from.name[0]}</AvatarFallback>
+              <Avatar className={cn("size-9 shrink-0 font-medium", personToneClass(mail.from.name))}>
+                <AvatarFallback className="text-xs">{getInitials(mail.from.name)}</AvatarFallback>
               </Avatar>
 
               <div className="flex h-full flex-col gap-1">
