@@ -5,6 +5,7 @@ import { useState } from "react";
 import { cn } from "cn";
 import { Inbox, LogOut, Settings2, ShieldAlert, Star, UserPlus, UsersRound } from "lucide-react";
 
+import { accounts, type Mail } from "@/app/(main)/mail/_components/data";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/utils";
-import { accounts, type Mail } from "@/app/(main)/mail/_components/data";
 
 import { folderOf, moveMail, toggleStar, useMailBox } from "./chat-mail-store";
 import { brown } from "./chat-thread-extras";
@@ -95,7 +95,12 @@ export function RowStar({ mailId }: { mailId: string }) {
   const { starred } = useMailBox();
   if (!starred[mailId]) return null;
 
-  return <Star aria-label="Starred" className="ml-1 inline-block size-3 shrink-0 fill-amber-400 align-middle text-amber-400" />;
+  return (
+    <Star
+      aria-label="Starred"
+      className="ml-1 inline-block size-3 shrink-0 fill-amber-400 align-middle text-amber-400"
+    />
+  );
 }
 
 type Account = (typeof accounts)[number];

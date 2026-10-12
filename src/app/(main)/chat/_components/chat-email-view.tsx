@@ -1,15 +1,24 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { cn } from "cn";
 
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { cw, useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
 // F146/F147: Studio's existing Email UI, imported as-is from the mail component files (nothing copied or moved;
 // nothing imported from the mail layout or page files).
 import { MailComponent } from "@/app/(main)/mail/_components/mail";
 import { DEFAULT_MAIL_LAYOUT } from "@/app/(main)/mail/_components/mail-layout-config";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
-import { MailBoxDrawer } from "./chat-mail-nav";
-import { useBoxMails } from "./chat-mail-store";
+import {
+  inAssigneeTab,
+  MailBoxDrawer,
+  type MailLook,
+  MailLookContext,
+  useConversationMailFilter,
+} from "./chat-mail-nav";
+import { mailsIn, useBoxMails, useMailBox } from "./chat-mail-store";
 import { brown } from "./chat-thread-extras";
 
 // F147 (Fahad): the mail side rail is gone. Its boxes are tabs under the "Inbox" title (chat-mail-nav.tsx, plugged
@@ -23,11 +32,45 @@ const fitListRows =
   "[&_button_.space-y-2]:min-w-0 [&_button_.space-y-2]:flex-1 [&_button_.justify-between>div:first-child]:min-w-0 [&_[data-slot=scroll-area-viewport]>div]:block! " +
   // sender line is a flex box (no "…" there): show it as a block line, unread dot stays inline
   "[&_section_button_.flex.truncate]:block [&_section_button_.flex.truncate>span]:ml-2 [&_section_button_.flex.truncate>span]:inline-block [&_section_button_.flex.truncate>span]:align-middle " +
-  "[&_[data-slot=sidebar-trigger]]:hidden";
+  "[&_[data-slot=sidebar-trigger]]:hidden [&_[data-slot=sidebar-trigger]+[data-slot=separator]]:hidden";
 
-// Same mail list + message view as the mail page, inside the chat screen (the chat's channel sidebar stays on the left).
-// Thin brown frame = temporary F144-F147 marker. SidebarProvider is kept because the mail view reads it (mobile check).
-export function ChatEmailView() {
+// F159: on the Support Email page of /dashboard/chat ("studio" look) the list is narrowed by Chatwoot's
+// Mine / Unassigned / All tab and by the conversation status (both shared with the other channel pages), like
+// their conversation lists.
+function useStudioMails(): ReturnType<typeof useBoxMails> {
+  const s = useMailBox();
+  const meta = useCwStore((state) => state.meta);
+  const tab = useCwStore((state) => state.assigneeTab);
+  const live = useConversationMailFilter();
+  const list = useBoxMails((mail) => live(mail) && inAssigneeTab(mail, tab, meta));
+
+  // Same rule as the conversation lists: when the remembered tab is empty here, open on All instead.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: check once when the page opens
+  useEffect(() => {
+    const box = mailsIn(s.box, s).filter(live);
+    if (box.length > 0 && !box.some((mail) => inAssigneeTab(mail, tab, meta))) cw.setAssigneeTab("all");
+  }, []);
+
+  return list;
+}
+
+function StudioMail() {
+  const list = useStudioMails();
+  return (
+    <div
+      data-slot="chat-email-view"
+      className={cn("relative h-full min-h-0 min-w-0 flex-1 overflow-hidden", fitListRows)}
+    >
+      <SidebarProvider className="h-full min-h-0">
+        <div className="min-h-0 w-full min-w-0 flex-1">
+          <MailComponent mails={list} defaultLayout={[...DEFAULT_MAIL_LAYOUT]} />
+        </div>
+      </SidebarProvider>
+    </div>
+  );
+}
+
+function ChatMail() {
   const list = useBoxMails();
   return (
     <div
@@ -45,5 +88,17 @@ export function ChatEmailView() {
         </div>
       </SidebarProvider>
     </div>
+  );
+}
+
+// Same mail list + message view as the mail page, inside the chat screen (the chat's channel sidebar stays on the left).
+// Thin brown frame = temporary F144-F147 marker. SidebarProvider is kept because the mail view reads it (mobile check).
+// F159: look="studio" is the Support Email page of /dashboard/chat: no brown frame, no box tab row; the box title
+// menu, count pills and the Mine / Unassigned / All tabs instead (chat-mail-nav.tsx).
+export function ChatEmailView({ look = "chat" }: { look?: MailLook }) {
+  return (
+    <MailLookContext.Provider value={look}>
+      {look === "studio" ? <StudioMail /> : <ChatMail />}
+    </MailLookContext.Provider>
   );
 }

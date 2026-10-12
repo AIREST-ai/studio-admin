@@ -23,6 +23,12 @@ import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
 import { SupportCard } from "./support-card";
 
+// Overrides SidebarContent's no-scrollbar: scrollbar-width must stay auto so Chrome and Safari use the
+// ::-webkit-scrollbar rules (a thin, rounded thumb with no arrow buttons, transparent until hover). scroll-fade
+// fades the top or bottom edge only while there is more of the list that way.
+const SIDEBAR_SCROLL =
+  "scroll-fade [scrollbar-width:auto]! [&::-webkit-scrollbar]:block! [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-button]:hidden [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border";
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
     useShallow((s) => ({
@@ -49,11 +55,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      {/* F159: the helpdesk items make the list taller than the screen, so the support card scrolls at the end of the
+          list instead of sitting in the footer over the last items. No grey browser scrollbar with arrow buttons: a
+          thin rounded thumb (like the Studio ScrollArea thumb) shows only while the pointer is over the list, and the
+          list fades out at its bottom edge instead of an item showing half-cut above the user footer. */}
+      <SidebarContent className={SIDEBAR_SCROLL}>
         <NavMain items={sidebarItems} />
+        <div className="mt-auto p-2">
+          <SupportCard />
+        </div>
       </SidebarContent>
       <SidebarFooter>
-        <SupportCard />
         <NavUser user={rootUser} />
       </SidebarFooter>
     </Sidebar>

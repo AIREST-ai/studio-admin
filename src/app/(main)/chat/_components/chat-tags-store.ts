@@ -12,25 +12,34 @@ export type ChatTag = { id: string; label: string; color: string };
 
 type ChatTagsState = { tags: ChatTag[]; byConv: Record<string, string[]>; filter: string | null };
 
-// Soft colours for tags created with "Add tag…", used in turn.
-const extraColors = ["#14b8a6", "#ec4899", "#6366f1", "#84cc16", "#f97316", "#06b6d4"];
+// Soft colours for tags created with "Add tag…", used in turn (the five starting labels come first, see below).
+const extraColors = ["#f43f5e", "#84cc16", "#10b981", "#f97316", "#06b6d4", "#6366f1"];
 
 let state: ChatTagsState = {
+  // F159: English names, the same labels as the Contacts page (vip, billing, lead, partner, support).
+  // Five clearly different hues (violet, sky, amber, teal, pink), the same as the Contacts badges (studio-ui.tsx).
   tags: [
-    { id: "buyer", label: "مشتري", color: "#10b981" },
-    { id: "interested", label: "مهتم", color: "#0ea5e9" },
-    { id: "seller", label: "بائع", color: "#8b5cf6" },
-    { id: "follow-up", label: "متابعة", color: "#f59e0b" },
-    { id: "maintenance", label: "صيانة", color: "#f43f5e" },
+    { id: "vip", label: "vip", color: "#8b5cf6" },
+    { id: "billing", label: "billing", color: "#0ea5e9" },
+    { id: "lead", label: "lead", color: "#f59e0b" },
+    { id: "partner", label: "partner", color: "#14b8a6" },
+    { id: "support", label: "support", color: "#ec4899" },
   ],
-  // Sample tags so the feature is visible at once (conversation ids from data.ts).
+  // Sample labels so the feature is visible at once (conversation ids from data.ts, people from Contacts).
   byConv: {
-    "1": ["buyer", "follow-up"],
-    "2": ["maintenance"],
-    "3": ["interested"],
-    "5": ["seller", "follow-up"],
-    "6": ["buyer"],
-    "7": ["maintenance", "follow-up"],
+    "1": ["vip", "support"],
+    "2": ["vip", "billing"],
+    "3": ["support"],
+    "5": ["partner"],
+    "6": ["support"],
+    "7": ["billing"],
+    "9": ["billing"],
+    "12": ["lead", "billing"],
+    "16": ["support"],
+    "17": ["partner"],
+    "19": ["partner"],
+    "20": ["vip"],
+    "22": ["lead"],
   },
   filter: null,
 };

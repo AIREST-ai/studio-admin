@@ -1,10 +1,8 @@
 "use client";
 
 import { cn } from "cn";
-import { Check, CheckCheck, ChevronDown, CircleCheck, Lock } from "lucide-react";
+import { Check, CheckCheck, ChevronDown, CircleCheck } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bubble, BubbleContent, BubbleGroup } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import { ButtonGroupSeparator } from "@/components/ui/button-group";
 import {
@@ -17,18 +15,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { InputGroupButton } from "@/components/ui/input-group";
-import { Message, MessageAvatar, MessageContent, MessageFooter } from "@/components/ui/message";
-import { MessageScrollerItem } from "@/components/ui/message-scroller";
-import { getInitials } from "@/lib/utils";
 
 import {
   type ConversationStatus,
   conversationStatuses,
   type DeliveryState,
-  type ExtraMessage,
   noteSendButtonClass,
 } from "./chat-thread-state";
-import { currentUser } from "./data";
 
 // TEMP marker (Fahad 2026-10-11 «غير لونها للبني فقط لكي اعرفها»): every F144 piece in one brown, #8B5A2B.
 // These classes are appended after the original ones; to revert, set every string below to "" (one edit).
@@ -87,8 +80,10 @@ export function StatusMenu({
   );
 }
 
+const deliveryLabels: Record<DeliveryState, string> = { sent: "Sent", delivered: "Delivered", read: "Read" };
+
 export function DeliveryTicks({ state }: { state: DeliveryState }) {
-  const label = state === "sent" ? "Sent" : state === "delivered" ? "Delivered" : "Read";
+  const label = deliveryLabels[state];
   const Icon = state === "sent" ? Check : CheckCheck;
 
   return (
@@ -131,68 +126,6 @@ export function SendMenu({ tone, onSendAndResolve }: { tone: "reply" | "note"; o
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </>
-  );
-}
-
-export function NoteBubble({ text }: { text: string }) {
-  return (
-    <div
-      data-slot="note-bubble"
-      className={cn(
-        "w-fit max-w-[80%] rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950 text-sm leading-relaxed dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-50",
-        brown.box,
-      )}
-    >
-      <div
-        className={cn("mb-1 flex items-center gap-1.5 font-medium text-amber-700 text-xs dark:text-amber-300", brown.label)}
-      >
-        <Lock className="size-3" aria-hidden="true" />
-        Internal note
-      </div>
-      {text}
-    </div>
-  );
-}
-
-// Messages sent in this session (and builder B's externalMessages), appended after the sample thread.
-export function ExtraMessages({
-  items,
-  deliveryOf,
-}: {
-  items: ExtraMessage[];
-  deliveryOf: (id: string) => DeliveryState;
-}) {
-  return (
-    <>
-      {items.map((message) => (
-        <MessageScrollerItem key={message.id} messageId={message.id} scrollAnchor>
-          <Message align="end" data-note={message.kind === "note" ? "true" : undefined}>
-            <MessageAvatar>
-              <Avatar>
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {getInitials(currentUser.name)}
-                </AvatarFallback>
-              </Avatar>
-            </MessageAvatar>
-            <MessageContent>
-              {message.kind === "note" ? (
-                <NoteBubble text={message.text} />
-              ) : (
-                <BubbleGroup>
-                  <Bubble variant="default" align="end">
-                    <BubbleContent>{message.text}</BubbleContent>
-                  </Bubble>
-                </BubbleGroup>
-              )}
-              <MessageFooter>
-                Just now
-                {message.kind === "reply" ? <DeliveryTicks state={deliveryOf(message.id)} /> : null}
-              </MessageFooter>
-            </MessageContent>
-          </Message>
-        </MessageScrollerItem>
-      ))}
     </>
   );
 }

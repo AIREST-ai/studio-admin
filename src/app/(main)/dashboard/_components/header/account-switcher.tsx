@@ -38,7 +38,16 @@ export function AccountSwitcher({
       <DropdownMenuTrigger asChild>
         <Avatar className="size-8 rounded-lg">
           <AvatarImage src={activeUser.avatar || undefined} alt={activeUser.name} />
-          <AvatarFallback>{getInitials(activeUser.name)}</AvatarFallback>
+          {/* F159: Radix only shows AvatarImage after hydration + its own load check, so a fresh page load
+              (for example /chat redirecting to /dashboard/chat) showed the grey initials first. The plain img
+              is in the server HTML, so the browser fetches it with the page; if it fails, the initials stay. */}
+          <AvatarFallback className="relative overflow-hidden">
+            {getInitials(activeUser.name)}
+            {activeUser.avatar ? (
+              // biome-ignore lint/performance/noImgElement: must render before hydration, see note above.
+              <img src={activeUser.avatar} alt="" className="absolute inset-0 size-full rounded-full object-cover" />
+            ) : null}
+          </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-56 space-y-1 rounded-lg" side="bottom" align="end" sideOffset={4}>

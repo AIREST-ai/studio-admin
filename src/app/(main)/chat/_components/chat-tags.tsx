@@ -3,7 +3,7 @@
 import { type ReactNode, useState } from "react";
 
 import { cn } from "cn";
-import { Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,17 +83,22 @@ export function TagPicker({ convId, children }: { convId: string; children: Reac
 }
 
 // Small coloured badges for the tags on one conversation.
-export function TagChips({ convId, className }: { convId: string; className?: string }) {
+// `max` (conversation cards, Chatwoot CardLabels.vue): only the first labels show, with a chevron that shows or
+// hides the rest ("Show labels" / "Hide labels").
+export function TagChips({ convId, className, max }: { convId: string; className?: string; max?: number }) {
   const { tags, byConv } = useChatTags();
+  const [showAll, setShowAll] = useState(false);
   const items = (byConv[convId] ?? [])
     .map((id) => tags.find((tag) => tag.id === id))
     .filter((tag): tag is ChatTag => Boolean(tag));
 
   if (items.length === 0) return null;
+  const canExpand = max !== undefined && items.length > max;
+  const shown = canExpand && !showAll ? items.slice(0, max) : items;
 
   return (
     <div data-slot="tag-chips" className={cn("flex flex-wrap items-center gap-1", className)}>
-      {items.map((tag) => (
+      {shown.map((tag) => (
         <Badge
           key={tag.id}
           variant="outline"
@@ -106,6 +111,20 @@ export function TagChips({ convId, className }: { convId: string; className?: st
           {tag.label}
         </Badge>
       ))}
+      {canExpand && (
+        <button
+          type="button"
+          title={showAll ? "Hide labels" : "Show labels"}
+          aria-label={showAll ? "Hide labels" : "Show labels"}
+          className="grid h-4.5 place-items-center rounded px-1 text-muted-foreground hover:bg-muted hover:text-foreground rtl:rotate-180"
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowAll((value) => !value);
+          }}
+        >
+          {showAll ? <ChevronLeft className="size-3" /> : <ChevronRight className="size-3" />}
+        </button>
+      )}
     </div>
   );
 }

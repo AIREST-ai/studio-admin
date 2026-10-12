@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { onChannel, setChannelFilter, toggleChannelStrip } from "./chat-channel-filter-store";
 import { useChatTags } from "./chat-tags-store";
 import { brown } from "./chat-thread-extras";
-import { channelItems, type Conversation } from "./data";
+import { type Conversation, channelItems } from "./data";
 
 // F149 (Fahad 2026-10-11): in a tag view the list title is the tag's name; clicking it opens/closes a narrow strip
 // with every channel, same look as the mail strip (chat-mail-nav.tsx). Channels come from channelItems, the same list
@@ -23,8 +23,9 @@ import { channelItems, type Conversation } from "./data";
 // Same brand icons as the sidebar "Channels" section; any other channel shows its own icon.
 const brandIcons = { whatsapp: siWhatsapp, instagram: siInstagram, facebook: siFacebook } as const;
 
-/** List title inside a tag view: the tag's name with a small chevron; click to show/hide the channel strip. */
-export function TagChannelTitle({ open }: { open: boolean }) {
+/** List title inside a tag view: the tag's name with a small chevron; click to show/hide the channel strip.
+ * `text` replaces the tag's name (the dashboard label pages show "#label", plus the channel picked in the strip). */
+export function TagChannelTitle({ open, text }: { open: boolean; text?: string }) {
   const { tags, filter } = useChatTags();
   const tag = tags.find((item) => item.id === filter);
 
@@ -36,10 +37,13 @@ export function TagChannelTitle({ open }: { open: boolean }) {
         onClick={() => (tag ? toggleChannelStrip(tag.id) : undefined)}
         aria-expanded={open}
         title={open ? "Hide channels" : "Show channels"}
-        className={cn("-mx-1 flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted", open && "bg-muted")}
+        className={cn(
+          "-mx-1 flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted",
+          open && "bg-muted",
+        )}
       >
         <span dir="auto" className="truncate">
-          {tag?.label ?? "Inbox"}
+          {text ?? tag?.label ?? "Inbox"}
         </span>
         <ChevronDown className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
       </button>
@@ -48,7 +52,14 @@ export function TagChannelTitle({ open }: { open: boolean }) {
 }
 
 // One square in the strip: icon, tiny neutral count, name in a tooltip (same classes as the mail strip).
-function StripItem(props: { id: string; title: string; count: number; active: boolean; onClick: () => void; children: ReactNode }) {
+function StripItem(props: {
+  id: string;
+  title: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -75,7 +86,13 @@ function StripItem(props: { id: string; title: string; count: number; active: bo
 }
 
 /** Narrow icons-only strip next to the list: "All channels" on top, then every channel with its count in this tag. */
-export function ChatChannelStrip({ tagConversations, channel }: { tagConversations: Conversation[]; channel: string | null }) {
+export function ChatChannelStrip({
+  tagConversations,
+  channel,
+}: {
+  tagConversations: Conversation[];
+  channel: string | null;
+}) {
   const { filter } = useChatTags();
   if (!filter) return null;
   const choose = (id: string | null) => setChannelFilter(filter, id, tagConversations);
@@ -83,7 +100,10 @@ export function ChatChannelStrip({ tagConversations, channel }: { tagConversatio
   return (
     <aside
       data-slot="chat-channel-strip"
-      className={cn("flex w-12 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r bg-background py-3", brown.line)}
+      className={cn(
+        "flex w-12 shrink-0 flex-col items-center gap-2 overflow-y-auto border-r bg-background py-3",
+        brown.line,
+      )}
     >
       <StripItem
         id="all"

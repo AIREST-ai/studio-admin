@@ -1,17 +1,8 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { Chat } from "./_components/chat";
-import { conversations } from "./_components/data";
-
-export const metadata: Metadata = {
-  title: "Open Source Chat Interface with shadcn/ui",
-  description:
-    "Explore an open source chat interface with conversation search, message threads, internal notes, and contact details.",
-  alternates: {
-    canonical: "/chat",
-  },
-};
-
+// F159: one inbox. Studio's standalone chat page now opens Chatwoot's conversations inside the dashboard, so
+// there is one list, one store and one thread for every conversation. The files in ./_components stay as the
+// shared library that /dashboard/chat imports (labels, status button, send and resolve, channels bar, email).
 export default function Page() {
-  return <Chat conversations={conversations} />;
+  redirect("/dashboard/chat");
 }

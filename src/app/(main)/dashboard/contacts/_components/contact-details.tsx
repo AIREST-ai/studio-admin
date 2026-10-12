@@ -39,11 +39,56 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getInitials } from "@/lib/utils";
 
-import { ContactFormFields, DeleteContactDialog, SocialLinksFields } from "./contact-dialogs";
-import { attributes, type Contact, contacts, conversations, notes, toneFor } from "./data";
-import { ContactAvatar, contactStatus, LabelBadge, StatusBadge, statusMeta } from "./studio-ui";
+import {
+  baseConversations,
+  type Conversation,
+  type ConversationMeta,
+  contactAttributeDefs,
+  contactIdOf,
+  inboxOf,
+  initialContactAttributes,
+  lastPreview,
+} from "@/app/(main)/dashboard/chat/_components/cw-data";
+import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
+import { ChannelIcon, StatusPill } from "@/app/(main)/dashboard/chat/_components/cw-ui";
+import {
+  contactCsat,
+  firstResponseMinutes,
+  formatMinutes,
+  teamFirstResponse,
+} from "@/app/(main)/dashboard/reports/_components/data";
 
-function AttributesTab() {
+import { ContactFormFields, DeleteContactDialog, SocialLinksFields } from "./contact-dialogs";
+import { type Contact, contacts, notes, toneFor } from "./data";
+import { ContactAvatar, contactStatus, LabelBadge, StatusBadge } from "./studio-ui";
+
+// The person's conversations in the inbox (/dashboard/chat), newest first, with the live status and last message,
+// so this page and "View Profile" in the conversation panel tell the same story.
+type ContactConversation = { conversation: Conversation; meta: ConversationMeta | undefined; preview: string };
+
+function useContactConversations(contact: Contact): ContactConversation[] {
+  const meta = useCwStore((s) => s.meta);
+  const sent = useCwStore((s) => s.sent);
+  const deleted = useCwStore((s) => s.deleted);
+  return baseConversations
+    .filter((c) => contactIdOf(c.id) === contact.id && !deleted.includes(c.id))
+    .map((c) => ({ conversation: c, meta: meta[c.id], preview: lastPreview(c, meta[c.id], sent[c.id]).text }));
+}
+
+// Same values as the Contact Attributes list in the conversation panel (cw-data initialContactAttributes).
+function contactAttributes(contact: Contact, own: ContactConversation[]) {
+  const values: Record<string, string> = own[0]
+    ? initialContactAttributes(own[0].conversation)
+    : { signup_date: contact.createdAt };
+  const used = contactAttributeDefs.filter((def) => values[def.key] !== undefined);
+  const shown = used.map((def) => {
+    const value = values[def.key] ?? "";
+    return { label: def.label, value: def.type === "Checkbox" ? (value === "true" ? "True" : "False") : value };
+  });
+  return { shown, unused: contactAttributeDefs.length - used.length };
+}
+
+function AttributesTab({ attributes, unused }: { attributes: { label: string; value: string }[]; unused: number }) {
   return (
     <div className="grid gap-3">
       <InputGroup className="h-8">
@@ -60,44 +105,43 @@ function AttributesTab() {
           </div>
         ))}
       </div>
-      <span className="text-muted-foreground text-xs">2 Unused attributes</span>
+      {unused > 0 && <span className="text-muted-foreground text-xs">{unused} Unused attributes</span>}
     </div>
   );
 }
 
-function HistoryTab({ contact }: { contact: Contact }) {
+function HistoryTab({ contact, own }: { contact: Contact; own: ContactConversation[] }) {
+  if (own.length === 0) {
+    return (
+      <p className="rounded-lg border px-3 py-6 text-center text-muted-foreground text-sm">
+        There are no previous conversations associated to this contact.
+      </p>
+    );
+  }
   return (
     <div className="divide-y rounded-lg border">
-      {conversations.map((c) => (
-        <div key={c.id} className="grid gap-1 px-3 py-3 text-sm">
+      {own.map(({ conversation: c, meta, preview }) => (
+        <Link
+          key={c.id}
+          href={`/dashboard/chat?conversation=${c.id}`}
+          className="grid gap-1 px-3 py-3 text-sm transition-colors hover:bg-muted/50"
+        >
           <div className="flex items-center justify-between gap-2">
-            <span className="font-medium">
+            <span className="truncate font-medium">
               {contact.name} <span className="text-muted-foreground">#{c.id}</span>
             </span>
-            <span className="text-muted-foreground text-xs">{c.time}</span>
+            <span className="shrink-0 text-muted-foreground text-xs">{c.time}</span>
           </div>
-          <span className="truncate text-muted-foreground">{c.preview}</span>
+          <span className="truncate">{c.subject}</span>
+          <span className="truncate text-muted-foreground">{preview}</span>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="font-normal">
-              {c.inbox}
+            <Badge variant="outline" className="gap-1.5 font-normal">
+              <ChannelIcon channel={c.channel} className="size-3" />
+              {inboxOf(c).name}
             </Badge>
-            <Badge
-              variant="outline"
-              className={cn(
-                "gap-1.5 border px-2 py-1 font-medium",
-                c.status === "Open" ? statusMeta.Active.badgeClass : statusMeta.Inactive.badgeClass,
-              )}
-            >
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  c.status === "Open" ? statusMeta.Active.dotClass : statusMeta.Inactive.dotClass,
-                )}
-              />
-              {c.status}
-            </Badge>
+            {meta && <StatusPill status={meta.status} />}
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );
@@ -191,14 +235,78 @@ function MergeTab({ contact }: { contact: Contact }) {
   );
 }
 
-const stats = [
-  { icon: MessagesSquare, label: "Conversations", value: "14", trend: "+3", up: true, note: "Across WhatsApp, Website and Email" },
-  { icon: Inbox, label: "Open", value: "1", trend: "-2", up: false, note: "Waiting on your team" },
-  { icon: Timer, label: "Avg. first response", value: "4m 12s", trend: "-18%", up: false, note: "Faster than team average" },
-  { icon: Smile, label: "CSAT", value: "96%", trend: "+4 pts", up: true, note: "From 9 ratings" },
-];
+type Stat = { icon: typeof Inbox; label: string; value: string; trend?: string; up?: boolean; note: string };
 
-function StatCards() {
+function joinNames(names: string[]): string {
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? "");
+}
+
+// Conversations and Open are counted from the person's inbox conversations (same ids, inboxes and status).
+function contactStats(own: ContactConversation[], contactId: number): Stat[] {
+  const inboxNames = [...new Set(own.map(({ conversation }) => inboxOf(conversation).name))];
+  const open = own.filter(({ meta }) => meta?.status === "open").length;
+  return [
+    {
+      icon: MessagesSquare,
+      label: "Conversations",
+      value: String(own.length),
+      note: own.length ? `Across ${joinNames(inboxNames)}` : "No conversations yet",
+    },
+    {
+      icon: Inbox,
+      label: "Open",
+      value: String(open),
+      note: open ? "Waiting on your team" : "Nothing waiting on your team",
+    },
+    firstResponseStat(own),
+    csatStat(contactId),
+  ];
+}
+
+// F159: the person's own first response time (customer's first message -> first agent reply in each of their
+// conversations), against the team average over every answered conversation (reports data.ts).
+function firstResponseStat(own: ContactConversation[]): Stat {
+  const times = own
+    .map(({ conversation }) => firstResponseMinutes(conversation.id))
+    .filter((v): v is number => v !== null);
+  if (!times.length) {
+    return {
+      icon: Timer,
+      label: "Avg. first response",
+      value: "--",
+      note: own.length ? "Still waiting for a first reply" : "No conversations yet",
+    };
+  }
+  const avg = times.reduce((sum, v) => sum + v, 0) / times.length;
+  const diff = Math.round(((avg - teamFirstResponse) / teamFirstResponse) * 100);
+  const waiting = own.length - times.length;
+  return {
+    icon: Timer,
+    label: "Avg. first response",
+    value: formatMinutes(avg),
+    trend: diff === 0 ? undefined : `${diff > 0 ? "+" : ""}${diff}%`,
+    up: diff > 0,
+    note:
+      (diff === 0
+        ? "Same as team average"
+        : `${diff < 0 ? "Faster" : "Slower"} than team average (${formatMinutes(teamFirstResponse)})`) +
+      (waiting ? ` · ${waiting} waiting` : ""),
+  };
+}
+
+// F159: from the person's CSAT responses on the CSAT report (same conversations and ratings).
+function csatStat(contactId: number): Stat {
+  const { ratings, score } = contactCsat(contactId);
+  if (score === null) return { icon: Smile, label: "CSAT", value: "--", note: "No ratings yet" };
+  return {
+    icon: Smile,
+    label: "CSAT",
+    value: `${score}%`,
+    note: `From ${ratings} ${ratings === 1 ? "rating" : "ratings"}`,
+  };
+}
+
+function StatCards({ stats }: { stats: Stat[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
       {stats.map((stat) => (
@@ -214,10 +322,12 @@ function StatCards() {
           <CardContent className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
               <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">{stat.value}</div>
-              <Badge>
-                {stat.up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-                {stat.trend}
-              </Badge>
+              {stat.trend && (
+                <Badge>
+                  {stat.up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+                  {stat.trend}
+                </Badge>
+              )}
             </div>
             <p className="text-muted-foreground text-sm">{stat.note}</p>
           </CardContent>
@@ -231,6 +341,8 @@ export function ContactDetails({ contact }: { contact: Contact }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [blocked, setBlocked] = React.useState(false);
+  const own = useContactConversations(contact);
+  const { shown: attributes, unused } = contactAttributes(contact, own);
 
   return (
     <div className="@container/main flex flex-col gap-4 md:gap-6">
@@ -250,7 +362,7 @@ export function ContactDetails({ contact }: { contact: Contact }) {
         </Breadcrumb>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-center gap-4">
-            <ContactAvatar contact={contact} className="size-14 text-lg" />
+            <ContactAvatar contact={contact} status={blocked ? "Blocked" : undefined} className="size-14 text-lg" />
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-3xl leading-none tracking-tight">{contact.name}</h1>
@@ -275,7 +387,7 @@ export function ContactDetails({ contact }: { contact: Contact }) {
         </div>
       </div>
 
-      <StatCards />
+      <StatCards stats={contactStats(own, contact.id)} />
 
       <div className="grid items-start gap-4 lg:grid-cols-[1fr_480px]">
         <Card>
@@ -340,7 +452,7 @@ export function ContactDetails({ contact }: { contact: Contact }) {
                 <TabsTrigger value="history">
                   History
                   <Badge variant="secondary" className="ms-1 tabular-nums">
-                    {conversations.length}
+                    {own.length}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="notes">
@@ -353,10 +465,10 @@ export function ContactDetails({ contact }: { contact: Contact }) {
                 <TabsTrigger value="merge">Merge</TabsTrigger>
               </TabsList>
               <TabsContent value="attributes">
-                <AttributesTab />
+                <AttributesTab attributes={attributes} unused={unused} />
               </TabsContent>
               <TabsContent value="history">
-                <HistoryTab contact={contact} />
+                <HistoryTab contact={contact} own={own} />
               </TabsContent>
               <TabsContent value="notes">
                 <NotesTab />

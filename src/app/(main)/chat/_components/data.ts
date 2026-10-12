@@ -1,5 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock3, Inbox, Mail, MessageCircle, Phone, Send, Star, User } from "lucide-react";
+import { Mail, MessageCircle, Phone } from "lucide-react";
+
+import { contacts as directory } from "@/app/(main)/dashboard/contacts/_components/data";
 
 export type Conversation = {
   id: number;
@@ -9,11 +11,12 @@ export type Conversation = {
   preview: string;
   time: string;
   isUnread: boolean;
-  isOnline: boolean;
+  isOnline: boolean; // F159: replaced from the person (swapPerson); avatars read isPersonOnline()
   unreadCount: number;
   channel: NavItem["id"]; // F149: channel id from channelItems (email, chat, whatsapp, …)
   contact: Contact;
   messages: Message[];
+  ago?: number; // F159: minutes since the last activity (Pinned and Today conversations), see realClockAges
 };
 
 export type Message = {
@@ -22,6 +25,7 @@ export type Message = {
   text: string;
   time: string;
   reaction?: string;
+  ago?: number; // F159: minutes since the message was sent (Pinned and Today conversations)
 };
 
 export type Contact = {
@@ -46,31 +50,10 @@ export type NavItem = {
   isActive: boolean;
 };
 
-export const navItems: NavItem[] = [
-  { id: "inbox", title: "Inbox", label: "24", icon: Inbox, isActive: true },
-  { id: "mentions", title: "Mentions", label: "3", icon: Mail, isActive: false },
-  { id: "snoozed", title: "Snoozed", icon: Clock3, isActive: false },
-  { id: "sent", title: "Sent", icon: Send, isActive: false },
-  { id: "all", title: "All conversations", icon: MessageCircle, isActive: false },
-  { id: "unassigned", title: "Unassigned", label: "7", icon: User, isActive: false },
-];
-
-export const channelItems: NavItem[] = [
-  { id: "email", title: "Email", label: "18", icon: Mail, isActive: false },
-  { id: "chat", title: "Chat", label: "5", icon: MessageCircle, isActive: false },
-  { id: "whatsapp", title: "WhatsApp", label: "1", icon: Phone, isActive: false },
-  { id: "instagram", title: "Instagram", label: "0", icon: Phone, isActive: false },
-  { id: "facebook", title: "Facebook", label: "0", icon: Phone, isActive: false },
-  { id: "phone", title: "Phone", label: "0", icon: Phone, isActive: false },
-];
-
-export const viewItems: NavItem[] = [
-  { id: "vip", title: "VIP Customers", label: "8", icon: Star, isActive: false },
-  { id: "orders", title: "Orders & Returns", label: "6", icon: Inbox, isActive: false },
-  { id: "feedback", title: "Product Feedback", label: "2", icon: MessageCircle, isActive: false },
-];
-
-export const conversations: Conversation[] = [
+// Studio template threads; the people are swapped for the Contacts page people below (F159).
+// Unattended threads (#3, #8, #15, #16, #21) have no agent reply yet: the customer is still waiting (Chatwoot
+// Unattended = no first reply).
+const templateConversations: Conversation[] = [
   // Pinned
   {
     id: 1,
@@ -222,30 +205,10 @@ export const conversations: Conversation[] = [
         time: "8 min ago",
       },
       {
-        id: 302,
-        align: "end",
-        text: "Thanks, Lana. I'll compare your new role against the dashboard permission set.",
-        time: "7 min ago",
-      },
-      {
         id: 303,
         align: "start",
         text: "I still have access to exports, just not the dashboard views. Other admins on my team can open them.",
         time: "5 min ago",
-      },
-      {
-        id: 304,
-        align: "end",
-        text: "Looks like the Analytics Viewer permission was dropped from your custom role. I've reattached it for your workspace.",
-        time: "3 min ago",
-        reaction: "🙌",
-      },
-      {
-        id: 305,
-        align: "start",
-        text: "That fixed it. Thanks for the quick help.",
-        time: "1 min ago",
-        reaction: "🎉",
       },
     ],
   },
@@ -395,7 +358,7 @@ export const conversations: Conversation[] = [
       {
         id: 703,
         align: "start",
-        text: "Just attached the confirmation screenshot. The reference ends in 9147.",
+        text: "It is on the confirmation screenshot I attached. The reference ends in 9147.",
         time: "9:50 AM",
       },
       {
@@ -439,23 +402,10 @@ export const conversations: Conversation[] = [
         time: "9:32 AM",
       },
       {
-        id: 802,
-        align: "end",
-        text: "Hi Drew. I'll send the standard engineering checklist and invite link for the developer workspace.",
-        time: "9:28 AM",
-      },
-      {
         id: 803,
         align: "start",
-        text: "Great. Please include staging credentials and any branch naming rules if those are documented.",
+        text: "Please include staging credentials and any branch naming rules if those are documented.",
         time: "9:24 AM",
-      },
-      {
-        id: 804,
-        align: "end",
-        text: "Will do. I'll add the staging access request and our repository conventions to the same thread.",
-        time: "9:20 AM",
-        reaction: "👍",
       },
     ],
   },
@@ -799,22 +749,10 @@ export const conversations: Conversation[] = [
         time: "5:44 AM",
       },
       {
-        id: 1502,
-        align: "end",
-        text: "Yes, Lori. You can separate environment scope from permission level. I'll send the policy example.",
-        time: "5:40 AM",
-      },
-      {
         id: 1503,
         align: "start",
-        text: "Great. We also need audit logs to show who changed staging configs.",
+        text: "We also need audit logs to show who changed staging configs.",
         time: "5:36 AM",
-      },
-      {
-        id: 1504,
-        align: "end",
-        text: "That is included. I'll add the audit log filters to the example so your leads can test it.",
-        time: "5:32 AM",
       },
     ],
   },
@@ -828,7 +766,7 @@ export const conversations: Conversation[] = [
     time: "5:18 AM",
     isUnread: true,
     isOnline: false,
-    unreadCount: 3,
+    unreadCount: 2,
     contact: {
       name: "Koray Okumus",
       role: "Mobile Lead",
@@ -850,22 +788,10 @@ export const conversations: Conversation[] = [
         time: "5:18 AM",
       },
       {
-        id: 1602,
-        align: "end",
-        text: "Thanks for reporting this, Koray. Can you share the Firebase crashlytics link? I'll get the mobile team on it.",
-        time: "5:05 AM",
-      },
-      {
         id: 1603,
         align: "start",
-        text: "Sure, linked the stack trace in the ticket. Looks like a null pointer in the payment module init.",
+        text: "I linked the stack trace in the ticket. Looks like a null pointer in the payment module init.",
         time: "4:52 AM",
-      },
-      {
-        id: 1604,
-        align: "end",
-        text: "Found it — there's an edge case when Google Play Services isn't updated. We're pushing a hotfix now.",
-        time: "4:40 AM",
       },
     ],
   },
@@ -1106,21 +1032,9 @@ export const conversations: Conversation[] = [
         time: "Yesterday",
       },
       {
-        id: 2102,
-        align: "end",
-        text: "Thanks, Sienna. Are the missing line items discounts, usage charges, or taxes?",
-        time: "Yesterday",
-      },
-      {
         id: 2103,
         align: "start",
-        text: "Two are usage charges and one is a tax adjustment. They all appear in the PDF.",
-        time: "Yesterday",
-      },
-      {
-        id: 2104,
-        align: "end",
-        text: "I found an export filter excluding adjusted usage lines. We'll patch it and regenerate the January CSV for you.",
+        text: "Two of them are usage charges and one is a tax adjustment. They all appear in the PDF.",
         time: "Yesterday",
       },
     ],
@@ -1230,7 +1144,9 @@ export const conversations: Conversation[] = [
   {
     id: 24,
     group: "Yesterday",
-    channel: "phone",
+    // F159: WhatsApp (was Phone): the customer attaches documents, and its 24 hour reply window has closed
+    // (Chatwoot can_reply = false, cw-data.ts canReply).
+    channel: "whatsapp",
     name: "Zahir McClure",
     subject: "Cancellation request — account owner left",
     preview: "Our ops lead resigned last week. Need to transfer ownership to me before we can cancel.",
@@ -1279,6 +1195,217 @@ export const conversations: Conversation[] = [
     ],
   },
 ];
+
+// F159: the same people and companies as the Contacts page (dashboard/contacts/_components/data.ts), so the
+// conversations, the contact panel and the Contacts page tell one story. Each person keeps one job title across
+// their conversations; first names inside the messages follow the new person.
+type Person = { id: number; role: string; website: string; timezone: string; status: string };
+
+const people: Record<number, Person> = {
+  1: { id: 1, role: "Head of Digital Operations", website: "ooredoo.qa", timezone: "AST (UTC+3)", status: "Customer" },
+  2: { id: 2, role: "Procurement Manager", website: "emiratesnbd.com", timezone: "GST (UTC+4)", status: "Lead" },
+  3: { id: 3, role: "Programme Coordinator", website: "qf.org.qa", timezone: "AST (UTC+3)", status: "Customer" },
+  4: { id: 4, role: "Partnerships Director", website: "stc.com.sa", timezone: "AST (UTC+3)", status: "Qualified" },
+  5: { id: 5, role: "Quality & Compliance Lead", website: "hamad.qa", timezone: "AST (UTC+3)", status: "Lead" },
+  6: { id: 6, role: "Data Engineering Lead", website: "dpworld.com", timezone: "GST (UTC+4)", status: "Customer" },
+  7: { id: 7, role: "IT Security Manager", website: "etihad.com", timezone: "GST (UTC+4)", status: "Customer" },
+  8: { id: 8, role: "Mobile Product Lead", website: "qatarairways.com", timezone: "AST (UTC+3)", status: "Customer" },
+  9: { id: 9, role: "Finance Manager", website: "aramco.com", timezone: "AST (UTC+3)", status: "Customer" },
+  10: { id: 10, role: "Backend Engineering Lead", website: "qnb.com", timezone: "AST (UTC+3)", status: "Customer" },
+  12: { id: 12, role: "Operations Director", website: "adnoc.ae", timezone: "GST (UTC+4)", status: "At-Risk" },
+};
+
+// conversation id -> contact id
+const personOf: Record<number, number> = {
+  1: 1,
+  2: 1,
+  3: 3,
+  5: 12,
+  6: 6,
+  7: 9,
+  8: 3,
+  9: 12,
+  10: 10,
+  11: 8,
+  12: 2,
+  13: 5,
+  14: 6,
+  15: 10,
+  16: 8,
+  17: 4,
+  18: 5,
+  19: 4,
+  20: 7,
+  21: 9,
+  22: 2,
+  23: 7,
+  24: 12,
+};
+
+// F159: presence belongs to the person, not to the conversation, so every avatar of one person shows the same dot.
+// Same rule as the Contacts page ContactAvatar: active in the last hour = online (green dot).
+export function isPersonOnline(conversationId: number): boolean {
+  const entry = directory.find((item) => item.id === personOf[conversationId]);
+  return entry ? entry.lastActivityMinutes < 60 : false;
+}
+
+// Lines that only made sense for the template people.
+const textFixes: Record<number, [string, string][]> = {
+  10: [["Dublin time", "Doha time"]],
+  // The customer attaches a CSV export (report-export-june.csv in the dashboard thread), not a screenshot.
+  13: [
+    ["Screenshot attached for reference", "CSV export attached for reference"],
+    ["attach your screenshot", "attach your CSV export"],
+  ],
+  17: [
+    ["Latin American market", "North African market"],
+    ["Mexico and Brazil", "Egypt and Morocco"],
+    ["our LATAM plans", "our regional plans"],
+  ],
+};
+
+function swapPerson(conversation: Conversation): Conversation {
+  const contactId = personOf[conversation.id];
+  const person = contactId ? people[contactId] : undefined;
+  const entry = directory.find((item) => item.id === contactId);
+  if (!person || !entry) return conversation;
+  const oldFirst = conversation.name.split(" ")[0];
+  const newFirst = entry.name.split(" ")[0];
+  const fixes = textFixes[conversation.id] ?? [];
+  const fix = (text: string) => {
+    let next = text.replace(new RegExp(`\\b${oldFirst}\\b`, "g"), newFirst);
+    for (const [from, to] of fixes) next = next.split(from).join(to);
+    return next;
+  };
+  return {
+    ...conversation,
+    name: entry.name,
+    isOnline: entry.lastActivityMinutes < 60,
+    subject: fix(conversation.subject),
+    preview: fix(conversation.preview),
+    contact: {
+      ...conversation.contact,
+      name: entry.name,
+      role: person.role,
+      company: entry.company,
+      email: entry.email,
+      phone: entry.phone,
+      website: person.website,
+      location: `${entry.city}, ${entry.country}`,
+      timezone: person.timezone,
+      status: person.status,
+      qualifiedAt: entry.createdAt,
+    },
+    messages: conversation.messages.map((message) => ({ ...message, text: fix(message.text) })),
+  };
+}
+
+// Some template threads count their clock times down from top to bottom, so the answer is timed before the
+// question. Keep the message order and reverse the time values, so the newest message sits at the bottom and
+// matches the list row time.
+function clockMinutes(time: string): number | null {
+  const match = /^(\d{1,2}):(\d{2}) (AM|PM)$/.exec(time);
+  if (!match) return null;
+  const hours = (Number(match[1]) % 12) + (match[3] === "PM" ? 12 : 0);
+  return hours * 60 + Number(match[2]);
+}
+
+function risingTimes(conversation: Conversation): Conversation {
+  const first = clockMinutes(conversation.messages[0]?.time ?? "");
+  const last = clockMinutes(conversation.messages.at(-1)?.time ?? "");
+  if (first === null || last === null || first <= last) return conversation;
+  const times = conversation.messages.map((message) => message.time).reverse();
+  return { ...conversation, messages: conversation.messages.map((message, i) => ({ ...message, time: times[i] })) };
+}
+
+// F159: times are ages counted back from the real clock, the way the Support Email view dates its mails
+// (chat-mail-store.ts), so a conversation shows the same age on /chat, /dashboard/chat and in the mail view, and no
+// time is later than now. Rows use Chatwoot's short form ("14m", "2h"); messages say "14 min ago" or "1h 12m ago".
+// The gaps between a thread's messages stay as in the template. Yesterday's conversations keep "Yesterday".
+const lastActivity: Record<number, number> = {
+  1: 1,
+  2: 5,
+  3: 8,
+  5: 14,
+  6: 27,
+  7: 41,
+  8: 56,
+  9: 72,
+  10: 88,
+  11: 104,
+  12: 121,
+  13: 138,
+  14: 155,
+  15: 172,
+  16: 190,
+};
+
+export function rowAge(minutes: number): string {
+  // Chatwoot shortTimestamp: "less than a minute ago" -> "now", "1 minute ago" -> "1m" (the Contacts page says
+  // "1 minute ago" for the same person).
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h`;
+  return `${Math.floor(minutes / (24 * 60))}d`;
+}
+
+export function messageAge(minutes: number): string {
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours}h ${rest}m ago` : `${hours}h ago`;
+}
+
+// "10:42 AM" or "10 min ago" on one scale (bigger = later), to keep the gaps between a thread's messages.
+function stamp(time: string): number | null {
+  const clock = clockMinutes(time);
+  if (clock !== null) return clock;
+  const ago = /^(\d+) min ago$/.exec(time);
+  return ago ? -Number(ago[1]) : null;
+}
+
+function realClockAges(conversation: Conversation): Conversation {
+  const last = lastActivity[conversation.id];
+  if (last === undefined) return conversation;
+  const end = stamp(conversation.messages.at(-1)?.time ?? "");
+  const messages = conversation.messages.map((message) => {
+    const at = stamp(message.time);
+    const ago = end !== null && at !== null ? last + (end - at) : last;
+    return { ...message, time: messageAge(ago), ago };
+  });
+  return { ...conversation, time: rowAge(last), ago: last, messages };
+}
+
+// F159: the row preview is the thread's last message, as in Chatwoot (getLastMessage), so the mail view and the
+// /dashboard/chat cards show the same line.
+function lastMessagePreview(conversation: Conversation): Conversation {
+  return { ...conversation, preview: conversation.messages.at(-1)?.text ?? conversation.preview };
+}
+
+export const conversations: Conversation[] = templateConversations
+  .map(swapPerson)
+  .map(risingTimes)
+  .map(realClockAges)
+  .map(lastMessagePreview);
+
+// F159: channel counts for the channels bar (chat-channel-strip.tsx), from the conversations above.
+function channelCount(id: string): string {
+  return String(conversations.filter((conversation) => conversation.channel === id).length);
+}
+
+export const channelItems: NavItem[] = [
+  { id: "email", title: "Email", label: channelCount("email"), icon: Mail, isActive: false },
+  { id: "chat", title: "Chat", label: channelCount("chat"), icon: MessageCircle, isActive: false },
+  { id: "whatsapp", title: "WhatsApp", label: channelCount("whatsapp"), icon: Phone, isActive: false },
+  { id: "instagram", title: "Instagram", label: channelCount("instagram"), icon: Phone, isActive: false },
+  { id: "facebook", title: "Facebook", label: channelCount("facebook"), icon: Phone, isActive: false },
+  { id: "phone", title: "Phone", label: channelCount("phone"), icon: Phone, isActive: false },
+];
+
+// Contact id on the Contacts page for a conversation (used by "View Profile").
+export function contactIdOf(conversationId: number): number | null {
+  return personOf[conversationId] ?? null;
+}
 
 export const currentUser = {
   name: "Arham Khan",
