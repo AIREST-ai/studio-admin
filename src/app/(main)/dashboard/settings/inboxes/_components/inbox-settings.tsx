@@ -3,24 +3,44 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { ArrowLeft, Check, Copy, ImageUp, Star } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, ImageUp, Star, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { NativeSelect } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { getInitials } from "@/lib/utils";
 
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
+
+import { StatCard } from "../../_components/settings-card";
+import { assignmentPolicies, orderLabel } from "../../assignment-policy/_components/data";
 import { channelFor, type Inbox } from "./data";
+import {
+  ApiConfiguration,
+  ApiWebhookFields,
+  AssignmentSection,
+  CallbackConfiguration,
+  CallsTab,
+  EmailConfiguration,
+  HmacSection,
+  SenderNameSection,
+  TwilioHealthTab,
+  VoiceTab,
+  WhatsappConfiguration,
+  WhatsappHealthTab,
+  WidgetBubbleFields,
+} from "./inbox-tabs-extra";
 import { AgentMultiSelect, Section } from "./settings-ui";
 
 function ToggleRow({ label, help, defaultChecked }: { label: string; help?: string; defaultChecked?: boolean }) {
@@ -36,29 +56,14 @@ function ToggleRow({ label, help, defaultChecked }: { label: string; help?: stri
   );
 }
 
-function CopyField({ value }: { value: string }) {
-  const [copied, setCopied] = React.useState(false);
-  return (
-    <InputGroup className="max-w-lg">
-      <InputGroupInput readOnly value={value} className="font-mono text-xs" />
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton
-          size="icon-xs"
-          aria-label="Copy"
-          onClick={() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? <Check /> : <Copy />}
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
-  );
-}
+const widgetColors = ["#1F93FF", "#0F766E", "#7C3AED", "#B91C1C", "#8A1538", "#111827"];
 
 function SettingsTab({ inbox }: { inbox: Inbox }) {
   const isWebsite = inbox.channel === "website";
+  const [color, setColor] = React.useState(widgetColors[0]);
+  const [greeting, setGreeting] = React.useState(true);
+  const [name, setName] = React.useState(inbox.name);
+  const nameError = !name.trim();
   return (
     <>
       <Section title="Inbox settings" description="Update the name, avatar and widget details for this inbox.">
@@ -66,8 +71,9 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
           <Field>
             <FieldLabel>Channel Avatar</FieldLabel>
             <div className="flex items-center gap-3">
-              <Avatar className="size-14 rounded-xl">
-                <AvatarFallback className="rounded-xl bg-primary/10 font-medium text-primary">AR</AvatarFallback>
+              {/* F159: the inbox's own initials ("SE" for Support Email) in a colour, not a grey "AR". */}
+              <Avatar className={`size-14 rounded-xl font-medium ${personToneClass(inbox.name)}`}>
+                <AvatarFallback className="rounded-xl text-base">{getInitials(inbox.name)}</AvatarFallback>
               </Avatar>
               <Button variant="outline" size="sm">
                 <ImageUp /> Upload
@@ -81,16 +87,46 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
             <FieldLabel htmlFor="inbox-name">{isWebsite ? "Website Name" : "Inbox Name"}</FieldLabel>
             <Input
               id="inbox-name"
-              defaultValue={inbox.name}
+              value={name}
+              aria-invalid={nameError || undefined}
+              onChange={(event) => setName(event.target.value)}
               placeholder={isWebsite ? "Enter your website name (eg: Acme Inc)" : "Enter your inbox name (eg: Acme Inc)"}
             />
+            {nameError ? <FieldError>This field is required</FieldError> : null}
           </Field>
+          {inbox.channel === "api" ? <ApiWebhookFields /> : null}
           {isWebsite ? (
             <>
               <Field>
                 <FieldLabel htmlFor="domain">Website Domain</FieldLabel>
                 <Input id="domain" defaultValue={inbox.identifier} placeholder="Enter your website domain (eg: acme.com)" />
               </Field>
+              <Field>
+                <FieldLabel>Widget Color</FieldLabel>
+                <div className="flex flex-wrap items-center gap-2">
+                  {widgetColors.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={c}
+                      onClick={() => setColor(c)}
+                      className="grid size-7 place-items-center rounded-md ring-offset-2 ring-offset-background data-[on=true]:ring-2 data-[on=true]:ring-ring"
+                      data-on={color === c}
+                      style={{ backgroundColor: c }}
+                    >
+                      {color === c ? <Check className="size-3.5 text-white" /> : null}
+                    </button>
+                  ))}
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(event) => setColor(event.target.value)}
+                    className="ms-2 size-7 cursor-pointer rounded border bg-transparent"
+                    aria-label="Update the widget color used in widget"
+                  />
+                </div>
+              </Field>
+              <WidgetBubbleFields />
               <Field>
                 <FieldLabel htmlFor="welcome">Welcome Heading</FieldLabel>
                 <Input id="welcome" defaultValue="Marhaba! 👋" placeholder="Hi there !" />
@@ -99,7 +135,7 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
                 <FieldLabel htmlFor="tagline">Welcome Tagline</FieldLabel>
                 <Textarea
                   id="tagline"
-                  defaultValue="Book an appointment, ask about our clinics in Doha, or share your feedback."
+                  defaultValue="Ask about your project, billing or our API, or share your feedback."
                   placeholder="We make it simple to connect with us. Ask us anything, or share your feedback."
                 />
               </Field>
@@ -116,10 +152,10 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
           ) : null}
           <Field>
             <FieldLabel htmlFor="help-center">Help Center</FieldLabel>
-            <NativeSelect id="help-center" className="w-full" defaultValue="patients">
+            <NativeSelect id="help-center" className="w-full" defaultValue="docs">
               <option value="">None</option>
-              <option value="patients">Patient Guide (Doha)</option>
-              <option value="insurance">Insurance FAQ</option>
+              <option value="docs">Weblabs Studio Help Center</option>
+              <option value="api">Weblabs Developer Docs</option>
             </NativeSelect>
             <FieldDescription>Attach a Help Center with the inbox</FieldDescription>
           </Field>
@@ -127,11 +163,25 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
       </Section>
       <Section title="Channel Preferences">
         <div className="grid max-w-2xl gap-4">
-          <ToggleRow
-            label="Enable channel greeting"
-            help="Auto-send greeting messages when customers start a conversation and send their first message."
-            defaultChecked
-          />
+          <Field orientation="horizontal" className="items-start">
+            <Switch id="greeting-toggle" checked={greeting} onCheckedChange={setGreeting} />
+            <div className="grid gap-1">
+              <FieldLabel htmlFor="greeting-toggle">Enable channel greeting</FieldLabel>
+              <FieldDescription>
+                Auto-send greeting messages when customers start a conversation and send their first message.
+              </FieldDescription>
+            </div>
+          </Field>
+          {greeting ? (
+            <Field>
+              <FieldLabel htmlFor="greeting-message">Channel greeting message</FieldLabel>
+              <Textarea
+                id="greeting-message"
+                placeholder="Acme Inc typically replies in a few hours."
+                defaultValue="Thanks for writing to Weblabs Studio. We typically reply in a few minutes."
+              />
+            </Field>
+          ) : null}
           {isWebsite ? (
             <ToggleRow
               label="Enable email collect box"
@@ -148,8 +198,15 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
             label="Enable conversation continuity via email"
             help="Conversations will continue over email if the contact email address is available."
           />
+          {isWebsite ? null : (
+            <ToggleRow
+              label="Lock to single conversation"
+              help="Enable or disable multiple conversations for the same contact in this inbox"
+            />
+          )}
         </div>
       </Section>
+      {isWebsite || inbox.channel === "email" ? <SenderNameSection inboxName={inbox.name} /> : null}
       {isWebsite ? (
         <Section title="Widget features">
           <div className="grid gap-3">
@@ -167,7 +224,13 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
         </Section>
       ) : null}
       <div className="px-6 py-5">
-        <Button size="sm">Update</Button>
+        <Button
+          size="sm"
+          disabled={nameError}
+          onClick={() => toast.success("Inbox settings updated successfully")}
+        >
+          Update
+        </Button>
       </div>
     </>
   );
@@ -175,65 +238,24 @@ function SettingsTab({ inbox }: { inbox: Inbox }) {
 
 function CollaboratorsTab({ inbox }: { inbox: Inbox }) {
   const [value, setValue] = React.useState(inbox.agents);
-  const [auto, setAuto] = React.useState(inbox.autoAssign);
   return (
     <>
       <Section title="Agents" description="Add or remove agents from this inbox">
         <div className="grid max-w-2xl gap-3">
           <AgentMultiSelect value={value} onChange={setValue} />
+          {value.length === 0 ? <FieldError>Please pick at least one agent</FieldError> : null}
           <div>
-            <Button size="sm">Update</Button>
+            <Button
+              size="sm"
+              disabled={value.length === 0}
+              onClick={() => toast.success("Agents updated successfully")}
+            >
+              Update
+            </Button>
           </div>
         </div>
       </Section>
-      <Section
-        title="Conversation Assignment"
-        description="Automatically assign incoming conversations to available agents based on assignment policies"
-      >
-        <div className="grid max-w-2xl gap-4">
-          <Field orientation="horizontal" className="items-start">
-            <Switch id="auto-assign" checked={auto} onCheckedChange={setAuto} />
-            <FieldLabel htmlFor="auto-assign">Enable automatic conversation assignment</FieldLabel>
-          </Field>
-          {auto ? (
-            <div className="grid gap-3 rounded-lg border p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="grid gap-0.5">
-                  <span className="font-medium text-sm">Default assignment rules</span>
-                  <span className="text-muted-foreground text-xs">
-                    Using the default assignment behavior for all conversations
-                  </span>
-                </div>
-                <Badge variant="secondary">Default policy linked</Badge>
-              </div>
-              <p className="text-muted-foreground text-sm">Currently using default assignment behavior:</p>
-              <ul className="grid gap-1.5 text-sm">
-                <li className="flex items-center gap-2">
-                  <Check className="size-3.5 text-primary" /> Earliest created conversations first
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="size-3.5 text-primary" /> Round robin distribution
-                </li>
-              </ul>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button variant="outline" size="sm">
-                  Link existing policy
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/settings/assignment-policy/assignment/new">Create new policy</Link>
-                </Button>
-              </div>
-            </div>
-          ) : null}
-          <Field>
-            <FieldLabel htmlFor="limit">Auto assignment limit</FieldLabel>
-            <Input id="limit" type="number" defaultValue={12} className="max-w-40" />
-            <FieldDescription>
-              Limit the maximum number of conversations from this inbox that can be auto assigned to an agent
-            </FieldDescription>
-          </Field>
-        </div>
-      </Section>
+      <AssignmentSection inbox={inbox} />
     </>
   );
 }
@@ -245,7 +267,7 @@ function ConfigurationTab({ inbox }: { inbox: Inbox }) {
         <Section title="Messenger Script" description="Place this button inside your body tag">
           <pre className="overflow-x-auto rounded-lg border bg-muted/40 p-4 font-mono text-xs leading-relaxed">{`<script>
   (function(d,t) {
-    var BASE_URL="https://chat.alrayyan-clinics.qa";
+    var BASE_URL="https://chat.weblabs.studio";
     var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
     g.src=BASE_URL+"/packs/js/sdk.js"; g.async = true;
     s.parentNode.insertBefore(g,s);
@@ -260,7 +282,7 @@ function ConfigurationTab({ inbox }: { inbox: Inbox }) {
           <div className="grid max-w-2xl gap-4">
             <Input
               placeholder="example.com, www.example.com, app.example.com"
-              defaultValue="alrayyan-clinics.qa, www.alrayyan-clinics.qa"
+              defaultValue="weblabs.studio, www.weblabs.studio"
             />
             <ToggleRow
               label="Enable widget in mobile apps"
@@ -271,53 +293,51 @@ function ConfigurationTab({ inbox }: { inbox: Inbox }) {
             </div>
           </div>
         </Section>
-        <Section
-          title="Identity Validation"
-          description="Verify user authenticity by generating secure tokens. This prevents unauthorized users from impersonating others in your chat."
-        >
-          <div className="grid max-w-2xl gap-4">
-            <Field>
-              <FieldLabel>Secret Key</FieldLabel>
-              <CopyField value="••••••••••••••••••••••••" />
-            </Field>
-            <ToggleRow
-              label="Require identity validation for all conversations"
-              help="When enabled, users must provide a valid identity token to start conversations. Requests without valid tokens will be rejected."
-            />
-          </div>
-        </Section>
+        <HmacSection />
       </>
     );
   }
-  if (inbox.channel === "email") {
-    return (
-      <Section
-        title="Forward to Email"
-        description="Start forwarding your emails to the following email address."
-      >
-        <CopyField value="b7f2c91e4a@inbound.alrayyan-clinics.qa" />
-      </Section>
-    );
-  }
-  return (
-    <>
-      <Section
-        title="Inbox Identifier"
-        description="Use the `inbox_identifier` token shown here to authentication your API clients."
-      >
-        <CopyField value="Zp4kQm8RwT2vXy6N" />
-      </Section>
-      <Section
-        title="Webhook Verification Token"
-        description="This token is used to verify the authenticity of the webhook endpoint."
-      >
-        <CopyField value="••••••••••••••••" />
-      </Section>
-    </>
-  );
+  if (inbox.channel === "email") return <EmailConfiguration />;
+  if (inbox.channel === "api") return <ApiConfiguration />;
+  if (inbox.channel === "line") return <CallbackConfiguration kind="line" />;
+  if (inbox.provider === "whatsapp_cloud") return <WhatsappConfiguration inbox={inbox} />;
+  if (inbox.provider === "twilio") return <CallbackConfiguration kind="twilio" />;
+  return null;
 }
 
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function DayRow({ day }: { day: string }) {
+  const [on, setOn] = React.useState(day !== "Friday");
+  const [allDay, setAllDay] = React.useState(false);
+  const short = day === "Saturday";
+  return (
+    <div className="flex flex-wrap items-center gap-4 px-4 py-3">
+      <label className="flex w-36 items-center gap-2 text-sm">
+        <Checkbox checked={on} onCheckedChange={(c) => setOn(c === true)} aria-label={`Enable availability for ${day}`} />
+        {day}
+      </label>
+      {!on ? (
+        <span className="text-muted-foreground text-sm">Unavailable</span>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {allDay ? (
+            <span className="w-[15.5rem] text-muted-foreground">Open all day</span>
+          ) : (
+            <>
+              <Input type="time" aria-label="From" defaultValue={short ? "10:00" : "08:00"} className="h-8 w-28" />
+              <span className="text-muted-foreground">-</span>
+              <Input type="time" aria-label="To" defaultValue={short ? "18:00" : "21:00"} className="h-8 w-28" />
+            </>
+          )}
+          <label className="ml-2 flex items-center gap-2 text-muted-foreground">
+            <Checkbox checked={allDay} onCheckedChange={(c) => setAllDay(c === true)} /> All-Day
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function BusinessHoursTab() {
   const [enabled, setEnabled] = React.useState(true);
@@ -340,7 +360,7 @@ function BusinessHoursTab() {
               <FieldLabel htmlFor="unavailable">Unavailable message for visitors</FieldLabel>
               <Textarea
                 id="unavailable"
-                defaultValue="We are closed right now. Our clinics in Doha open Sunday to Thursday, 8 AM to 9 PM."
+                defaultValue="We are away right now. Our team is online Sunday to Thursday, 8 AM to 9 PM (Doha time)."
               />
             </Field>
             <Field>
@@ -354,45 +374,31 @@ function BusinessHoursTab() {
             <div className="grid gap-2">
               <span className="font-medium text-sm">Set your weekly hours</span>
               <div className="divide-y rounded-lg border">
-                {days.map((day) => {
-                  const off = day === "Friday";
-                  const short = day === "Saturday";
-                  return (
-                    <div key={day} className="flex flex-wrap items-center gap-4 px-4 py-3">
-                      <label className="flex w-36 items-center gap-2 text-sm">
-                        <Checkbox defaultChecked={!off} aria-label="Enable availability for this day" />
-                        {day}
-                      </label>
-                      {off ? (
-                        <span className="text-muted-foreground text-sm">Unavailable</span>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Input type="time" defaultValue={short ? "10:00" : "08:00"} className="h-8 w-28" />
-                          <span className="text-muted-foreground">-</span>
-                          <Input type="time" defaultValue={short ? "18:00" : "21:00"} className="h-8 w-28" />
-                          <label className="ml-2 flex items-center gap-2 text-muted-foreground">
-                            <Checkbox /> All-Day
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {days.map((day) => (
+                  <DayRow key={day} day={day} />
+                ))}
               </div>
             </div>
           </>
         ) : null}
         <div>
-          <Button size="sm">Update business hours settings</Button>
+          <Button size="sm" onClick={() => toast.success("Business hours updated successfully")}>
+            Update business hours settings
+          </Button>
         </div>
       </div>
     </Section>
   );
 }
 
+const csatLabels = ["vip", "billing", "lead", "partner", "support"];
+
 function CsatTab() {
   const [enabled, setEnabled] = React.useState(true);
   const [display, setDisplay] = React.useState("emoji");
+  const [message, setMessage] = React.useState("Thank you for contacting Weblabs Studio. How was your experience today?");
+  const [buttonText, setButtonText] = React.useState("Rate us");
+  const [ruleLabels, setRuleLabels] = React.useState(["support", "billing"]);
   return (
     <Section
       title="Enable CSAT"
@@ -431,8 +437,45 @@ function CsatTab() {
             <Textarea
               id="csat-msg"
               placeholder="Please enter a message to show users with the form"
-              defaultValue="Thank you for contacting Al Rayyan Clinics. How was your experience today?"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
             />
+          </Field>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="csat-button">Button text</FieldLabel>
+              <Input id="csat-button" value={buttonText} onChange={(event) => setButtonText(event.target.value)} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="csat-lang">Language</FieldLabel>
+              <NativeSelect id="csat-lang" className="w-full" defaultValue="en">
+                <option value="en">English (en)</option>
+                <option value="ar">العربية (ar)</option>
+                <option value="fr">Français (fr)</option>
+              </NativeSelect>
+            </Field>
+          </div>
+          <Field>
+            <FieldLabel>Message preview</FieldLabel>
+            <div className="grid max-w-sm gap-3 rounded-xl border bg-muted/30 p-4">
+              <p className="text-sm">{message || "Please rate the conversation"}</p>
+              {display === "emoji" ? (
+                <div className="flex gap-2 text-2xl">
+                  {["😞", "😕", "😐", "🙂", "😍"].map((e) => (
+                    <span key={e}>{e}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex gap-1 text-amber-500">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star key={n} className="size-5 fill-current" />
+                  ))}
+                </div>
+              )}
+              <Button size="sm" variant="secondary" className="w-fit">
+                {buttonText || "Rate us"}
+              </Button>
+            </div>
           </Field>
           <Field>
             <FieldLabel>Survey rule</FieldLabel>
@@ -443,13 +486,40 @@ function CsatTab() {
                 <option value="not">does not contain</option>
               </NativeSelect>
               <span>any of the labels</span>
-              <Badge variant="outline">appointment</Badge>
-              <Badge variant="outline">billing</Badge>
+              {ruleLabels.map((l) => (
+                <Badge key={l} variant="outline" className="gap-1">
+                  {l}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${l}`}
+                    onClick={() => setRuleLabels((prev) => prev.filter((x) => x !== l))}
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              ))}
+              <NativeSelect
+                size="sm"
+                aria-label="Add label"
+                value=""
+                onChange={(event) => event.target.value && setRuleLabels((prev) => [...prev, event.target.value])}
+              >
+                <option value="">Add label</option>
+                {csatLabels
+                  .filter((l) => !ruleLabels.includes(l))
+                  .map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+              </NativeSelect>
             </div>
           </Field>
           <p className="text-muted-foreground text-xs">Note: CSAT surveys are sent only once per conversation</p>
           <div>
-            <Button size="sm">Update</Button>
+            <Button size="sm" onClick={() => toast.success("CSAT settings updated successfully")}>
+              Update
+            </Button>
           </div>
         </div>
       ) : null}
@@ -462,7 +532,7 @@ function PreChatFormTab() {
     { key: "emailAddress", label: "Email Id", placeholder: "Please enter your email address", type: "email", on: true, req: true },
     { key: "fullName", label: "Full name", placeholder: "Please enter your full name", type: "text", on: true, req: false },
     { key: "phoneNumber", label: "Phone number", placeholder: "Please enter your phone number", type: "text", on: true, req: false },
-    { key: "branch", label: "Preferred branch", placeholder: "Doha, Al Wakrah, or Lusail", type: "list", on: false, req: false },
+    { key: "projectType", label: "Project type", placeholder: "Website, mobile app or API", type: "list", on: false, req: false },
   ];
   return (
     <Section
@@ -482,7 +552,7 @@ function PreChatFormTab() {
           <Textarea
             id="pcm"
             placeholder="This message would be visible to the users along with the form"
-            defaultValue="Share a few details so we can route you to the right clinic."
+            defaultValue="Share a few details so we can route you to the right team."
           />
         </Field>
         <div className="grid gap-2">
@@ -530,88 +600,186 @@ function PreChatFormTab() {
   );
 }
 
-function BotConfigurationTab() {
+const inboxBots = [
+  { id: "2", name: "Order Status Bot" },
+  { id: "3", name: "Arabic FAQ Bot" },
+  { id: "4", name: "Lead Qualifier" },
+];
+
+function BotConfigurationTab({ inbox }: { inbox: Inbox }) {
+  const [connected, setConnected] = React.useState(inbox.channel === "website" || inbox.channel === "whatsapp" ? "2" : "");
+  const [selected, setSelected] = React.useState(connected);
   return (
     <Section
       title="Select an agent bot"
       description="Assign an Agent Bot to your inbox. They can handle initial conversations and transfer them to a live agent when necessary."
     >
       <div className="grid max-w-md gap-3">
-        <NativeSelect className="w-full" defaultValue="2">
+        <NativeSelect className="w-full" value={selected} onChange={(event) => setSelected(event.target.value)}>
           <option value="">Select bot</option>
-          <option value="1">Appointment Assistant</option>
-          <option value="2">Arabic FAQ Bot</option>
-          <option value="3">Insurance Checker</option>
+          {inboxBots.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
         </NativeSelect>
         <div className="flex gap-2">
-          <Button size="sm">Update</Button>
-          <Button size="sm" variant="outline" className="text-destructive">
-            Disconnect bot
+          <Button
+            size="sm"
+            disabled={!selected || selected === connected}
+            onClick={() => {
+              setConnected(selected);
+              toast.success("Successfully updated the agent bot.");
+            }}
+          >
+            Update
           </Button>
+          {connected ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              onClick={() => {
+                setConnected("");
+                setSelected("");
+                toast.success("Successfully disconnected the agent bot.");
+              }}
+            >
+              Disconnect bot
+            </Button>
+          ) : null}
         </div>
       </div>
     </Section>
   );
 }
 
+type TabKey = "settings" | "collaborators" | "hours" | "csat" | "prechat" | "configuration" | "bot" | "health" | "twilio-health" | "voice" | "calls";
+
+// Same tabs, same order and same conditions as Chatwoot Settings.vue tabs().
+function tabsFor(inbox: Inbox): { value: TabKey; label: string }[] {
+  const isWebsite = inbox.channel === "website";
+  const isCloud = inbox.provider === "whatsapp_cloud";
+  const isTwilioSms = inbox.provider === "twilio" && inbox.channel === "sms";
+  const hasConfiguration =
+    isWebsite ||
+    inbox.provider === "twilio" ||
+    inbox.channel === "line" ||
+    inbox.channel === "api" ||
+    inbox.channel === "email" ||
+    isCloud;
+  const tabs: { value: TabKey; label: string }[] = [
+    { value: "settings", label: "Settings" },
+    { value: "collaborators", label: "Collaborators" },
+    { value: "hours", label: "Business Hours" },
+    { value: "csat", label: "CSAT" },
+  ];
+  if (isWebsite) tabs.push({ value: "prechat", label: "Pre Chat Form" });
+  if (hasConfiguration) tabs.push({ value: "configuration", label: "Configuration" });
+  tabs.push({ value: "bot", label: "Bot Configuration" });
+  if (isCloud) tabs.push({ value: "health", label: "Account Health" });
+  if (isTwilioSms) tabs.push({ value: "twilio-health", label: "Account Health" });
+  if (isTwilioSms || inbox.channel === "voice") tabs.push({ value: "voice", label: "Voice" });
+  if (isCloud) tabs.push({ value: "calls", label: "Calls" });
+  return tabs;
+}
+
 export function InboxSettings({ inbox }: { inbox: Inbox }) {
   const channel = channelFor(inbox.channel);
   const Icon = channel.icon;
-  const isWebsite = inbox.channel === "website";
+  const tabs = tabsFor(inbox);
+  const [tab, setTab] = React.useState<TabKey>("settings");
+  const policy = assignmentPolicies.find((p) => p.inboxes.includes(inbox.id));
 
   return (
-    <Card className="gap-0 py-0">
-      <div className="flex flex-wrap items-center gap-3 border-b px-6 py-4">
-        <Button variant="ghost" size="icon-sm" aria-label="Back" asChild>
+    <div className="flex flex-col gap-4">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-muted-foreground text-sm">
+        <Link href="/dashboard/settings/inboxes" className="hover:text-foreground">
+          Inboxes
+        </Link>
+        <ChevronRight className="size-3.5" />
+        <span className="text-foreground">{inbox.name}</span>
+      </nav>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <Avatar className={`size-14 rounded-xl font-medium ${personToneClass(inbox.name)}`}>
+            <AvatarFallback className="rounded-xl text-base">{getInitials(inbox.name)}</AvatarFallback>
+          </Avatar>
+          <div className="grid gap-1">
+            <h1 className="text-3xl tracking-tight">{inbox.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+              <Badge variant="outline" className="gap-1.5 px-2 py-0.5 font-normal">
+                <Icon className="size-3" />
+                {channel.name}
+              </Badge>
+              <bdi dir="auto">{inbox.identifier}</bdi>
+            </div>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard/settings/inboxes">
-            <ArrowLeft />
+            <ArrowLeft /> All inboxes
           </Link>
         </Button>
-        <div className="grid size-9 place-items-center rounded-lg border bg-muted/50">
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
-        <div className="grid gap-0.5">
-          <h1 className="font-semibold text-lg leading-none">{inbox.name}</h1>
-          <span className="text-muted-foreground text-xs">
-            {channel.name}
-            {inbox.identifier ? ` · ${inbox.identifier}` : ""}
-          </span>
-        </div>
       </div>
-      <Tabs defaultValue="settings" className="gap-0">
-        <div className="overflow-x-auto overflow-y-hidden border-b px-6">
-          <TabsList variant="line" className="h-11">
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="collaborators">Collaborators</TabsTrigger>
-            <TabsTrigger value="configuration">Configuration</TabsTrigger>
-            {isWebsite ? <TabsTrigger value="hours">Business Hours</TabsTrigger> : null}
-            <TabsTrigger value="csat">CSAT</TabsTrigger>
-            {isWebsite ? <TabsTrigger value="prechat">Pre Chat Form</TabsTrigger> : null}
-            <TabsTrigger value="bot">Bot Configuration</TabsTrigger>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Agents" value={inbox.agents.length} hint="Agents who can see and answer this inbox" />
+        <StatCard
+          label="Auto assignment"
+          value={inbox.autoAssign ? "On" : "Off"}
+          hint={inbox.autoAssign ? "New conversations are assigned automatically" : "Agents pick conversations themselves"}
+        />
+        <StatCard label="Assignment policy" value={policy?.name ?? "Default"} hint={policy ? orderLabel[policy.order] : "Round robin distribution"} />
+        <StatCard label="Channel" value={channel.title} hint={channel.description} />
+      </div>
+
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="gap-4">
+        <div className="overflow-x-auto overflow-y-hidden">
+          <TabsList variant="line" className="w-full justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none">
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>
+                {t.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
-        <TabsContent value="settings">
-          <SettingsTab inbox={inbox} />
-        </TabsContent>
-        <TabsContent value="collaborators">
-          <CollaboratorsTab inbox={inbox} />
-        </TabsContent>
-        <TabsContent value="configuration">
-          <ConfigurationTab inbox={inbox} />
-        </TabsContent>
-        <TabsContent value="hours">
-          <BusinessHoursTab />
-        </TabsContent>
-        <TabsContent value="csat">
-          <CsatTab />
-        </TabsContent>
-        <TabsContent value="prechat">
-          <PreChatFormTab />
-        </TabsContent>
-        <TabsContent value="bot">
-          <BotConfigurationTab />
-        </TabsContent>
+        <Card className="gap-0 py-0">
+          <TabsContent value="settings">
+            <SettingsTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="collaborators">
+            <CollaboratorsTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="hours">
+            <BusinessHoursTab />
+          </TabsContent>
+          <TabsContent value="csat">
+            <CsatTab />
+          </TabsContent>
+          <TabsContent value="prechat">
+            <PreChatFormTab />
+          </TabsContent>
+          <TabsContent value="configuration">
+            <ConfigurationTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="bot">
+            <BotConfigurationTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="health">
+            <WhatsappHealthTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="twilio-health">
+            <TwilioHealthTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="voice">
+            <VoiceTab inbox={inbox} />
+          </TabsContent>
+          <TabsContent value="calls">
+            <CallsTab inbox={inbox} />
+          </TabsContent>
+        </Card>
       </Tabs>
-    </Card>
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 
-import { CapacityPolicyForm } from "../../_components/capacity-form";
+import { CapacityPolicyForm } from "../../_components/capacity-policy-form";
 import { capacityPolicies } from "../../_components/data";
 
 export const metadata: Metadata = {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { BotsList } from "./_components/bots-list";
+import { BotsPage } from "./_components/bots-page";
 
 export const metadata: Metadata = {
   title: "Bots",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <BotsList />;
+  return <BotsPage />;
 }

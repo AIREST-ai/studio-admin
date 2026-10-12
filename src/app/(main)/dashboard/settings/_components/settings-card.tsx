@@ -1,0 +1,66 @@
+"use client";
+// Studio card used by the form pages of settings (account, inbox settings tabs, assignment policies): the card
+// header holds the section title and line (Chatwoot SectionLayout), with an optional control at its end.
+import type * as React from "react";
+
+import { cn } from "cn";
+
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+
+export function SettingsCard({
+  title,
+  description,
+  action,
+  footer,
+  children,
+  className,
+  tone,
+}: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  tone?: "danger";
+}) {
+  return (
+    <Card className={cn(tone === "danger" && "border-destructive/30", className)}>
+      <CardHeader className={cn(children ? "border-b" : undefined)}>
+        <CardTitle className={cn("text-lg leading-none", tone === "danger" && "text-destructive")}>{title}</CardTitle>
+        {description ? (
+          <CardDescription className="max-w-2xl leading-relaxed">{description}</CardDescription>
+        ) : null}
+        {action ? <CardAction className="self-center">{action}</CardAction> : null}
+      </CardHeader>
+      {children ? <CardContent>{children}</CardContent> : null}
+      {footer ? <CardFooter className="border-t">{footer}</CardFooter> : null}
+    </Card>
+  );
+}
+
+/** Small Studio stat card (title, big number, line), as on the Overview page and the team page. */
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Card className="gap-2 py-4">
+      <CardHeader className="px-4">
+        <CardDescription className="flex items-center gap-2">
+          {Icon ? <Icon className="size-4" /> : null}
+          {label}
+        </CardDescription>
+        <CardTitle className="font-semibold text-2xl tabular-nums">{value}</CardTitle>
+      </CardHeader>
+      {hint ? <CardContent className="px-4 text-muted-foreground text-xs">{hint}</CardContent> : null}
+    </Card>
+  );
+}

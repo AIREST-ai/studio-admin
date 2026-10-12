@@ -4,9 +4,10 @@ import * as React from "react";
 import { cn } from "cn";
 import { Check, ChevronsUpDown, ExternalLink, Search, X } from "lucide-react";
 
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
 import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Dialog,
   DialogClose,
@@ -16,13 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getInitials } from "@/lib/utils";
 
-import { agents, toneFor } from "./data";
+import { agents } from "./data";
 
 /** Chatwoot BaseSettingsHeader, rebuilt with Studio components. */
 export function SettingsHeader({
@@ -132,6 +132,7 @@ export function ConfirmDeleteDialog({
   placeholder,
   confirmText,
   rejectText,
+  onConfirm,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -141,6 +142,7 @@ export function ConfirmDeleteDialog({
   placeholder: string;
   confirmText: string;
   rejectText: string;
+  onConfirm?: () => void;
 }) {
   const [value, setValue] = React.useState("");
   React.useEffect(() => {
@@ -159,7 +161,7 @@ export function ConfirmDeleteDialog({
             <Button variant="outline">{rejectText}</Button>
           </DialogClose>
           <DialogClose asChild>
-            <Button variant="destructive" disabled={value !== confirmValue}>
+            <Button variant="destructive" disabled={value !== confirmValue} onClick={onConfirm}>
               {confirmText}
             </Button>
           </DialogClose>
@@ -170,13 +172,7 @@ export function ConfirmDeleteDialog({
 }
 
 /** Small wizard step list used by Chatwoot's add-inbox and team flows. */
-export function WizardSteps({
-  steps,
-  current,
-}: {
-  steps: { title: string; body: string }[];
-  current: number;
-}) {
+export function WizardSteps({ steps, current }: { steps: { title: string; body: string }[]; current: number }) {
   return (
     <ol className="grid gap-1">
       {steps.map((step, index) => {
@@ -206,10 +202,12 @@ export function WizardSteps({
   );
 }
 
-export function AgentAvatar({ id, name, className }: { id: number; name: string; className?: string }) {
+// F159: the agent's own colour from the shared person palette, so Arham, Priya and Lina look the same here as in
+// Conversations, Contacts and Reports.
+export function AgentAvatar({ name, className }: { id: number; name: string; className?: string }) {
   return (
-    <Avatar className={cn("size-6", className)}>
-      <AvatarFallback className={cn("font-medium text-[10px]", toneFor(id))}>{getInitials(name)}</AvatarFallback>
+    <Avatar className={cn("size-6 font-medium", personToneClass(name), className)}>
+      <AvatarFallback className="text-[10px]">{getInitials(name)}</AvatarFallback>
     </Avatar>
   );
 }

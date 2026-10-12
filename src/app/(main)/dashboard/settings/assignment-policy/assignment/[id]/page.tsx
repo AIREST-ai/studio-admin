@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import type { Metadata } from "next";
 
-import { AssignmentPolicyForm } from "../../_components/assignment-form";
+import { AssignmentPolicyForm } from "../../_components/assignment-policy-form";
 import { assignmentPolicies } from "../../_components/data";
 
 export const metadata: Metadata = {

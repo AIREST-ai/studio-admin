@@ -105,66 +105,81 @@ export interface Inbox {
   identifier: string;
   agents: number[];
   autoAssign: boolean;
+  /** Chatwoot provider of the channel: decides which settings tabs show (Settings.vue tabs()). */
+  provider?: "whatsapp_cloud" | "twilio";
 }
 
+// F159: the six inboxes of Conversations (cw-data.ts inboxes), same names and addresses, in the same order, then
+// two settings-only examples (SMS, API).
 export const inboxes: Inbox[] = [
   {
     id: 1,
-    name: "Doha Website Chat",
-    channel: "website",
-    identifier: "www.alrayyan-clinics.qa",
-    agents: [1, 2, 3, 5],
-    autoAssign: true,
+    name: "Support Email",
+    channel: "email",
+    identifier: "support@weblabs.studio",
+    agents: [1, 2, 3, 4],
+    autoAssign: false,
   },
   {
     id: 2,
-    name: "WhatsApp Qatar",
-    channel: "whatsapp",
-    identifier: "+974 4412 7788",
-    agents: [1, 2, 4],
+    name: "Website Chat",
+    channel: "website",
+    identifier: "weblabs.studio",
+    agents: [1, 2, 3, 4, 5],
     autoAssign: true,
   },
   {
     id: 3,
-    name: "Support Email",
-    channel: "email",
-    identifier: "care@alrayyan-clinics.qa",
-    agents: [2, 3, 6],
-    autoAssign: false,
+    name: "WhatsApp Business",
+    channel: "whatsapp",
+    identifier: "+974 4400 1122",
+    agents: [1, 2, 4, 5],
+    autoAssign: true,
+    provider: "whatsapp_cloud",
   },
   {
     id: 4,
-    name: "Dubai Branch WhatsApp",
-    channel: "whatsapp",
-    identifier: "+971 4 388 1290",
-    agents: [4, 7],
+    name: "Instagram",
+    channel: "instagram",
+    identifier: "@weblabs.studio",
+    agents: [2, 5],
     autoAssign: true,
   },
   {
     id: 5,
-    name: "Instagram DMs",
-    channel: "instagram",
-    identifier: "@alrayyan.clinics",
-    agents: [5, 8],
+    name: "Facebook Page",
+    channel: "facebook",
+    identifier: "Weblabs Studio",
+    agents: [2, 3, 4],
     autoAssign: true,
   },
   {
     id: 6,
-    name: "Appointments SMS",
-    channel: "sms",
-    identifier: "+974 3300 1456",
-    agents: [1, 6],
+    name: "Phone",
+    channel: "voice",
+    identifier: "+974 4400 1100",
+    agents: [1, 3],
     autoAssign: false,
+    provider: "twilio",
   },
+  // F159 settings-a: two more channel types so every inbox settings tab can be opened (Twilio SMS and API).
   {
     id: 7,
-    name: "Riyadh Telegram",
-    channel: "telegram",
-    identifier: "@alrayyan_ksa_bot",
-    agents: [7, 8],
+    name: "SMS Alerts",
+    channel: "sms",
+    identifier: "+974 4400 1144",
+    agents: [2, 3],
+    autoAssign: true,
+    provider: "twilio",
+  },
+  {
+    id: 8,
+    name: "Mobile App API",
+    channel: "api",
+    identifier: "api.weblabs.studio",
+    agents: [1, 4, 5],
     autoAssign: true,
   },
-  { id: 8, name: "Booking API", channel: "api", identifier: "", agents: [3], autoAssign: false },
 ];
 
 export interface Agent {
@@ -174,15 +189,13 @@ export interface Agent {
   role: "Administrator" | "Agent";
 }
 
+// F159: the same five agents as Conversations (cw-data.ts), same ids, names and emails.
 export const agents: Agent[] = [
-  { id: 1, name: "Noura Al-Thani", email: "noura@alrayyan-clinics.qa", role: "Administrator" },
-  { id: 2, name: "Khalid Al-Kuwari", email: "khalid@alrayyan-clinics.qa", role: "Agent" },
-  { id: 3, name: "Mariam Al-Sulaiti", email: "mariam@alrayyan-clinics.qa", role: "Agent" },
-  { id: 4, name: "Omar Al-Mansoori", email: "omar@alrayyan-clinics.ae", role: "Agent" },
-  { id: 5, name: "Fatima Al-Marri", email: "fatima@alrayyan-clinics.qa", role: "Agent" },
-  { id: 6, name: "Yousef Al-Emadi", email: "yousef@alrayyan-clinics.qa", role: "Administrator" },
-  { id: 7, name: "Reem Al-Otaibi", email: "reem@alrayyan-clinics.sa", role: "Agent" },
-  { id: 8, name: "Hamad Al-Naimi", email: "hamad@alrayyan-clinics.qa", role: "Agent" },
+  { id: 1, name: "Arham Khan", email: "arham.khan@weblabs.studio", role: "Administrator" },
+  { id: 2, name: "Priya Nair", email: "priya.nair@weblabs.studio", role: "Agent" },
+  { id: 3, name: "Yousef Al-Harbi", email: "yousef.harbi@weblabs.studio", role: "Agent" },
+  { id: 4, name: "Lina Haddad", email: "lina.haddad@weblabs.studio", role: "Agent" },
+  { id: 5, name: "Ravi Menon", email: "ravi.menon@weblabs.studio", role: "Agent" },
 ];
 
 const tones = [

@@ -27,8 +27,8 @@ export const priorityLabel = { earliest_created: "Earliest created", longest_wai
 export const assignmentPolicies: AssignmentPolicy[] = [
   {
     id: 1,
-    name: "Qatar front desk",
-    description: "Even split across the Doha patient support agents during clinic hours.",
+    name: "Front desk",
+    description: "Even split of email, website chat and phone across the whole support team.",
     active: true,
     order: "round_robin",
     priority: "earliest_created",
@@ -40,7 +40,7 @@ export const assignmentPolicies: AssignmentPolicy[] = [
   {
     id: 2,
     name: "Billing queue",
-    description: "Longest-waiting insurance and invoice questions first.",
+    description: "WhatsApp billing and invoice questions, longest waiting first.",
     active: true,
     order: "balanced",
     priority: "longest_waiting",
@@ -51,15 +51,15 @@ export const assignmentPolicies: AssignmentPolicy[] = [
   },
   {
     id: 3,
-    name: "Gulf branches",
-    description: "Dubai and Riyadh WhatsApp and Telegram inboxes.",
+    name: "Social channels",
+    description: "Instagram and Facebook messages, paused while the social team is hiring.",
     active: false,
     order: "round_robin",
     priority: "longest_waiting",
     maxPerAgent: 60,
     window: 120,
     staleDays: 7,
-    inboxes: [4, 7],
+    inboxes: [4, 5],
   },
 ];
 
@@ -67,26 +67,29 @@ export const capacityPolicies: CapacityPolicy[] = [
   {
     id: 1,
     name: "Full-time agents",
-    description: "Standard workload for full-time patient support staff.",
+    description: "Standard workload for full-time support agents.",
     limits: [
       { inbox: 1, max: 8 },
       { inbox: 2, max: 10 },
       { inbox: 3, max: 6 },
     ],
-    labels: ["vip", "follow-up"],
+    labels: ["vip", "partner"],
     excludeOlderThan: 48,
-    agents: [1, 2, 3, 5],
+    agents: [1, 2, 3],
   },
   {
     id: 2,
     name: "Part-time & weekend",
-    description: "Lower caps for Saturday shift and part-time agents.",
+    description: "Lower caps for the weekend shift and part-time agents.",
     limits: [
       { inbox: 1, max: 4 },
       { inbox: 5, max: 5 },
     ],
-    labels: ["spam"],
+    labels: ["lead"],
     excludeOlderThan: 24,
-    agents: [7, 8],
+    agents: [4],
   },
 ];
+
+// Labels of the account, the same five as Contacts and Conversations (studio-ui.tsx labelTones).
+export const accountLabels = ["vip", "billing", "lead", "partner", "support"];

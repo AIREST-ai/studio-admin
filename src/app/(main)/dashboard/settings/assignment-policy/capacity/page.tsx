@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
-import { PolicyList } from "../_components/policy-list";
+import { PoliciesTable } from "../_components/policies-table";
 
 export const metadata: Metadata = {
   title: "Agent capacity",
 };
 
 export default function Page() {
-  return <PolicyList kind="capacity" />;
+  return <PoliciesTable kind="capacity" />;
 }
