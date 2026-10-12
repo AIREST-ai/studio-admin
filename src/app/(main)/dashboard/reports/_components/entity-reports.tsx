@@ -4,7 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { ArrowDownUp, Camera, Globe, Inbox, Mail, MessageCircle, Search, Tag, Users } from "lucide-react";
+import { cn } from "cn";
+import { differenceInDays } from "date-fns";
+import { ArrowDownUp, Search, Tag, Users } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,31 +14,38 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getInitials } from "@/lib/utils";
 
-import { type EntityKind, entities, entityMeta, entityMetrics, type SummaryRow } from "./data";
-import { DownloadButton, MetricChartsGrid, ReportFilters, ReportHeader } from "./report-ui";
+import { ChannelIcon } from "@/app/(main)/dashboard/chat/_components/cw-ui";
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 
-const inboxIcon: Record<string, React.ComponentType<{ className?: string }>> = {
-  WhatsApp: MessageCircle,
-  Website: Globe,
-  Email: Mail,
-  Instagram: Camera,
+import { type EntityKind, entities, entityMeta, entityMetrics, entityTrends, type SummaryRow } from "./data";
+import { type PeriodState, ReportPeriodProvider, usePeriod } from "./report-period";
+import { DownloadButton, MetricChartsGrid, MetricKpis, ReportFilters, ReportHeader } from "./report-ui";
+
+// F159: the same channel icons as the conversation list (channel type -> inbox channel id).
+const inboxChannel: Record<string, string> = {
+  Email: "email",
+  Website: "chat",
+  WhatsApp: "whatsapp",
+  Instagram: "instagram",
+  Facebook: "facebook",
+  Voice: "phone",
 };
 
 function EntityCell({ kind, row }: { kind: EntityKind; row: SummaryRow }) {
   let media: React.ReactNode;
   if (kind === "agents") {
+    // F159: the agent's own initials colour, as in the conversations and Settings > Teams.
     media = (
-      <Avatar className="size-7">
+      <Avatar className={cn("size-7 font-medium", personToneClass(row.name))}>
         <AvatarFallback className="text-[10px]">{getInitials(row.name)}</AvatarFallback>
       </Avatar>
     );
   } else if (kind === "labels") {
     media = <span className="size-3 rounded-sm" style={{ backgroundColor: row.color }} />;
   } else if (kind === "inboxes") {
-    const Icon = inboxIcon[row.subtitle ?? ""] ?? Inbox;
     media = (
       <span className="flex size-7 items-center justify-center rounded-md bg-muted">
-        <Icon className="size-3.5" />
+        <ChannelIcon channel={inboxChannel[row.subtitle ?? ""] ?? "chat"} />
       </span>
     );
   } else {
@@ -59,19 +68,61 @@ function EntityCell({ kind, row }: { kind: EntityKind; row: SummaryRow }) {
 
 type SortKey = "name" | "conversations" | "resolutionCount";
 
+// "1h 04m", "4m 50s", "52m 10s" -> minutes.
+function parseMinutes(text: string) {
+  let m = 0;
+  for (const [, n, u] of text.matchAll(/(\d+)\s*([dhms])/g)) {
+    const v = Number(n);
+    m += u === "d" ? v * 1440 : u === "h" ? v * 60 : u === "m" ? v : v / 60;
+  }
+  return m;
+}
+
+function shortDuration(minutes: number) {
+  const s = Math.round(minutes * 60);
+  if (s >= 3600) return `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}m`;
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+// The sample rows are for the last 7 days; another range scales the counts and moves the times a little.
+function scaleRow(row: SummaryRow, period: PeriodState): SummaryRow {
+  if (!period.salt) return row;
+  const days = differenceInDays(period.to, period.from) + 1;
+  const hours = period.businessHours ? 0.72 : 1;
+  const k = (days / 7) * hours;
+  const wobble = 1 + (((period.salt + Number(row.id) * 13) % 21) - 10) / 100;
+  return {
+    ...row,
+    conversations: Math.max(0, Math.round(row.conversations * k)),
+    resolutionCount: Math.max(0, Math.round(row.resolutionCount * k)),
+    avgFirstResponse: shortDuration(parseMinutes(row.avgFirstResponse) * wobble * hours),
+    avgResolution: shortDuration(parseMinutes(row.avgResolution) * wobble * hours),
+    avgReply: shortDuration(parseMinutes(row.avgReply) * wobble * hours),
+  };
+}
+
 export function EntitySummary({ kind }: { kind: EntityKind }) {
+  return (
+    <ReportPeriodProvider showGroupBy={false}>
+      <EntitySummaryBody kind={kind} />
+    </ReportPeriodProvider>
+  );
+}
+
+function EntitySummaryBody({ kind }: { kind: EntityKind }) {
   const meta = entityMeta[kind];
+  const period = usePeriod();
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState<SortKey>("conversations");
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = entities[kind].filter((r) => !q || r.name.toLowerCase().includes(q));
+    const list = entities[kind].filter((r) => !q || r.name.toLowerCase().includes(q)).map((r) => scaleRow(r, period));
     return [...list].sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b[sort] - a[sort]));
-  }, [kind, query, sort]);
+  }, [kind, query, sort, period]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="@container/main flex flex-col gap-4 md:gap-6">
       <ReportHeader title={meta.header} description={meta.description}>
         <DownloadButton label={meta.download} />
       </ReportHeader>
@@ -158,34 +209,76 @@ export function EntitySummary({ kind }: { kind: EntityKind }) {
   );
 }
 
+// WootReports.vue with a selected item: back button, entity chip with search, date range, Group By, Business Hours,
+// then one chart per metric. The sample row (last 7 days) sets the daily level, so the charts agree with the table.
 export function EntityDetail({ kind, row }: { kind: EntityKind; row: SummaryRow }) {
+  return (
+    <ReportPeriodProvider>
+      <EntityDetailBody kind={kind} row={row} />
+    </ReportPeriodProvider>
+  );
+}
+
+// Every total is anchored to the summary row for the same period (scaleRow), so the detail page and the
+// Overview table always show the same numbers.
+function EntityDetailBody({ kind, row }: { kind: EntityKind; row: SummaryRow }) {
   const meta = entityMeta[kind];
   const router = useRouter();
-  const scale = row.conversations / 214;
-  const metrics = entityMetrics.map((m) => {
-    if (m.key === "conversations") return { ...m, total: String(row.conversations), base: Math.round(m.base * scale) };
-    if (m.key === "resolutionCount") return { ...m, total: String(row.resolutionCount), base: Math.round(m.base * scale) };
-    if (m.key === "incoming" || m.key === "outgoing") {
-      const v = Math.round(Number(m.total.replace(",", "")) * scale);
-      return { ...m, total: v.toLocaleString("en-US"), base: Math.round(m.base * scale) };
+  const period = usePeriod();
+  const scaled = scaleRow(row, period);
+  const anchors: Record<string, number> = {
+    conversations: scaled.conversations,
+    resolutionCount: scaled.resolutionCount,
+    incoming: Math.round(scaled.conversations * 6),
+    outgoing: Math.round(scaled.conversations * 5.5),
+    firstResponse: parseMinutes(scaled.avgFirstResponse),
+    resolutionTime: parseMinutes(scaled.avgResolution),
+    replyTime: parseMinutes(scaled.avgReply),
+  };
+  const trends = entityTrends(kind, row.id);
+  const perDay = (n: number) => Math.max(1, Math.round(n / 7));
+  const counts: Record<string, number> = {
+    conversations: perDay(row.conversations),
+    resolutionCount: perDay(row.resolutionCount),
+    incoming: perDay(row.conversations * 6),
+    outgoing: perDay(row.conversations * 5.5),
+  };
+  const times: Record<string, string> = {
+    firstResponse: row.avgFirstResponse,
+    resolutionTime: row.avgResolution,
+    replyTime: row.avgReply,
+  };
+  // WootReports.vue reportKeys: an agent has no "Messages received" chart; inboxes, teams and labels have all seven.
+  const defs = kind === "agents" ? entityMetrics.filter((def) => def.key !== "incoming") : entityMetrics;
+  const metrics = defs.map((def) => {
+    const m = { ...def, trend: trends[def.key] ?? def.trend, anchor: anchors[def.key] };
+    if (m.key in counts) return { ...m, base: counts[m.key], spread: Math.max(2, Math.round(counts[m.key] * 0.6)) };
+    if (m.key in times) {
+      const minutes = parseMinutes(times[m.key]) || m.base;
+      return { ...m, base: minutes, spread: minutes * 0.7 };
     }
-    if (m.key === "firstResponse") return { ...m, total: row.avgFirstResponse };
-    if (m.key === "resolutionTime") return { ...m, total: row.avgResolution };
     return m;
   });
+  const seed = Number(row.id) + kind.length * 10;
 
   return (
-    <div className="flex flex-col gap-5">
-      <ReportHeader title={row.name} backHref={`/dashboard/reports/${kind}`}>
+    <div className="@container/main flex flex-col gap-4 md:gap-6">
+      <ReportHeader title={row.name} description={meta.header} backHref={`/dashboard/reports/${kind}`}>
         <DownloadButton label={meta.download} />
       </ReportHeader>
       <ReportFilters
         entityLabel={meta.select}
+        searchPlaceholder={meta.search}
         entityOptions={entities[kind].map((e) => ({ id: e.id, name: e.name }))}
         entityValue={row.id}
         onEntityChange={(id) => router.push(`/dashboard/reports/${kind}/${id}`)}
       />
-      <MetricChartsGrid metrics={metrics} seed={Number(row.id) + kind.length * 10} />
+      <MetricKpis
+        metrics={metrics}
+        seed={seed}
+        keys={["conversations", "firstResponse", "resolutionTime", "resolutionCount"]}
+      />
+      <MetricChartsGrid metrics={metrics} seed={seed} scope={{ kind, row }} />
     </div>
   );
 }
