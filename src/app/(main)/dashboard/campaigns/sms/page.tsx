@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { SMSCampaignsPage } from "../_components/campaign-pages";
+import { CampaignsList } from "../_components/campaigns-list";
 
 export const metadata: Metadata = {
   title: "SMS campaigns",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ empty?: string }> }) {
   const { empty } = await searchParams;
-  return <SMSCampaignsPage empty={empty !== undefined} />;
+  return <CampaignsList tab="sms" empty={empty !== undefined} />;
 }

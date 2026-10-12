@@ -183,10 +183,50 @@ export const whatsappInboxes = ["WhatsApp — +974 4410 2200", "WhatsApp — +97
 export const senders = ["Bot", "Noura Al-Kuwari", "Omar Al-Harthy", "Mariam Al-Sulaiti", "Faisal Al-Mutairi"];
 export const labels = ["customers", "vip", "leads", "appointments", "recent-orders", "dubai", "riyadh", "parents"];
 export const whatsappTemplates = [
-  { value: "white_friday_early", label: "White Friday Early (en)", category: "MARKETING", language: "en" },
-  { value: "delivery_feedback", label: "Delivery Feedback (en)", category: "UTILITY", language: "en" },
-  { value: "riyadh_season_tickets", label: "Riyadh Season Tickets (ar)", category: "MARKETING", language: "ar" },
+  {
+    value: "white_friday_early",
+    label: "White Friday Early (en)",
+    category: "MARKETING",
+    language: "en",
+    body: "Hi {{1}}, White Friday starts early for you! Shop 48 hours before everyone else.",
+    variables: ["1"],
+  },
+  {
+    value: "delivery_feedback",
+    label: "Delivery Feedback (en)",
+    category: "UTILITY",
+    language: "en",
+    body: "Your order has arrived. How was your delivery? Rate us from 1 to 5.",
+    variables: [] as string[],
+  },
+  {
+    value: "riyadh_season_tickets",
+    label: "Riyadh Season Tickets (ar)",
+    category: "MARKETING",
+    language: "ar",
+    body: "مرحباً {{1}}، تذاكر موسم الرياض متاحة الآن. احجز مقعدك قبل {{2}}.",
+    variables: ["1", "2"],
+  },
 ];
+
+// Chatwoot sends the Website inbox members as senders; each Website inbox here has its own team.
+export const inboxMembers: Record<string, string[]> = {
+  "Website — Doha": ["Noura Al-Kuwari", "Mariam Al-Sulaiti", "Faisal Al-Mutairi"],
+  "Website — Dubai": ["Omar Al-Harthy", "Faisal Al-Mutairi"],
+  "Website — Riyadh": ["Omar Al-Harthy", "Mariam Al-Sulaiti"],
+};
+
+export function formatSchedule(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 export type DeliveryStatus = "queued" | "sent" | "delivered" | "read" | "failed" | "skipped";
 
@@ -197,64 +237,94 @@ export interface Delivery {
   status: DeliveryStatus;
   message: string | null;
   reason: string | null;
+  code: number | null;
 }
 
-export const analyticsMetrics = {
-  audience: 1240,
-  sent: 1188,
-  delivered: 1102,
-  read: 846,
-  failed: 31,
-  skipped: 21,
-  queued: 12,
+// Delivery counts per WhatsApp campaign (mock). 23 is scheduled (pending state), 24 was sent before campaign
+// analytics existed (unavailable state), as in Chatwoot's analytics empty states.
+const deliveryPlan: Record<number, Record<DeliveryStatus, number>> = {
+  21: { read: 846, delivered: 256, sent: 74, queued: 12, failed: 31, skipped: 21 },
+  22: { read: 241, delivered: 98, sent: 0, queued: 0, failed: 9, skipped: 4 },
 };
 
-const people = [
-  ["Hamad Al-Marri", "+974 5501 2287"],
-  ["Aisha Al-Naimi", "+974 6612 9034"],
-  ["Rashid Al-Ketbi", "+971 50 118 4420"],
-  ["Latifa Al-Shamsi", "+971 55 902 1176"],
-  ["Abdullah Al-Qahtani", "+966 55 340 8812"],
-  ["Reem Al-Otaibi", "+966 50 771 2093"],
-  ["Jassim Al-Kuwari", "+974 3377 1450"],
-  ["Fatima Al-Hajri", "+974 5590 8821"],
-  ["Sultan Al-Dhaheri", "+971 52 664 3018"],
-  ["Huda Al-Ghamdi", "+966 54 228 9907"],
-  ["Yousef Al-Emadi", "+974 7001 4432"],
-  ["Shaikha Al-Mazrouei", "+971 56 330 7781"],
-] as const;
+export type AnalyticsState = "ready" | "pending" | "unavailable";
 
-const statuses: DeliveryStatus[] = [
-  "read",
-  "read",
-  "delivered",
-  "read",
-  "failed",
-  "delivered",
-  "sent",
-  "read",
-  "skipped",
-  "queued",
-  "read",
-  "delivered",
+export function analyticsState(id: number): AnalyticsState {
+  if (deliveryPlan[id]) return "ready";
+  return whatsappCampaigns.find((c) => c.id === id)?.status === "scheduled" ? "pending" : "unavailable";
+}
+
+const firstNames = [
+  "Hamad", "Aisha", "Rashid", "Latifa", "Abdullah", "Reem", "Jassim", "Fatima", "Sultan", "Huda", "Yousef",
+  "Shaikha", "Khalid", "Noura", "Majed", "Maryam", "Saeed", "Hessa", "Faisal", "Alya", "Tariq", "Dana",
+  "Nasser", "Moza", "Ahmed", "Sara", "Omar", "Lulwa", "Ali", "Amna",
 ];
+const lastNames = [
+  "Al-Marri", "Al-Naimi", "Al-Ketbi", "Al-Shamsi", "Al-Qahtani", "Al-Otaibi", "Al-Kuwari", "Al-Hajri",
+  "Al-Dhaheri", "Al-Ghamdi", "Al-Emadi", "Al-Mazrouei", "Al-Sulaiti", "Al-Mansoori", "Al-Harbi", "Al-Thani",
+  "Al-Suwaidi", "Al-Shehhi", "Al-Mutairi", "Al-Romaihi",
+];
+const phonePrefixes = ["+974 55", "+974 66", "+974 33", "+971 50", "+971 55", "+966 55", "+966 50"];
+const failures = [
+  { reason: "Message undeliverable", code: 131026 },
+  { reason: "Re-engagement message", code: 131047 },
+  { reason: "Spam rate limit hit", code: 131048 },
+  { reason: "Message failed to send because of an unknown error", code: 131000 },
+];
+const skips = ["Missing phone number", "Invalid phone number"];
 
-export const deliveries: Delivery[] = people.map(([name, phone], index) => {
-  const status = statuses[index];
+const deliveryCache = new Map<number, Delivery[]>();
+
+export function deliveriesFor(id: number): Delivery[] {
+  const cached = deliveryCache.get(id);
+  if (cached) return cached;
+  const plan = deliveryPlan[id];
+  const campaign = whatsappCampaigns.find((c) => c.id === id);
+  if (!plan || !campaign) return [];
+  // Interleave statuses so every page of "All" shows a realistic mix.
+  const remaining = { ...plan };
+  const order: DeliveryStatus[] = ["read", "delivered", "read", "sent", "read", "failed", "delivered", "queued", "skipped"];
+  const rows: Delivery[] = [];
+  let cursor = 0;
+  const total = Object.values(plan).reduce((a, b) => a + b, 0);
+  while (rows.length < total) {
+    const status = order[cursor % order.length];
+    cursor++;
+    if (remaining[status] <= 0) continue;
+    remaining[status]--;
+    const i = rows.length;
+    const name = `${firstNames[(i * 7) % firstNames.length]} ${lastNames[(i * 3 + Math.floor(i / 20)) % lastNames.length]}`;
+    const digits = String(1000000 + ((i * 7919 + id * 104729) % 9000000)).slice(1);
+    const skipped = status === "skipped";
+    const failure = failures[i % failures.length];
+    rows.push({
+      id: i + 1,
+      name,
+      phone: skipped && i % 2 === 0 ? "" : `${phonePrefixes[i % phonePrefixes.length]} ${digits.slice(0, 3)} ${digits.slice(3)}`,
+      status,
+      message:
+        status === "skipped" || status === "queued"
+          ? null
+          : campaign.message.replace("{{1}}", name.split(" ")[0]),
+      reason: status === "failed" ? failure.reason : skipped ? skips[i % 2] : null,
+      code: status === "failed" ? failure.code : null,
+    });
+  }
+  deliveryCache.set(id, rows);
+  return rows;
+}
+
+export function metricsFor(id: number) {
+  const plan = deliveryPlan[id] ?? { read: 0, delivered: 0, sent: 0, queued: 0, failed: 0, skipped: 0 };
+  const audience = Object.values(plan).reduce((a, b) => a + b, 0);
   return {
-    id: index + 1,
-    name,
-    phone: status === "skipped" ? "" : phone,
-    status,
-    message:
-      status === "skipped" || status === "queued"
-        ? null
-        : `Hi ${name.split(" ")[0]}, White Friday starts early for you! Shop 48 hours before everyone else.`,
-    reason:
-      status === "failed"
-        ? "Code 131026 · Message undeliverable"
-        : status === "skipped"
-          ? "Missing phone number"
-          : null,
+    audience,
+    sent: audience - plan.queued - plan.skipped,
+    delivered: plan.delivered + plan.read,
+    read: plan.read,
+    failed: plan.failed,
+    skipped: plan.skipped,
+    queued: plan.queued,
+    awaiting: plan.sent,
   };
-});
+}

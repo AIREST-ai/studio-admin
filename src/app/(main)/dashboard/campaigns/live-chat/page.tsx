@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LiveChatCampaignsPage } from "../_components/campaign-pages";
+import { CampaignsList } from "../_components/campaigns-list";
 
 export const metadata: Metadata = {
   title: "Live chat campaigns",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ empty?: string }> }) {
   const { empty } = await searchParams;
-  return <LiveChatCampaignsPage empty={empty !== undefined} />;
+  return <CampaignsList tab="live_chat" empty={empty !== undefined} />;
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { CampaignAnalytics } from "../../../_components/campaign-analytics";
+import { WhatsAppCampaignAnalytics } from "../../../_components/whatsapp-analytics";
 
 export const metadata: Metadata = {
   title: "Campaign analytics",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <CampaignAnalytics id={Number(id)} />;
+  return <WhatsAppCampaignAnalytics id={Number(id)} />;
 }

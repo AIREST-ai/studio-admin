@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { CallsList } from "./_components/calls-list";
+import { CallsTable } from "./_components/calls-table";
 
 export const metadata: Metadata = {
   title: "Calls",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ setup?: string }> }) {
   const { setup } = await searchParams;
-  return <CallsList setup={setup !== undefined} />;
+  return <CallsTable setup={setup !== undefined} />;
 }
