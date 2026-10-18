@@ -45,6 +45,8 @@ const SECTION_LABEL: Record<LinkSection, string> = {
   automation: "Automation",
   reports: "Reports",
   notifications: "Notifications",
+  helpCenter: "Help Center",
+  campaigns: "Campaigns",
 };
 
 function StatusLines({

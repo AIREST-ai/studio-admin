@@ -19,6 +19,8 @@ const PREVIEW: LinkState = {
     automation: false,
     reports: false,
     notifications: false,
+    helpCenter: false,
+    campaigns: false,
   },
   changedAt: null,
   disabled: false,

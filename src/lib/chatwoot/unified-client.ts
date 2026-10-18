@@ -224,6 +224,14 @@ export type RoutesRbPaths = {
   /** routes.rb:260 resources :csat_survey_responses (index, metrics) */
   "/csat_survey_responses": RbItem<RbGetNoPath>;
   "/csat_survey_responses/metrics": RbItem<RbGetNoPath>;
+  /** V-15: routes.rb resources :portals, :portals do resources :articles, :categories (read-only GET) */
+  "/portals": RbItem<RbGetNoPath>;
+  "/portals/{id}": RbItem<RbGet<Id>>;
+  "/portals/{portal_id}/articles": RbItem<RbGet<{ portal_id: number }>>;
+  "/portals/{portal_id}/categories": RbItem<RbGet<{ portal_id: number }>>;
+  /** V-15: routes.rb resources :campaigns (read-only GET) */
+  "/campaigns": RbItem<RbGetNoPath>;
+  "/campaigns/{id}": RbItem<RbGet<Id>>;
 };
 
 /** Every path the gateway answers, typed: the generated ones it allows plus the routes.rb ones. */

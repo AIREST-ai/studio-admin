@@ -780,3 +780,173 @@ export function toDirectoryContact(value: unknown): DirectoryContact {
 export function toDirectoryContacts(rawContacts: unknown[]): DirectoryContact[] {
   return rawContacts.filter((c) => num(obj(c).id) !== null).map((c) => toDirectoryContact(c));
 }
+
+/* ------------------------------------------------------------------ V-15 Portal & Campaign Mappers ----------------- */
+
+export interface LinkedPortal {
+  id: number;
+  name: string;
+  slug: string;
+  customDomain: string;
+  color: string;
+  pageTitle: string;
+  headerText: string;
+  homePageLink: string;
+  articles: number;
+}
+
+export interface LinkedArticle {
+  id: number;
+  title: string;
+  status: "published" | "draft" | "archived";
+  authorId: number;
+  categoryId: number | null;
+  views: number;
+  updated: string;
+  locale?: string;
+  metaDescription?: string;
+  metaTags?: string[];
+}
+
+export interface LinkedCategory {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  description: string;
+  articles: number;
+}
+
+export interface LinkedCampaign {
+  id: number;
+  title: string;
+  message: string;
+  enabled: boolean;
+  sender: string | null;
+  inbox: string;
+  url: string;
+  timeOnPage: number;
+  businessHoursOnly: boolean;
+}
+
+export function toPortal(value: unknown): LinkedPortal {
+  const raw = obj(value);
+  const id = num(raw.id) ?? 0;
+  return {
+    id,
+    name: str(raw.name) ?? `Portal ${id}`,
+    slug: str(raw.slug) ?? `portal-${id}`,
+    customDomain: str(raw.custom_domain) ?? "",
+    color: str(raw.color) ?? "#6366f1",
+    pageTitle: str(raw.page_title) ?? str(raw.name) ?? "Help Center",
+    headerText: str(raw.header_text) ?? "",
+    homePageLink: str(raw.home_page_link) ?? "",
+    articles: num(raw.articles_count) ?? 0,
+  };
+}
+
+export function toPortals(rawPayload: unknown): LinkedPortal[] {
+  const payload = Array.isArray(rawPayload)
+    ? rawPayload
+    : Array.isArray(obj(rawPayload).payload)
+      ? (obj(rawPayload).payload as unknown[])
+      : [];
+  return payload.filter((p) => num(obj(p).id) !== null).map((p) => toPortal(p));
+}
+
+export function toArticle(value: unknown): LinkedArticle {
+  const raw = obj(value);
+  const id = num(raw.id) ?? 0;
+  const author = obj(raw.author);
+  const category = obj(raw.category);
+  const createdSec = toUnixSeconds(raw.updated_at) ?? toUnixSeconds(raw.created_at) ?? 0;
+  const updated =
+    createdSec > 0
+      ? relativeTimeLabel(createdSec)
+      : iso(raw.updated_at)
+        ? new Date(iso(raw.updated_at)!).toLocaleDateString()
+        : "Just now";
+
+  const statusRaw = num(raw.status) ?? 0;
+  const status: LinkedArticle["status"] = statusRaw === 0 ? "draft" : statusRaw === 1 ? "published" : "archived";
+
+  const metaObj = obj(raw.meta);
+  return {
+    id,
+    title: str(raw.title) ?? `Article ${id}`,
+    status,
+    authorId: num(author.id) ?? num(raw.author_id) ?? 1,
+    categoryId: num(category.id) ?? num(raw.category_id) ?? null,
+    views: num(raw.views) ?? 0,
+    updated,
+    locale: str(raw.locale) ?? undefined,
+    metaDescription: str(metaObj.description) ?? str(raw.meta_description) ?? undefined,
+    metaTags: Array.isArray(metaObj.tags)
+      ? metaObj.tags.filter((t): t is string => typeof t === "string")
+      : Array.isArray(raw.meta_tags)
+        ? raw.meta_tags.filter((t): t is string => typeof t === "string")
+        : undefined,
+  };
+}
+
+export function toArticles(rawPayload: unknown): LinkedArticle[] {
+  const payload = Array.isArray(rawPayload)
+    ? rawPayload
+    : Array.isArray(obj(rawPayload).payload)
+      ? (obj(rawPayload).payload as unknown[])
+      : [];
+  return payload.filter((a) => num(obj(a).id) !== null).map((a) => toArticle(a));
+}
+
+export function toCategory(value: unknown): LinkedCategory {
+  const raw = obj(value);
+  const id = num(raw.id) ?? 0;
+  return {
+    id,
+    name: str(raw.name) ?? `Category ${id}`,
+    slug: str(raw.slug) ?? str(raw.locale) ?? `category-${id}`,
+    icon: str(raw.icon) ?? "📄",
+    description: str(raw.description) ?? "",
+    articles: num(raw.articles_count) ?? 0,
+  };
+}
+
+export function toCategories(rawPayload: unknown): LinkedCategory[] {
+  const payload = Array.isArray(rawPayload)
+    ? rawPayload
+    : Array.isArray(obj(rawPayload).payload)
+      ? (obj(rawPayload).payload as unknown[])
+      : [];
+  return payload.filter((c) => num(obj(c).id) !== null).map((c) => toCategory(c));
+}
+
+export function toCampaign(value: unknown): LinkedCampaign {
+  const raw = obj(value);
+  const id = num(raw.id) ?? num(raw.display_id) ?? 0;
+  const inbox = obj(raw.inbox);
+  return {
+    id,
+    title: str(raw.title) ?? `Campaign ${id}`,
+    message: str(raw.message) ?? "",
+    enabled: raw.enabled !== false && raw.campaign_status !== "disabled",
+    sender: str(obj(raw.sender).name) ?? str(raw.campaign_sender_name) ?? null,
+    inbox: str(inbox.name) ?? str(raw.inbox_name) ?? "Website Chat",
+    url: str(raw.trigger_url) ?? str(raw.url) ?? "",
+    timeOnPage: num(raw.trigger_time_on_page) ?? num(raw.time_on_page) ?? 10,
+    businessHoursOnly: raw.trigger_only_during_business_hours === true || raw.business_hours_only === true,
+  };
+}
+
+export function toCampaigns(rawPayload: unknown): LinkedCampaign[] {
+  const payload = Array.isArray(rawPayload)
+    ? rawPayload
+    : Array.isArray(obj(rawPayload).payload)
+      ? (obj(rawPayload).payload as unknown[])
+      : [];
+  return payload
+    .filter((c) => {
+      const id = num(obj(c).id) ?? num(obj(c).display_id);
+      return id !== null;
+    })
+    .map((c) => toCampaign(c));
+}

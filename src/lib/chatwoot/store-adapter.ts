@@ -29,6 +29,8 @@ import {
   replaceConversations,
   restorePreviewConversations,
 } from "@/app/(main)/chat/_components/data";
+import type { LiveChatCampaign, OneOffCampaign } from "@/app/(main)/dashboard/campaigns/_components/data";
+import { useCampaignsSave, useCampaignsStore } from "@/app/(main)/dashboard/campaigns/_components/store";
 import {
   baseConversations,
   type ConversationMeta,
@@ -63,6 +65,12 @@ import {
   useContactsStore,
 } from "@/app/(main)/dashboard/contacts/_components/contacts-store";
 import type { Contact as DirectoryContact } from "@/app/(main)/dashboard/contacts/_components/data";
+import type { Article, Category, Locale, Portal } from "@/app/(main)/dashboard/help-center/_components/data";
+// V-15: Help Center and Campaigns live data binding
+import {
+  replaceHelpCenterData,
+  restorePreviewHelpCenter,
+} from "@/app/(main)/dashboard/help-center/_components/hc-store";
 import type {
   InboxNotification,
   NotificationType,
@@ -72,10 +80,14 @@ import {
   showLinkedNotifications,
 } from "@/app/(main)/dashboard/notifications/_components/notifications-store";
 import {
+  toArticles,
+  toCampaigns,
+  toCategories,
   toCwMessage,
   toCwMessages,
   toDirectoryContact,
   toDirectoryContacts,
+  toPortals,
   toSharedAgents,
   toSharedCanned,
   toSharedInboxes,
@@ -1400,6 +1412,148 @@ function installLinkedAdapters() {
   });
 }
 
+/* ------------------------------------------------------------------ V-15: Help Center & Campaigns Live Data ------ */
+
+async function fetchLinkedPortalsData(): Promise<{
+  portals: Portal[];
+  articles: Article[];
+  categories: Category[];
+  locales: Locale[];
+}> {
+  const empty = {
+    portals: [] as Portal[],
+    articles: [] as Article[],
+    categories: [] as Category[],
+    locales: [] as Locale[],
+  };
+
+  try {
+    // Fetch portals list
+    const portalsRes = await unifiedCw.GET("/portals");
+    if (portalsRes.error || !portalsRes.data) return empty;
+
+    const linkedPortals = toPortals(portalsRes.data);
+    if (linkedPortals.length === 0) return empty;
+
+    // Map LinkedPortal to the shape the UI expects (Portal from data.ts)
+    const portals: Portal[] = linkedPortals.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      customDomain: p.customDomain,
+      articles: p.articles,
+      color: p.color,
+      pageTitle: p.pageTitle,
+      headerText: p.headerText,
+      homePageLink: p.homePageLink,
+    }));
+
+    // Use the first portal for fetching articles and categories
+    const portalId = linkedPortals[0].id;
+
+    const [articlesRes, categoriesRes] = await Promise.all([
+      unifiedCw.GET("/portals/{portal_id}/articles", { params: { path: { portal_id: portalId } } }),
+      unifiedCw.GET("/portals/{portal_id}/categories", { params: { path: { portal_id: portalId } } }),
+    ]);
+
+    const linkedArticles = articlesRes.data && !articlesRes.error ? toArticles(articlesRes.data) : [];
+    const linkedCategories = categoriesRes.data && !categoriesRes.error ? toCategories(categoriesRes.data) : [];
+
+    const articles: Article[] = linkedArticles.map((a) => ({
+      id: a.id,
+      title: a.title,
+      status: a.status as Article["status"],
+      authorId: a.authorId,
+      categoryId: a.categoryId,
+      views: a.views,
+      updated: a.updated,
+      locale: a.locale,
+      metaDescription: a.metaDescription,
+      metaTags: a.metaTags,
+    }));
+
+    const categories: Category[] = linkedCategories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon,
+      description: c.description,
+      articles: c.articles,
+    }));
+
+    // Build locales from articles
+    const localeSet = new Map<string, { code: string; name: string; count: number; catCount: number }>();
+    for (const a of linkedArticles) {
+      const code = a.locale ?? "en";
+      const name = code === "en" ? "English" : code === "ar" ? "Arabic" : code === "ur" ? "Urdu" : code;
+      const entry = localeSet.get(code);
+      if (entry) {
+        entry.count++;
+      } else {
+        localeSet.set(code, { code, name, count: 1, catCount: 0 });
+      }
+    }
+    // Count categories per locale (Chatwoot categories have locale field)
+    for (const c of linkedCategories) {
+      // linkedCategory doesn't have locale, but Chatwoot categories do
+      // We infer from articles in each category
+    }
+    const locales: Locale[] = [...localeSet.values()].map((l) => ({
+      code: l.code,
+      name: l.name,
+      articles: l.count,
+      categories: l.catCount || categories.length,
+      isDefault: l.code === "en",
+    }));
+    if (locales.length === 0) {
+      locales.push({
+        code: "en",
+        name: "English",
+        articles: articles.length,
+        categories: categories.length,
+        isDefault: true,
+      });
+    }
+
+    return { portals, articles, categories, locales };
+  } catch {
+    return empty;
+  }
+}
+
+async function fetchLinkedCampaignsData(): Promise<{
+  live: LiveChatCampaign[];
+  sms: OneOffCampaign[];
+  whatsapp: OneOffCampaign[];
+}> {
+  const empty = { live: [] as LiveChatCampaign[], sms: [] as OneOffCampaign[], whatsapp: [] as OneOffCampaign[] };
+
+  try {
+    const res = await unifiedCw.GET("/campaigns");
+    if (res.error || !res.data) return empty;
+
+    const linkedCampaigns = toCampaigns(res.data);
+    if (linkedCampaigns.length === 0) return empty;
+
+    const live: LiveChatCampaign[] = linkedCampaigns.map((c) => ({
+      id: c.id,
+      title: c.title,
+      message: c.message,
+      enabled: c.enabled,
+      sender: c.sender,
+      inbox: c.inbox,
+      url: c.url,
+      timeOnPage: c.timeOnPage,
+      businessHoursOnly: c.businessHoursOnly,
+    }));
+
+    // Campaigns from Chatwoot are live chat campaigns; SMS/WhatsApp remain empty until their endpoints are opened
+    return { live, sms: [], whatsapp: [] };
+  } catch {
+    return empty;
+  }
+}
+
 /** Enable linked mode across all 3 stores and load live data from /api/cw/... */
 export async function enableLinkedStoreAdapter(): Promise<void> {
   const runId = ++activeRunId;
@@ -1445,17 +1599,29 @@ export async function enableLinkedStoreAdapter(): Promise<void> {
   showLinkedNotifications([]);
 
   try {
-    const [agentsRes, inboxesRes, teamsRes, labelsRes, cannedRes, macrosRes, rawConvs, contactsData] =
-      await Promise.all([
-        unifiedCw.GET("/agents"),
-        unifiedCw.GET("/inboxes"),
-        unifiedCw.GET("/teams"),
-        unifiedCw.GET("/labels"),
-        unifiedCw.GET("/canned_responses"),
-        unifiedCw.GET("/macros"),
-        fetchAllConversations(),
-        fetchAllContacts(),
-      ]);
+    const [
+      agentsRes,
+      inboxesRes,
+      teamsRes,
+      labelsRes,
+      cannedRes,
+      macrosRes,
+      rawConvs,
+      contactsData,
+      portalsData,
+      campaignsData,
+    ] = await Promise.all([
+      unifiedCw.GET("/agents"),
+      unifiedCw.GET("/inboxes"),
+      unifiedCw.GET("/teams"),
+      unifiedCw.GET("/labels"),
+      unifiedCw.GET("/canned_responses"),
+      unifiedCw.GET("/macros"),
+      fetchAllConversations(),
+      fetchAllContacts(),
+      fetchLinkedPortalsData(),
+      fetchLinkedCampaignsData(),
+    ]);
 
     if (runId !== activeRunId || !useLinkedAdapterStatus.getState().active) return;
 
@@ -1493,6 +1659,20 @@ export async function enableLinkedStoreAdapter(): Promise<void> {
     setLinkedThreads(mappedConvs.threadsByConvId);
     replaceConversationTags(mappedConvs.tagsByConvId);
     showLinkedContacts(contactsData.contacts, contactsData.attrs);
+
+    // V-15: Bind help center and campaigns live data
+    replaceHelpCenterData(portalsData.portals, portalsData.articles, portalsData.categories, portalsData.locales);
+    if (campaignsData.live.length > 0) {
+      useCampaignsStore.setState({
+        live: campaignsData.live,
+        sms: campaignsData.sms,
+        whatsapp: campaignsData.whatsapp,
+        instagram: [],
+        messenger: [],
+      });
+    }
+    // Always mark campaign save as ready even if empty (shows honest 0 count)
+    useCampaignsSave.setState({ phase: "ready", savedAt: new Date().toISOString(), error: null });
 
     useCwStore.setState({
       meta: mappedConvs.metaByConvId,
@@ -2086,6 +2266,7 @@ export function disableLinkedStoreAdapter(): void {
     restorePreviewConversations();
     restorePreviewCwState();
     restorePreviewContacts();
+    restorePreviewHelpCenter();
     showLinkedNotifications(null);
     replaceConversationTags({});
     useLabelSaves.setState({});

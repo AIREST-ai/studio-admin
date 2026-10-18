@@ -267,6 +267,13 @@ export const ROUTES: readonly RouteRow[] = [
   v1("comments/block", "agent", ["POST"]),
   v1("comments/unblock", "agent", ["POST"]),
   v1("comments", "agent", ["POST"]),
+  // ---- V-15: Read-only access to help-center portals/articles/categories and campaigns (write locked during Meta review)
+  v1("portals"),
+  v1(`portals/${ID}`),
+  v1(`portals/${ID}/articles`),
+  v1(`portals/${ID}/categories`),
+  v1("campaigns"),
+  v1(`campaigns/${ID}`),
 ];
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;

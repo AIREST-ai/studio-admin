@@ -170,3 +170,24 @@ export function useActivePortal() {
   const s = useHelpCenter();
   return s.portals.find((p) => p.id === s.activePortalId) ?? s.portals[0];
 }
+
+/** V-15: Replace all Help Center data from the linked Chatwoot server. Called from store-adapter.ts. */
+export function replaceHelpCenterData(
+  portals: Portal[],
+  articles: Article[],
+  categories: Category[],
+  locales: Locale[],
+) {
+  set(() => ({
+    portals: portals.length > 0 ? portals : [],
+    articles,
+    categories,
+    locales,
+    activePortalId: portals[0]?.id ?? 0,
+  }));
+}
+
+/** V-15: Restore preview seed data when switching back to preview mode. */
+export function restorePreviewHelpCenter() {
+  set(() => initial);
+}
