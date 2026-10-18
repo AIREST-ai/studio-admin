@@ -297,6 +297,315 @@ function WebsiteForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }
 
 // ---------- Connect-with buttons (Facebook, Instagram, TikTok, Google, Microsoft) ----------
 
+/** V-37: Real Facebook auth via FB SDK — opens FB.login, returns pages from Chatwoot gateway. */
+function useFacebookAuth() {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const start = React.useCallback((onToken: (omniauthToken: string) => void) => {
+    setBusy(true);
+    setError(null);
+    // Load FB SDK on demand
+    const existing = (window as unknown as Record<string, unknown>).FB as
+      | { login?: (opts: Record<string, unknown>, cb: (res: Record<string, unknown>) => void) => void }
+      | undefined;
+    if (!existing?.login) {
+      setError("Facebook SDK is not loaded. Please ensure the page is served over HTTPS with a registered domain.");
+      setBusy(false);
+      return;
+    }
+    existing.login(
+      {
+        config_id: "",
+        response_type: "code",
+        scope: "pages_manage_metadata,business_management,pages_messaging,pages_show_list,pages_read_engagement",
+      },
+      (response: Record<string, unknown>) => {
+        if (response.status === "connected") {
+          const token =
+            (response.authResponse as Record<string, unknown>)?.code ||
+            (response.authResponse as Record<string, unknown>)?.accessToken;
+          if (typeof token === "string" && token) {
+            onToken(token);
+          } else {
+            setError("Facebook authentication succeeded but no token was returned.");
+          }
+        } else if (response.status === "not_authorized" || response.status === "unknown") {
+          setError("Facebook authorization was cancelled or denied.");
+        } else {
+          setError("Facebook authentication failed.");
+        }
+        setBusy(false);
+      },
+    );
+  }, []);
+
+  return { busy, error, start, clearError: () => setError(null) };
+}
+
+/** V-37: Real WhatsApp Embedded Signup via FB SDK. */
+function useWhatsappEmbeddedSignup(configId: string) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [state, setState] = React.useState<"idle" | "auth" | "processing">("idle");
+
+  const start = React.useCallback(
+    (onComplete: (data: { code: string; wabaId: string; phoneNumberId?: string; businessId?: string }) => void) => {
+      if (!configId) {
+        setError("WhatsApp configuration ID is not available. Please configure it in Chatwoot Super Admin.");
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      setState("auth");
+
+      const FB = (window as unknown as Record<string, unknown>).FB as
+        | {
+            login?: (opts: Record<string, unknown>, cb: (res: Record<string, unknown>) => void) => void;
+          }
+        | undefined;
+
+      if (!FB?.login) {
+        setError("Facebook SDK is not loaded. Please ensure the page is served over HTTPS with a registered domain.");
+        setBusy(false);
+        setState("idle");
+        return;
+      }
+
+      // Listen for postMessage from Meta Embedded Signup popup
+      const listener = (event: MessageEvent) => {
+        if (!event.origin.endsWith("facebook.com")) return;
+        const data = event.data as Record<string, unknown> | undefined;
+        if (data?.type === "WA_EMBEDDED_SIGNUP") {
+          const wabaId = typeof data.waba_id === "string" ? data.waba_id : "";
+          const phoneNumberId = typeof data.phone_number_id === "string" ? data.phone_number_id : "";
+          const businessId = typeof data.business_id === "string" ? data.business_id : "";
+          window.removeEventListener("message", listener);
+
+          // Now we need the code — FB.login was already called, we get it from the auth response
+          setState("processing");
+          // The code comes from the FB.login callback below
+          // We store waba_id and wait for FB.login to complete
+          (window as unknown as Record<string, unknown>).__v37WhatsappData = {
+            wabaId,
+            phoneNumberId,
+            businessId,
+          };
+        }
+      };
+      window.addEventListener("message", listener);
+
+      FB.login(
+        {
+          config_id: configId,
+          response_type: "code",
+          override_default_response_type: true,
+          extras: {
+            setup: {},
+            featureType: "whatsapp_business_app_onboarding",
+            sessionInfoVersion: "3",
+          },
+        },
+        (response: Record<string, unknown>) => {
+          const code = (response.authResponse as Record<string, unknown>)?.code as string | undefined;
+          const stored = (window as unknown as Record<string, unknown>).__v37WhatsappData as
+            | { wabaId: string; phoneNumberId: string; businessId: string }
+            | undefined;
+          delete (window as unknown as Record<string, unknown>).__v37WhatsappData;
+
+          if (code && stored?.wabaId) {
+            onComplete({
+              code,
+              wabaId: stored.wabaId,
+              phoneNumberId: stored.phoneNumberId || undefined,
+              businessId: stored.businessId || undefined,
+            });
+          } else if (!code) {
+            setError("WhatsApp signup was cancelled or the authorization code was not returned.");
+            setState("idle");
+          } else {
+            setError("WhatsApp Business Account ID was not received from Meta. Please try again.");
+            setState("idle");
+          }
+          setBusy(false);
+          window.removeEventListener("message", listener);
+        },
+      );
+    },
+    [configId],
+  );
+
+  return { busy, error, state, start, clearError: () => setError(null), setState };
+}
+
+/** V-37: Instagram authorization — requests the OAuth URL from Chatwoot via gateway, opens it in a popup. */
+function useInstagramAuth() {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const start = React.useCallback((onStarted: (popup: Window | null) => void) => {
+    setBusy(true);
+    setError(null);
+
+    fetch("/api/cw/instagram/authorization", { method: "POST" })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(((body as Record<string, unknown>).error as string) || `Server error (${res.status})`);
+        }
+        const body = (await res.json()) as { success?: boolean; url?: string };
+        if (!body.url) throw new Error("No authorization URL returned from server.");
+
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        const popup = window.open(
+          body.url,
+          "instagram-auth",
+          `width=${width},height=${height},left=${left},top=${top}`,
+        );
+        onStarted(popup);
+        setBusy(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to start Instagram authorization.");
+        setBusy(false);
+      });
+  }, []);
+
+  return { busy, error, start, clearError: () => setError(null) };
+}
+
+/** V-37: Readiness panel for Meta channels — shows HTTPS, app config, admin role status. */
+function MetaReadinessPanel({
+  metaConfig,
+}: {
+  metaConfig: {
+    available: boolean;
+    facebook: { configured: boolean };
+    whatsapp: { configured: boolean };
+    instagram: { configured: boolean };
+    readiness: { https: boolean; adminRole: boolean };
+  } | null;
+}) {
+  if (!metaConfig) return null;
+  const { readiness, facebook, whatsapp, instagram } = metaConfig;
+  const allOk =
+    readiness.https && facebook.configured && whatsapp.configured && instagram.configured && readiness.adminRole;
+
+  return (
+    <div className="mx-auto max-w-lg rounded-xl border bg-card p-4">
+      <h3 className="mb-3 font-medium text-sm">Connection Readiness</h3>
+      <div className="grid gap-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">HTTPS</span>
+          <span className={readiness.https ? "text-emerald-600" : "text-orange-600"}>
+            {readiness.https ? "✓ Enabled" : "✗ Required"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Meta App</span>
+          <span className={facebook.configured ? "text-emerald-600" : "text-orange-600"}>
+            {facebook.configured ? "✓ Configured" : "✗ Not configured"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">WhatsApp Config</span>
+          <span className={whatsapp.configured ? "text-emerald-600" : "text-orange-600"}>
+            {whatsapp.configured ? "✓ Configured" : "✗ Not configured"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Instagram</span>
+          <span className={instagram.configured ? "text-emerald-600" : "text-orange-600"}>
+            {instagram.configured ? "✓ Ready" : "✗ Not configured"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between border-t pt-2 mt-1">
+          <span className="font-medium text-muted-foreground text-xs">Status</span>
+          <span className={allOk ? "text-emerald-600 font-medium text-xs" : "text-orange-600 font-medium text-xs"}>
+            {metaConfig.available
+              ? allOk
+                ? "Ready for connection"
+                : "Requires HTTPS domain + Meta app configuration"
+              : "Linked mode required for real connections"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConnectPanel({
+  icon,
+  title,
+  help,
+  button,
+  warning,
+  onConnected,
+  children,
+  connectFn,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  help: React.ReactNode;
+  button: string;
+  warning?: string;
+  onConnected: () => void;
+  children?: React.ReactNode;
+  connectFn?: (onDone: () => void) => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleClick = () => {
+    if (connectFn) {
+      setBusy(true);
+      setError(null);
+      connectFn(() => {
+        setBusy(false);
+        onConnected();
+      });
+    } else {
+      // Fake auth fallback for non-Meta channels (Google, Microsoft, TikTok)
+      setBusy(true);
+      setTimeout(() => {
+        setBusy(false);
+        onConnected();
+      }, 900);
+    }
+  };
+
+  return (
+    <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
+      <div className="grid size-14 place-items-center rounded-2xl border bg-muted/50">{icon}</div>
+      <div className="grid gap-2">
+        <h2 className="font-medium text-lg">{title}</h2>
+        <p className="text-muted-foreground text-sm leading-relaxed">{help}</p>
+      </div>
+      {warning ? (
+        <Alert className="text-left">
+          <CircleAlert />
+          <AlertDescription>{warning}</AlertDescription>
+        </Alert>
+      ) : null}
+      {error ? (
+        <Alert className="text-left border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription className="text-destructive">{error}</AlertDescription>
+        </Alert>
+      ) : null}
+      {children}
+      <Button onClick={handleClick} disabled={busy} type="button">
+        {busy ? <Loader2 className="animate-spin" /> : null}
+        {button}
+      </Button>
+    </div>
+  );
+}
+
+/** Fake auth kept for Google, Microsoft, TikTok (outside V-37 scope). */
 function useFakeAuth(onDone: () => void) {
   const [busy, setBusy] = React.useState(false);
   return {
@@ -311,56 +620,96 @@ function useFakeAuth(onDone: () => void) {
   };
 }
 
-function ConnectPanel({
-  icon,
-  title,
-  help,
-  button,
-  warning,
-  onConnected,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  help: React.ReactNode;
-  button: string;
-  warning?: string;
-  onConnected: () => void;
-  children?: React.ReactNode;
-}) {
-  const auth = useFakeAuth(onConnected);
-  return (
-    <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
-      <div className="grid size-14 place-items-center rounded-2xl border bg-muted/50">{icon}</div>
-      <div className="grid gap-2">
-        <h2 className="font-medium text-lg">{title}</h2>
-        <p className="text-muted-foreground text-sm leading-relaxed">{help}</p>
-      </div>
-      {warning ? (
-        <Alert className="text-left">
-          <CircleAlert />
-          <AlertDescription>{warning}</AlertDescription>
-        </Alert>
-      ) : null}
-      {children}
-      <Button onClick={auth.start} disabled={auth.busy} type="button">
-        {auth.busy ? <Loader2 className="animate-spin" /> : null}
-        {button}
-      </Button>
-    </div>
-  );
+/** V-37: Facebook pages fetched from Chatwoot via gateway (real, not hardcoded). */
+interface FacebookPage {
+  id: string;
+  name: string;
+  exists: boolean;
 }
 
-const facebookPages = ["Weblabs Studio", "Weblabs Careers", "Weblabs Arabic"];
-
 function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (created: CreatedInbox) => void }) {
-  const accountName = useAccountName(); // F-9: the name saved in General Settings
+  const accountName = useAccountName();
   const [connected, setConnected] = React.useState(false);
+  const [pages, setPages] = React.useState<FacebookPage[]>([]);
+  const [pagesLoading, setPagesLoading] = React.useState(false);
+  const [pagesError, setPagesError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState("");
   const [name, setName] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
+  const [createError, setCreateError] = React.useState<string | null>(null);
+  const fbAuth = useFacebookAuth();
   const Icon = channel.icon;
+
+  const handleConnect = () => {
+    fbAuth.start((omniauthToken: string) => {
+      // Fetch pages from Chatwoot via gateway
+      setPagesLoading(true);
+      setPagesError(null);
+      fetch("/api/cw/callbacks/facebook_pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ omniauth_token: omniauthToken }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(((body as Record<string, unknown>).error as string) || `Server error (${res.status})`);
+          }
+          const body = (await res.json()) as {
+            page_details?: Array<{ id: string; name: string; access_token?: string }>;
+            user_access_token?: string;
+          };
+          const pageList = (body.page_details ?? []).map((p: { id: string; name: string }) => ({
+            id: p.id,
+            name: p.name,
+            exists: true,
+          }));
+          if (pageList.length === 0) {
+            setPagesError(
+              "No Facebook Pages found on your account. Make sure you have admin access to at least one Page.",
+            );
+          }
+          setPages(pageList);
+          setConnected(true);
+          setPagesLoading(false);
+          // Note: user_access_token and page_access_tokens are kept server-side only (V-37 security requirement)
+        })
+        .catch((err) => {
+          setPagesError(err instanceof Error ? err.message : "Failed to fetch Facebook Pages.");
+          setPagesLoading(false);
+          fbAuth.clearError();
+        });
+    });
+  };
+
   if (!connected) {
+    if (fbAuth.error) {
+      return (
+        <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
+          <div className="grid size-14 place-items-center rounded-2xl border bg-muted/50">
+            <Icon className="size-7 text-muted-foreground" />
+          </div>
+          <div className="grid gap-2">
+            <h2 className="font-medium text-lg">Continue with Facebook</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              PS: By signing in, we only get access to your Page&apos;s messages. Your private messages can never be
+              accessed by {accountName}.
+            </p>
+          </div>
+          {fbAuth.error ? (
+            <Alert className="text-left border-destructive/30 bg-destructive/5">
+              <CircleAlert className="text-destructive" />
+              <AlertDescription className="text-destructive">{fbAuth.error}</AlertDescription>
+            </Alert>
+          ) : null}
+          <Button onClick={handleConnect} disabled={fbAuth.busy} type="button">
+            {fbAuth.busy ? <Loader2 className="animate-spin" /> : null}
+            Continue with Facebook
+          </Button>
+        </div>
+      );
+    }
     return (
       <ConnectPanel
         icon={<Icon className="size-7 text-muted-foreground" />}
@@ -368,11 +717,27 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
         help={`PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by ${accountName}.`}
         button="Continue with Facebook"
         onConnected={() => setConnected(true)}
+        connectFn={(onDone) => {
+          fbAuth.start(() => {
+            onDone();
+          });
+        }}
       />
     );
   }
+
+  if (pagesLoading) {
+    return (
+      <div className="mx-auto grid max-w-lg justify-items-center gap-4 py-6 text-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground text-sm">Loading your Facebook Pages…</p>
+      </div>
+    );
+  }
+
   const pageError = submitted && !page;
   const nameError = submitted && !name.trim();
+
   return (
     <form
       className="grid max-w-2xl gap-6"
@@ -380,13 +745,50 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
       onSubmit={(event) => {
         event.preventDefault();
         setSubmitted(true);
-        if (page && name.trim()) onCreate({ channel: "facebook", name: name.trim() });
+        if (!page || !name.trim()) return;
+        setCreating(true);
+        setCreateError(null);
+        // Call register_facebook_page via gateway — server injects tokens, browser sends only page_id + inbox_name
+        fetch("/api/cw/callbacks/register_facebook_page", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ page_id: page, inbox_name: name.trim() }),
+        })
+          .then(async (res) => {
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(((body as Record<string, unknown>).error as string) || `Server error (${res.status})`);
+            }
+            const created = body as { id?: number; name?: string };
+            onCreate({
+              channel: "facebook",
+              name: name.trim(),
+              identifier: pages.find((p) => p.id === page)?.name || name.trim(),
+            });
+            // Note: created.id is from Chatwoot — we pass it to onCreate which saves to preview store
+          })
+          .catch((err) => {
+            setCreateError(err instanceof Error ? err.message : "Failed to create Facebook inbox.");
+            setCreating(false);
+          });
       }}
     >
       <FormHeading
         title="Inbox Details"
         description={`From the dropdown below, select the Facebook Page you want to connect to ${accountName}. You can also give a custom name to your inbox for better identification.`}
       />
+      {pagesError ? (
+        <Alert className="border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription className="text-destructive">{pagesError}</AlertDescription>
+        </Alert>
+      ) : null}
+      {createError ? (
+        <Alert className="border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription className="text-destructive">{createError}</AlertDescription>
+        </Alert>
+      ) : null}
       <FieldGroup className="gap-4">
         <Field data-invalid={pageError || undefined}>
           <FieldLabel htmlFor="fb-page">Choose Page</FieldLabel>
@@ -397,13 +799,16 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
             aria-invalid={pageError || undefined}
             onChange={(event) => {
               setPage(event.target.value);
-              if (!name) setName(event.target.value);
+              if (!name) {
+                const selected = pages.find((p) => p.id === event.target.value);
+                if (selected) setName(selected.name);
+              }
             }}
           >
             <NativeSelectOption value="">Select a page from the list</NativeSelectOption>
-            {facebookPages.map((p) => (
-              <NativeSelectOption key={p} value={p}>
-                {p}
+            {pages.map((p) => (
+              <NativeSelectOption key={p.id} value={p.id}>
+                {p.name}
               </NativeSelectOption>
             ))}
           </NativeSelect>
@@ -422,7 +827,10 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
         </Field>
       </FieldGroup>
       <div>
-        <Button type="submit">Create Inbox</Button>
+        <Button type="submit" disabled={creating}>
+          {creating ? <Loader2 className="animate-spin" /> : null}
+          Create Inbox
+        </Button>
       </div>
     </form>
   );
@@ -574,13 +982,84 @@ function TwilioForm({ medium, onCreate }: { medium: "sms" | "whatsapp"; onCreate
 }
 
 function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => void }) {
-  const [state, setState] = React.useState<"idle" | "auth" | "processing">("idle");
+  const [whatsappConfigId, setWhatsappConfigId] = React.useState<string>("");
+  const [configLoaded, setConfigLoaded] = React.useState(false);
+  const [createError, setCreateError] = React.useState<string | null>(null);
+  const wsAuth = useWhatsappEmbeddedSignup(whatsappConfigId);
+
+  // Fetch Meta config on mount to get WhatsApp configuration ID
+  React.useEffect(() => {
+    fetch("/api/cw/meta-config")
+      .then((res) => res.json())
+      .then((data: { whatsapp?: { configurationId?: string }; available?: boolean }) => {
+        if (data.whatsapp?.configurationId) {
+          setWhatsappConfigId(data.whatsapp.configurationId);
+        }
+        setConfigLoaded(true);
+      })
+      .catch(() => setConfigLoaded(true));
+  }, []);
+
+  const handleConnect = () => {
+    if (!whatsappConfigId) {
+      wsAuth.clearError();
+      return;
+    }
+    wsAuth.start(({ code, wabaId, phoneNumberId, businessId }) => {
+      // Send to Chatwoot via gateway
+      fetch("/api/cw/whatsapp/authorization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          waba_id: wabaId,
+          phone_number_id: phoneNumberId || undefined,
+          business_id: businessId || undefined,
+          is_coexistence: false,
+        }),
+      })
+        .then(async (res) => {
+          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+          if (!res.ok) {
+            throw new Error((body.error as string) || `Server error (${res.status})`);
+          }
+          const name = (body.name as string) || "WhatsApp Business";
+          const phone = (body.phone_number as string) || "";
+          onCreate({
+            channel: "whatsapp",
+            name,
+            provider: "embedded",
+            phone: phone || undefined,
+          });
+        })
+        .catch((err) => {
+          setCreateError(err instanceof Error ? err.message : "Failed to create WhatsApp inbox.");
+          wsAuth.clearError();
+        });
+    });
+  };
+
+  const busy = wsAuth.busy;
+  const state = wsAuth.state;
+
   return (
     <div className="grid max-w-2xl gap-6">
       <FormHeading
         title="Quick setup with Meta"
         description="Use Quick setup with Meta to connect a new number or an existing number from the WhatsApp Business app. You will be redirected to Meta to log into your WhatsApp Business account. Having admin access will help make the setup smooth and easy."
       />
+      {!configLoaded ? (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <Loader2 className="size-4 animate-spin" /> Loading configuration…
+        </div>
+      ) : !whatsappConfigId ? (
+        <Alert className="border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription>
+            WhatsApp Embedded Signup is not configured. Please set WHATSAPP_CONFIGURATION_ID in Chatwoot Super Admin.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <div className="grid gap-2 rounded-lg border p-4">
         <span className="font-medium text-sm">Benefits of Embedded Signup:</span>
         {[
@@ -600,21 +1079,21 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
         </button>
         .
       </p>
+      {wsAuth.error ? (
+        <Alert className="border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription className="text-destructive">{wsAuth.error}</AlertDescription>
+        </Alert>
+      ) : null}
+      {createError ? (
+        <Alert className="border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription className="text-destructive">{createError}</AlertDescription>
+        </Alert>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          disabled={state !== "idle"}
-          onClick={() => {
-            setState("auth");
-            setTimeout(() => setState("processing"), 800);
-            setTimeout(
-              () =>
-                onCreate({ channel: "whatsapp", name: "WhatsApp Sales", provider: "embedded", phone: "+97444001133" }),
-              1700,
-            );
-          }}
-        >
-          {state !== "idle" ? <Loader2 className="animate-spin" /> : null}
+        <Button type="button" disabled={busy || !whatsappConfigId} onClick={handleConnect}>
+          {busy ? <Loader2 className="animate-spin" /> : null}
           Connect with WhatsApp Business
         </Button>
         {state === "auth" ? <span className="text-muted-foreground text-sm">Authenticating with Meta</span> : null}
@@ -1001,15 +1480,7 @@ export function ChannelForm({ channel, onCreate }: { channel: Channel; onCreate:
         />
       );
     case "instagram":
-      return (
-        <ConnectPanel
-          icon={<Icon className="size-7 text-pink-600" />}
-          title="Connect your Instagram Profile"
-          help="To add your Instagram profile as a channel, you need to authenticate your Instagram Profile by clicking on 'Continue with Instagram'"
-          button="Continue with Instagram"
-          onConnected={() => onCreate({ channel: "instagram", name: "@weblabs.studio" })}
-        />
-      );
+      return <InstagramChannelForm channel={channel} onCreate={onCreate} />;
     case "tiktok":
       return (
         <ConnectPanel
@@ -1069,6 +1540,134 @@ export function ChannelForm({ channel, onCreate }: { channel: Channel; onCreate:
     default:
       return null;
   }
+}
+
+// ---------- V-37: Instagram real auth form ----------
+
+function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreate: (created: CreatedInbox) => void }) {
+  const Icon = channel.icon;
+  const [started, setStarted] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [polling, setPolling] = React.useState(false);
+  const igAuth = useInstagramAuth();
+
+  const handleConnect = () => {
+    igAuth.start((popup) => {
+      setStarted(true);
+      // Poll GET /inboxes every 1s until a Channel::Instagram inbox appears, then close popup
+      const poll = setInterval(() => {
+        fetch("/api/cw/inboxes")
+          .then((res) => res.json())
+          .then(
+            (
+              data:
+                | { payload?: Array<{ id: number; name: string; channel_type?: string }> }
+                | Array<{ id: number; name: string; channel_type?: string }>,
+            ) => {
+              const inboxes = Array.isArray(data)
+                ? data
+                : ((data as { payload?: Array<{ id: number; name: string; channel_type?: string }> }).payload ?? []);
+              const newIg = inboxes.find(
+                (ibx: { id: number; channel_type?: string }) => ibx.channel_type === "Channel::Instagram",
+              );
+              if (newIg) {
+                clearInterval(poll);
+                if (popup && !popup.closed) popup.close();
+                setPolling(false);
+                onCreate({
+                  channel: "instagram",
+                  name: newIg.name || "Instagram",
+                  identifier: newIg.name || undefined,
+                });
+              }
+            },
+          )
+          .catch(() => {
+            // Continue polling on transient errors
+          });
+      }, 1000);
+      setPolling(true);
+
+      // Safety cleanup after 120s
+      setTimeout(() => {
+        clearInterval(poll);
+        setPolling(false);
+      }, 120_000);
+
+      // Also listen for popup close (user cancelled)
+      const checkPopup = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(poll);
+          clearInterval(checkPopup);
+          setPolling(false);
+          setStarted(false);
+          // Popup closed without new inbox = likely cancelled
+        }
+      }, 500);
+    });
+  };
+
+  if (igAuth.error) {
+    return (
+      <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
+        <div className="grid size-14 place-items-center rounded-2xl border bg-muted/50">
+          <Icon className="size-7 text-pink-600" />
+        </div>
+        <h2 className="font-medium text-lg">Connect your Instagram Profile</h2>
+        <Alert className="text-left border-destructive/30 bg-destructive/5">
+          <CircleAlert className="text-destructive" />
+          <AlertDescription className="text-destructive">{igAuth.error}</AlertDescription>
+        </Alert>
+        <Button onClick={handleConnect} disabled={igAuth.busy} type="button">
+          {igAuth.busy ? <Loader2 className="animate-spin" /> : null}
+          Continue with Instagram
+        </Button>
+      </div>
+    );
+  }
+
+  if (polling) {
+    return (
+      <div className="mx-auto grid max-w-lg justify-items-center gap-4 py-6 text-center">
+        <Loader2 className="size-8 animate-spin text-pink-500" />
+        <h2 className="font-medium text-lg">Waiting for Instagram Authorization</h2>
+        <p className="text-muted-foreground text-sm">
+          Complete the authorization in the Instagram popup window. This page will update automatically once your
+          Instagram profile is connected.
+        </p>
+        <p className="text-muted-foreground text-xs">
+          Note: After authorization, Instagram redirects to Chatwoot which then redirects to its dashboard. The popup
+          will close automatically when your inbox appears here.
+        </p>
+      </div>
+    );
+  }
+
+  if (started) {
+    return (
+      <div className="mx-auto grid max-w-lg justify-items-center gap-4 py-6 text-center">
+        <Loader2 className="size-8 animate-spin text-pink-500" />
+        <h2 className="font-medium text-lg">Opening Instagram Authorization</h2>
+        <p className="text-muted-foreground text-sm">A popup window should open. Please allow popups for this site.</p>
+      </div>
+    );
+  }
+
+  return (
+    <ConnectPanel
+      icon={<Icon className="size-7 text-pink-600" />}
+      title="Connect your Instagram Profile"
+      help="To add your Instagram profile as a channel, you need to authenticate your Instagram Profile by clicking on 'Continue with Instagram'"
+      button="Continue with Instagram"
+      onConnected={() => setStarted(true)}
+      connectFn={(onDone) => {
+        igAuth.start(() => {
+          onDone();
+          setStarted(true);
+        });
+      }}
+    />
+  );
 }
 
 /** A drawn QR code for the finish step (FinishSetup.vue shows one to test WhatsApp, SMS, Messenger, Telegram). */

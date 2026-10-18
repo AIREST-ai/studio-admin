@@ -43,6 +43,9 @@ export const SECRET_KEYS = [
   "line_channel_token",
   "imap_password",
   "smtp_password",
+  "code", // V-37: WhatsApp Embedded Signup authorization code
+  "omniauth_token", // V-37: Facebook OAuth token for page listing
+  "waba_id", // V-37: WhatsApp Business Account ID (not a secret but scrub from logs)
 ] as const;
 
 const SECRET_SET = new Set<string>(SECRET_KEYS);
@@ -289,6 +292,11 @@ export const ROUTES: readonly RouteRow[] = [
   v1(`contacts/${ID}/labels`),
   v1(`contacts/${ID}/labels`, "agent", ["POST"]),
   v1("actions/contact_merge", "agent", ["POST"]),
+  // ---- V-37: Meta channel linking wizard (Facebook Messenger, Instagram, WhatsApp) — admin only
+  v1("callbacks/facebook_pages", "admin", ["POST"]),
+  v1("callbacks/register_facebook_page", "admin", ["POST"]),
+  v1("instagram/authorization", "admin", ["POST"]),
+  v1("whatsapp/authorization", "admin", ["POST"]),
 ];
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;

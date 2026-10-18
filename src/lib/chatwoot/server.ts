@@ -943,3 +943,52 @@ export async function readWebhookSecrets(force = false): Promise<string[]> {
 
   return secrets;
 }
+
+/* ------------------------------------------------------------------ V-37: Meta token cache (short-lived, tied to admin session) -------- */
+
+interface MetaTokenCache {
+  userAccessToken?: string;
+  pageTokens: Map<string, string>; // page_id -> access_token
+  createdAt: number;
+}
+
+const META_TOKEN_TTL_MS = 10 * 60_000; // 10 minutes
+
+function metaTokenStore(): MetaTokenCache | null {
+  const store = globalThis as typeof globalThis & { __studioMetaTokenCache?: MetaTokenCache };
+  if (!store.__studioMetaTokenCache) return null;
+  if (Date.now() - store.__studioMetaTokenCache.createdAt > META_TOKEN_TTL_MS) {
+    delete store.__studioMetaTokenCache;
+    return null;
+  }
+  return store.__studioMetaTokenCache;
+}
+
+/** Store Facebook user_access_token and per-page access_tokens in short-lived server memory. */
+export function cacheFacebookTokens(userAccessToken: string, pages: Array<{ id: string; access_token: string }>) {
+  const store = globalThis as typeof globalThis & { __studioMetaTokenCache?: MetaTokenCache };
+  const pageTokens = new Map<string, string>();
+  for (const p of pages) {
+    if (p.id && p.access_token) pageTokens.set(p.id, p.access_token);
+  }
+  store.__studioMetaTokenCache = {
+    userAccessToken,
+    pageTokens,
+    createdAt: Date.now(),
+  };
+}
+
+/** Retrieve cached tokens for register_facebook_page; returns null if expired or missing. */
+export function getCachedFacebookTokens(pageId: string): { userAccessToken: string; pageAccessToken: string } | null {
+  const cache = metaTokenStore();
+  if (!cache?.userAccessToken) return null;
+  const pageToken = cache.pageTokens.get(pageId);
+  if (!pageToken) return null;
+  return { userAccessToken: cache.userAccessToken, pageAccessToken: pageToken };
+}
+
+/** Clear the token cache (called after success or failure). */
+export function clearMetaTokenCache() {
+  const store = globalThis as typeof globalThis & { __studioMetaTokenCache?: MetaTokenCache };
+  delete store.__studioMetaTokenCache;
+}

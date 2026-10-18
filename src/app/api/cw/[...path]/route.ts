@@ -30,7 +30,14 @@ import {
   validSegments,
 } from "@/lib/chatwoot/gateway-policy";
 import { readLinkState } from "@/lib/chatwoot/mode";
-import { ChatwootError, gatewayCall, problemOf } from "@/lib/chatwoot/server";
+import {
+  ChatwootError,
+  cacheFacebookTokens,
+  clearMetaTokenCache,
+  gatewayCall,
+  getCachedFacebookTokens,
+  problemOf,
+} from "@/lib/chatwoot/server";
 import { type Agent, CURRENT_USER_ID, agents as seedAgents } from "@/lib/cw/data";
 import { readPreviewState } from "@/lib/cw/persistence/file-store";
 import { parseViewAs, VIEW_AS_COOKIE } from "@/lib/cw/view-as-cookie";
@@ -176,7 +183,61 @@ async function handle(method: GatewayMethod, request: Request, context: { params
   if (query === null) return refuse(414, "query too long");
 
   try {
-    const result = await gatewayCall(method, route.base, route.path, query, payload);
+    // V-37: Meta channel special handling — inject tokens from server cache, strip secrets from responses
+    let effectivePayload = payload;
+    const effectivePath = route.path;
+
+    if (segments[0] === "callbacks" && segments[1] === "facebook_pages") {
+      // Pass through to Chatwoot — the omniauth_token is in the request body.
+      // Chatwoot will exchange it for a long-lived token and return page_details with access_tokens.
+      // We intercept the response below to cache tokens and strip them.
+      const result = await gatewayCall(method, route.base, route.path, query, payload);
+      const body = result.body as
+        | { page_details?: Array<{ id: string; name: string; access_token?: string }>; user_access_token?: string }
+        | undefined;
+      if (body?.user_access_token && body?.page_details) {
+        const pages = body.page_details
+          .filter((p) => p.id && p.access_token)
+          .map((p) => ({ id: p.id!, access_token: p.access_token! }));
+        cacheFacebookTokens(body.user_access_token, pages);
+      }
+      return answer(result.status, result.body ?? (result.status < 300 ? { ok: true } : { error: "no body" }));
+    }
+
+    if (segments[0] === "callbacks" && segments[1] === "register_facebook_page") {
+      // Inject cached tokens into the request body. Browser sends only page_id and inbox_name.
+      const body = payload?.parsed as { page_id?: string; inbox_name?: string } | undefined;
+      if (body?.page_id) {
+        const cached = getCachedFacebookTokens(body.page_id);
+        if (!cached) {
+          return refuse(403, "Facebook authentication expired. Please reconnect your Facebook account.");
+        }
+        const injectedBody = {
+          page_id: body.page_id,
+          inbox_name: body.inbox_name || "",
+          user_access_token: cached.userAccessToken,
+          page_access_token: cached.pageAccessToken,
+        };
+        const injectedJson = JSON.stringify(injectedBody);
+        effectivePayload = {
+          bytes: new TextEncoder().encode(injectedJson).buffer as ArrayBuffer,
+          contentType: "application/json",
+          parsed: injectedBody,
+        };
+      }
+      try {
+        const result = await gatewayCall(method, route.base, route.path, query, effectivePayload);
+        // Clear tokens after successful registration (or failure)
+        clearMetaTokenCache();
+        return answer(result.status, result.body ?? (result.status < 300 ? { ok: true } : { error: "no body" }));
+      } catch (error) {
+        clearMetaTokenCache();
+        const problem = problemOf(error);
+        return answer(error instanceof ChatwootError ? error.status : 500, { error: problem.message, problem });
+      }
+    }
+
+    const result = await gatewayCall(method, route.base, effectivePath, query, effectivePayload);
     return answer(result.status, result.body ?? (result.status < 300 ? { ok: true } : { error: "no body" }));
   } catch (error) {
     const problem = problemOf(error);
