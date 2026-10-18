@@ -67,6 +67,8 @@ export interface LinkedCwAdapter {
   addFolder: (name: string, filters: FilterRow[]) => Folder;
   updateFolder: (id: string, name: string, filters: FilterRow[]) => void;
   deleteFolder: (id: string) => void;
+  // V-17: Retry a failed message through the linked Chatwoot gateway.
+  retryMessage?: (convId: number, messageId: string) => Promise<boolean>;
 }
 
 let linkedAdapter: LinkedCwAdapter | null = null;
@@ -415,9 +417,26 @@ export const cw = {
     };
     set((state) => ({ sent: { ...state.sent, [id]: [...(state.sent[id] ?? []), entry] } }));
   },
-  // Chatwoot MessageError "Retry" hands the message to the provider again. There is no provider here, and the
-  // provider's reason (recipient unreachable) has not changed, so the retry fails and the message stays failed.
-  retryMessage(_messageId: string): boolean {
+  // V-17: Retry passes through the linked adapter when in linked mode,
+  // otherwise fails (no provider in preview mode).
+  retryMessage(messageId: string): boolean {
+    if (linkedAdapter?.retryMessage) {
+      // We need the conversation id to retry; look up from the sent map
+      const state = get();
+      for (const [convIdStr, messages] of Object.entries(state.sent)) {
+        if (messages.some((m) => m.id === messageId)) {
+          const convId = Number(convIdStr);
+          void linkedAdapter.retryMessage(convId, messageId);
+          return true;
+        }
+      }
+      // If not found in sent, look up in thread data
+      const focusId = state.focusId;
+      if (focusId) {
+        void linkedAdapter.retryMessage(focusId, messageId);
+        return true;
+      }
+    }
     return false;
   },
   /** F-8: shows the message as deleted (sim-thread-persist.ts deleteMessage calls this once the preview kept it). */

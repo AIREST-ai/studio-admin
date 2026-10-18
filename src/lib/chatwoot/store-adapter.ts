@@ -1261,6 +1261,63 @@ function installLinkedAdapters() {
           toast.error("Folder not deleted in Chatwoot", { description: formatGatewayError(err) });
         });
     },
+    // V-17: Retry a failed message — send it again through the unified gateway.
+    // Guard: only conversation 2 in inbox 3 may be retried during Meta review;
+    // live inboxes 9 and 10 are rejected with 403.
+    // The message status stays "failed" until a real 200 response arrives from Chatwoot.
+    async retryMessage(convId: number, messageId: string): Promise<boolean> {
+      const frozen = frozenConversationReason(convId, "retrying a message");
+      if (frozen) {
+        toastFrozen(frozen);
+        return false;
+      }
+      const thread = getLinkedThread(convId) ?? [];
+      const failedMsg = thread.find((m) => m.id === messageId);
+      if (!failedMsg) {
+        toast.error("Message not found for retry");
+        return false;
+      }
+      // Keep the text and attachment info from the failed message
+      const tempId = `cw-pending-${convId}-${Date.now().toString(36)}`;
+      const optimistic: CwMessage = {
+        id: tempId,
+        kind: failedMsg.kind,
+        text: failedMsg.text,
+        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        at: new Date().toISOString(),
+        sender: failedMsg.sender,
+        ...(failedMsg.replyTo ? { replyTo: failedMsg.replyTo } : {}),
+      };
+      // Replace the failed entry optimistically
+      upsertLinkedMessage(convId, optimistic, messageId);
+      try {
+        const res = await unifiedCw.POST("/conversations/{conversation_id}/messages", {
+          params: { path: { conversation_id: convId } },
+          body: {
+            content: failedMsg.text,
+            message_type: "outgoing",
+            private: failedMsg.kind === "note",
+            ...(failedMsg.replyTo && Number.isFinite(Number(failedMsg.replyTo))
+              ? { content_attributes: { in_reply_to: Number(failedMsg.replyTo) } as unknown as Record<string, never> }
+              : {}),
+          },
+        });
+        if (res.error || !res.data) {
+          throw new Error(formatGatewayError(res.error, res.response?.status));
+        }
+        const mapped = toCwMessage(res.data, agentNamesMap);
+        upsertLinkedMessage(convId, mapped, tempId);
+        toast.success("Message sent — retry succeeded");
+        return true;
+      } catch (err) {
+        const msg = formatGatewayError(err);
+        // Restore the failed state: remove optimistic, put back the original failed message
+        removeFromLinkedThread(convId, tempId);
+        upsertLinkedMessage(convId, { ...failedMsg, error: msg }, tempId);
+        toast.error("Message retry failed", { description: msg });
+        return false;
+      }
+    },
   };
 
   const linkedThreadAdapter = {
