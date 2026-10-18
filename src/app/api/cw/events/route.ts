@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 
 import { scrubSecrets } from "@/lib/chatwoot/gateway-policy";
+import { ensureLivePresenceSubscription } from "@/lib/chatwoot/live-presence";
 import { readLinkState } from "@/lib/chatwoot/mode";
 import {
   getLatestSeqAsync,
@@ -20,6 +21,8 @@ import {
 } from "@/lib/chatwoot/realtime-bus";
 
 export const dynamic = "force-dynamic";
+
+ensureLivePresenceSubscription();
 
 function parseSinceSeq(request: Request): number | null {
   const headerVal = (request.headers.get("last-event-id") ?? "").trim();

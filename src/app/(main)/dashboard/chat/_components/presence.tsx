@@ -4,26 +4,20 @@
 // is open, the other agents who have it open are named above the reply box, "Priya Nair is viewing this conversation",
 // and "Priya Nair is typing" while they type. Nothing is locked: everyone can still reply (Zendesk, Freshdesk, Help
 // Scout and Intercom warn the same way; Chatwoot itself shows only "is typing").
-// Research: lobehub-hub/monitor/notes/بحث-الفتح-المزدوج-والآلي-1515.md.
-// How: every 2 s this tab posts to /api/preview-sim/presence (the person the page is viewed as, and whether they are
-// typing) and gets back the others in this conversation. The times, from Chatwoot v4.18.0:
-// - typing starts with the first key and stops after 4 s without one, or when the box loses focus or the message is
-//   sent (WootWriter/Editor.vue TYPING_INDICATOR_IDLE_TIME = 4000, keyup -> start, blur -> stop; @chatwoot/utils
-//   createTypingIndicator). Posting every 2 s, half of that, lets the other browser see even a short burst.
-// - leaving (another conversation, another page, closing the tab: sendBeacon on pagehide) removes this tab at once, so
-//   the others' notice goes within their next post: 2 s. A tab that just stops (crash, sleep) is dropped by the server
-//   after 20 s, Chatwoot's PRESENCE_DURATION (lib/online_status_tracker.rb).
-// - a hidden tab posts every 10 s, inside those 20 s, so it still counts as viewing.
-// Honest: the badge says it is shared only between browsers that open this preview, which runs on this computer;
-// Chatwoot is not told.
+// V-18: in linked mode the same bar is fed by Chatwoot live events on the realtime bus
+// (`conversation_typing_on` / `conversation_typing_off` and `conversation.typing_on` / `conversation.typing_off`)
+// plus Studio tab heartbeats at `/api/cw/presence`. Preview still uses `/api/preview-sim/presence` only.
+// A dropped agent expires after 20 s (inside the required 15–30 s window) so the bar cannot stick.
 import { useEffect, useState } from "react";
 
 import { Eye, PenLine } from "lucide-react";
 
+import { linkedSession, useLinkedAdapterStatus, useLivePresenceStore } from "@/lib/chatwoot/store-adapter";
 import { SimBadge } from "@/lib/cw/preview-sim-ui";
 import { useViewer } from "@/lib/cw/view-as";
 
-const ENDPOINT = "/api/preview-sim/presence";
+const PREVIEW_ENDPOINT = "/api/preview-sim/presence";
+const LINKED_ENDPOINT = "/api/cw/presence";
 const POLL_MS = 2000;
 const HIDDEN_POLL_MS = 10_000;
 const TYPING_IDLE_MS = 4000;
@@ -36,6 +30,8 @@ export interface PresenceOther {
   name: string;
   typing: boolean;
 }
+
+const EMPTY_OTHERS: PresenceOther[] = [];
 
 // ---- typing (called by the reply box) ----------------------------------------------------------------------------
 
@@ -61,13 +57,40 @@ export function stopTyping() {
   postNow?.();
 }
 
+function isLinkedNow(linkedActive: boolean): boolean {
+  return linkedActive || linkedSession();
+}
+
+function presenceEndpoint(linked: boolean): string {
+  return linked ? LINKED_ENDPOINT : PREVIEW_ENDPOINT;
+}
+
+function mergeOthers(fromApi: PresenceOther[], fromBus: PresenceOther[], selfId: number): PresenceOther[] {
+  const merged = new Map<number, PresenceOther>();
+  for (const row of fromApi) {
+    if (row.agentId === selfId) continue;
+    merged.set(row.agentId, { agentId: row.agentId, name: row.name, typing: row.typing === true });
+  }
+  for (const row of fromBus) {
+    if (row.agentId === selfId) continue;
+    const seen = merged.get(row.agentId);
+    merged.set(row.agentId, {
+      agentId: row.agentId,
+      name: row.name || seen?.name || "Agent",
+      typing: (seen?.typing ?? false) || row.typing === true,
+    });
+  }
+  return [...merged.values()];
+}
+
 // ---- who else is here --------------------------------------------------------------------------------------------
 
-function leave(conv: number, beacon: boolean) {
+function leave(conv: number, beacon: boolean, linked: boolean) {
+  const endpoint = presenceEndpoint(linked);
   const body = JSON.stringify({ tab: TAB, conv, leave: true });
   // sendBeacon is the request a closing page is allowed to finish; its body goes as text, which the route reads.
-  if (beacon && navigator.sendBeacon?.(ENDPOINT, body)) return;
-  void fetch(ENDPOINT, {
+  if (beacon && navigator.sendBeacon?.(endpoint, body)) return;
+  void fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body,
@@ -75,19 +98,29 @@ function leave(conv: number, beacon: boolean) {
   }).catch(() => undefined);
 }
 
-export function usePresence(conv: number): { others: PresenceOther[]; error: string | null } {
+export function usePresence(conv: number): { others: PresenceOther[]; error: string | null; linked: boolean } {
   const viewer = useViewer();
-  const [state, setState] = useState<{ conv: number; others: PresenceOther[]; error: string | null }>({
+  const linkedActive = useLinkedAdapterStatus((s) => s.active);
+  const linked = isLinkedNow(linkedActive);
+  const fromBus = useLivePresenceStore((s) => s.byConv[conv] ?? EMPTY_OTHERS);
+  const [state, setState] = useState<{
+    conv: number;
+    others: PresenceOther[];
+    error: string | null;
+    linked: boolean;
+  }>({
     conv,
     others: [],
     error: null,
+    linked,
   });
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const endpoint = presenceEndpoint(linked);
     const post = async () => {
       try {
-        const response = await fetch(ENDPOINT, {
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
           cache: "no-store",
@@ -95,12 +128,19 @@ export function usePresence(conv: number): { others: PresenceOther[]; error: str
         });
         const body = (await response.json().catch(() => null)) as { others?: PresenceOther[]; error?: string } | null;
         if (!response.ok) throw new Error(`${response.status} ${body?.error ?? response.statusText}`);
-        if (!stopped) setState({ conv, others: Array.isArray(body?.others) ? body.others : [], error: null });
+        if (!stopped)
+          setState({
+            conv,
+            others: Array.isArray(body?.others) ? body.others : [],
+            error: null,
+            linked,
+          });
       } catch (error) {
         if (!stopped)
           setState((previous) => ({
             ...previous,
             conv,
+            linked,
             error: error instanceof Error ? error.message : String(error),
           }));
       }
@@ -116,7 +156,7 @@ export function usePresence(conv: number): { others: PresenceOther[]; error: str
     const onVisibility = () => {
       if (!document.hidden) schedule(0);
     };
-    const onPageHide = () => leave(conv, true);
+    const onPageHide = () => leave(conv, true, linked);
     postNow = () => void post();
     schedule(0);
     document.addEventListener("visibilitychange", onVisibility);
@@ -131,11 +171,13 @@ export function usePresence(conv: number): { others: PresenceOther[]; error: str
       postNow = null;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
-      leave(conv, false);
+      leave(conv, false, linked);
     };
-  }, [conv, viewer.id, viewer.name]);
-  // Another conversation was opened: its people are not known until its first answer.
-  return state.conv === conv ? { others: state.others, error: state.error } : { others: [], error: null };
+  }, [conv, viewer.id, viewer.name, linked]);
+  const apiOthers = state.conv === conv ? state.others : [];
+  const others = linked ? mergeOthers(apiOthers, fromBus, viewer.id) : apiOthers;
+  const error = state.conv === conv ? state.error : null;
+  return { others, error, linked };
 }
 
 // Chatwoot's wording for typing (i18n/locale/en/conversation.json TYPING: ONE, TWO, MULTIPLE); "viewing" follows it.
@@ -152,11 +194,13 @@ function names(list: PresenceOther[], one: string, many: string) {
  * bordered block that wraps. The names truncate before the badge does; the badge is one line at every width: the whole
  * sentence when the bar is wide, "Preview" when it is narrow (the sentence is then in its tooltip and read by screen
  * readers). The spacing around it is the notices wrapper's (conversation-pane.tsx).
+ * V-18 / Fahad 82أ: a notice, never a lock — the reply box stays writable.
  */
 const SHARED_ONLY = "Preview: shared only by browsers open on this computer's preview";
+const LIVE_BADGE = "Live: another agent is viewing or typing — reply is not locked";
 
 export function PresenceBar({ conversationId }: { conversationId: number }) {
-  const { others, error } = usePresence(conversationId);
+  const { others, error, linked } = usePresence(conversationId);
   const typing = others.filter((other) => other.typing);
   const viewing = others.filter((other) => !other.typing);
   if (!others.length && !error) return null;
@@ -165,11 +209,15 @@ export function PresenceBar({ conversationId }: { conversationId: number }) {
     ? names(viewing, "is viewing this conversation", "are viewing this conversation")
     : "";
   const errorText = error && !others.length ? `Could not check who else has this conversation open (${error}).` : "";
+  const badge = linked ? LIVE_BADGE : SHARED_ONLY;
+  const shortBadge = linked ? "Live" : "Preview";
   return (
     <div
       role="status"
       aria-live="polite"
       data-presence-bar=""
+      data-presence-mode={linked ? "linked" : "preview"}
+      data-presence-locked="false"
       title={[typingText, viewingText, errorText].filter(Boolean).join(" · ")}
       className="@container flex h-[22px] shrink-0 items-center gap-2 overflow-hidden rounded-md border border-sky-500/30 bg-sky-500/10 px-2 text-xs"
     >
@@ -188,13 +236,16 @@ export function PresenceBar({ conversationId }: { conversationId: number }) {
         )}
         {errorText && <span className="truncate text-muted-foreground">{errorText}</span>}
       </div>
-      <span className="@md:hidden shrink-0" title={SHARED_ONLY}>
-        <SimBadge className="h-4 py-0 leading-3" label="Preview" />
+      <span className="@md:hidden shrink-0" title={badge}>
+        <SimBadge className="h-4 py-0 leading-3" label={shortBadge} />
       </span>
-      <SimBadge className="@md:inline-flex hidden h-4 py-0 leading-3" label={SHARED_ONLY} />
-      <span className="sr-only @md:hidden">{SHARED_ONLY}.</span>
+      <SimBadge className="@md:inline-flex hidden h-4 py-0 leading-3" label={badge} />
+      <span className="sr-only @md:hidden">{badge}.</span>
       <span className="sr-only">
-        Nothing is locked: everyone can still reply. The engine is not told who is viewing or typing.
+        Nothing is locked: everyone can still reply.
+        {linked
+          ? " Live presence comes from Chatwoot typing events and other open Studio tabs."
+          : " The engine is not told who is viewing or typing."}
       </span>
     </div>
   );

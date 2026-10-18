@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 
 import { scrubSecrets } from "@/lib/chatwoot/gateway-policy";
+import { ensureLivePresenceSubscription } from "@/lib/chatwoot/live-presence";
 import { readLinkState } from "@/lib/chatwoot/mode";
 import { publishWebhookEvent, resetRealtimeBusMemory } from "@/lib/chatwoot/realtime-bus";
 import { readWebhookSecrets } from "@/lib/chatwoot/server";
@@ -19,6 +20,8 @@ import { triggerAsyncJudgeOnResolved } from "@/lib/lobehub/eval-bridge";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const dynamic = "force-dynamic";
+
+ensureLivePresenceSubscription();
 
 const headers = { "Cache-Control": "no-store" };
 const MAX_BODY_BYTES = 2_000_000;

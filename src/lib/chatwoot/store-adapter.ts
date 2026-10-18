@@ -144,6 +144,81 @@ export const useLinkedAdapterStatus = create<LinkedAdapterStatus>(() => ({
   lastSeq: 0,
 }));
 
+/** V-18: live staff viewing/typing from Chatwoot SSE (`conversation_typing_on` / `conversation.typing_on`). */
+export interface LivePresenceOther {
+  agentId: number;
+  name: string;
+  typing: boolean;
+}
+
+const LIVE_PRESENCE_TTL_MS = 20_000;
+
+export const useLivePresenceStore = create<{ byConv: Record<number, LivePresenceOther[]> }>(() => ({
+  byConv: {},
+}));
+
+const presenceExpiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function presenceTimerKey(convId: number, agentId: number): string {
+  return `${convId}:${agentId}`;
+}
+
+function schedulePresenceExpiry(convId: number, agentId: number): void {
+  const key = presenceTimerKey(convId, agentId);
+  const previous = presenceExpiryTimers.get(key);
+  if (previous) clearTimeout(previous);
+  presenceExpiryTimers.set(
+    key,
+    setTimeout(() => {
+      presenceExpiryTimers.delete(key);
+      useLivePresenceStore.setState((state) => ({
+        byConv: {
+          ...state.byConv,
+          [convId]: (state.byConv[convId] ?? []).filter((row) => row.agentId !== agentId),
+        },
+      }));
+    }, LIVE_PRESENCE_TTL_MS),
+  );
+}
+
+function clearLivePresenceStore(): void {
+  for (const timer of presenceExpiryTimers.values()) clearTimeout(timer);
+  presenceExpiryTimers.clear();
+  useLivePresenceStore.setState({ byConv: {} });
+}
+
+function applyRealtimePresenceEvent(eventName: string, payload: Raw, conversationId: number | null): void {
+  if (!linkedSession() || !useLinkedAdapterStatus.getState().active) return;
+  const normalized = eventName.trim().replace(/\./g, "_");
+  const typingOn = normalized === "conversation_typing_on";
+  const typingOff = normalized === "conversation_typing_off";
+  if (!typingOn && !typingOff) return;
+
+  const convRaw = obj(payload.conversation);
+  const convId =
+    conversationId ?? num(convRaw.id) ?? num(convRaw.display_id) ?? num(payload.id) ?? num(payload.conversation_id);
+  if (convId === null) return;
+
+  const user = obj(payload.user);
+  const userType = str(user.type);
+  // Staff only: Chatwoot user.webhook_data is `{ type: "user" }`; contacts are `"contact"`.
+  if (userType && userType !== "user") return;
+  const agentId = num(user.id);
+  const name = str(user.name);
+  if (agentId === null || !Number.isInteger(agentId) || agentId <= 0 || !name) return;
+
+  const viewer = currentViewer();
+  if (agentId === viewer.id) return;
+
+  useLivePresenceStore.setState((state) => {
+    const current = state.byConv[convId] ?? [];
+    const rest = current.filter((row) => row.agentId !== agentId);
+    const next: LivePresenceOther = { agentId, name, typing: typingOn };
+    return { byConv: { ...state.byConv, [convId]: [...rest, next] } };
+  });
+  schedulePresenceExpiry(convId, agentId);
+}
+
 /** V-2 Supervisor constraint 1: Mandatory >= 5000ms cooldown for auto-reconciliation on focus/visibilitychange. */
 export const RECONCILE_COOLDOWN_MS = 5000;
 const LAST_SEQ_SESSION_KEY = "studio:cw:lastSeq";
@@ -2674,6 +2749,13 @@ function handleRealtimeEventEnvelope(rawEnvelope: unknown): void {
     applyRealtimeConversationEvent(eventName, payload);
   } else if (eventName === "contact_created" || eventName === "contact_updated") {
     applyRealtimeContactEvent(eventName, payload);
+  } else if (
+    eventName === "conversation_typing_on" ||
+    eventName === "conversation_typing_off" ||
+    eventName === "conversation.typing_on" ||
+    eventName === "conversation.typing_off"
+  ) {
+    applyRealtimePresenceEvent(eventName, payload, num(env.conversationId));
   } else {
     handleRealtimeSettingsEvent(eventName, payload);
   }
@@ -2930,6 +3012,7 @@ export function disableLinkedStoreAdapter(): void {
   // Condition 5: Close EventSource and lifecycle listeners immediately upon switching from linked to preview mode
   removeReconcileLifecycleListeners();
   closeRealtimeEventStream();
+  clearLivePresenceStore();
 
   const wasActive = useLinkedAdapterStatus.getState().active;
   activeRunId++;

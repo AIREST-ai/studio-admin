@@ -479,6 +479,21 @@ export function buildEventDedupeKey(payload: Record<string, unknown>): string {
     return `${event}:${id}:${hash}`;
   }
 
+  // V-18: Chatwoot re-sends typing_on while an agent types. A 24h content hash of the same
+  // user+conversation payload would swallow every pulse after the first. Delivery-id still
+  // dedupes webhook retries; the content key must be unique per pulse.
+  if (
+    event === "conversation_typing_on" ||
+    event === "conversation_typing_off" ||
+    event === "conversation.typing_on" ||
+    event === "conversation.typing_off"
+  ) {
+    const convObj = obj(payload.conversation);
+    const convId = num(convObj.id) ?? num(payload.id) ?? "no-conv";
+    const userId = num(obj(payload.user).id) ?? "no-user";
+    return `typing:${event}:${convId}:${userId}:${Date.now()}`;
+  }
+
   if (event === "contact_created") {
     return `contact_created:${id}`;
   }
@@ -504,12 +519,13 @@ function extractInboxId(payload: Record<string, unknown>): number | null {
 }
 
 function extractConversationId(payload: Record<string, unknown>): number | null {
-  const event = str(payload.event) ?? "";
-  if (event.startsWith("conversation_")) {
-    return num(payload.id) ?? num(payload.display_id);
-  }
+  // V-18: typing webhooks nest the conversation (`user` + `conversation` + `event`), unlike
+  // conversation_created/updated which merge webhook_data at the top level. Read the nested id first
+  // so `conversation_typing_on` / `conversation.typing_on` get a conversationId on the envelope.
   const convObj = obj(payload.conversation);
-  return num(convObj.id) ?? num(convObj.display_id) ?? num(payload.conversation_id);
+  const nested = num(convObj.id) ?? num(convObj.display_id);
+  if (nested !== null) return nested;
+  return num(payload.id) ?? num(payload.display_id) ?? num(payload.conversation_id);
 }
 
 export async function publishWebhookEvent(
