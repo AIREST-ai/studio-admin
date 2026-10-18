@@ -327,7 +327,17 @@ export function toSharedAgents(rawAgents: unknown): { agents: Agent[]; realAgent
       availability: statusRaw === "online" ? "online" : statusRaw === "busy" ? "busy" : "offline",
       confirmed: a.confirmed !== false,
       provider: str(a.provider) === "saml" ? "saml" : "email",
-      joinedDate: "Oct 17, 2026",
+      joinedDate: (() => {
+        const createdSec = toUnixSeconds(a.created_at);
+        if (createdSec && createdSec > 0) {
+          return new Date(createdSec * 1000).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        }
+        return "";
+      })(),
     });
   }
 
@@ -689,12 +699,12 @@ export function toStudioConversations(
       phone: senderPhone,
       website: "",
       location: senderLocation,
-      timezone: "UTC+3",
-      status: "Lead",
+      timezone: str(senderExtra.timezone) ?? str(senderCustomMap.timezone) ?? "",
+      status: str(senderExtra.status) ?? str(senderCustomMap.status) ?? "",
       qualifiedAt:
         createdSec && createdSec > 0
           ? new Date(createdSec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-          : "Oct 17, 2026",
+          : "",
       tags: labels,
     };
 
@@ -738,7 +748,7 @@ export function toStudioConversations(
       createdAt:
         createdSec && createdSec > 0
           ? new Date(createdSec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          : "Oct 17",
+          : "",
     };
 
     unreadMap[idNum] = unreadCount;
@@ -793,7 +803,7 @@ export function toDirectoryContact(value: unknown): DirectoryContact {
     createdAt:
       createdSec && createdSec > 0
         ? new Date(createdSec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-        : "Oct 17, 2026",
+        : "",
     labels: Array.isArray(raw.labels)
       ? raw.labels.filter((label): label is string => typeof label === "string")
       : Array.isArray(raw.label_list)

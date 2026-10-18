@@ -50,11 +50,13 @@ export function openProfileTab() {
 }
 
 function Row({ icon: Icon, label, children }: { icon: typeof Mail; label: string; children: React.ReactNode }) {
+  const value = typeof children === "string" ? children : null;
+  const display = value && value.trim() ? value : "—";
   return (
     <div className="flex items-center gap-2">
       <Icon className="size-4 shrink-0 text-muted-foreground" />
       <span className="shrink-0 text-muted-foreground text-sm">{label}</span>
-      <span className="ms-auto min-w-0 truncate text-end text-sm">{children}</span>
+      <span className="ms-auto min-w-0 truncate text-end text-sm">{display}</span>
     </div>
   );
 }
@@ -162,7 +164,7 @@ export function StudioProfile({ conversation, files }: { conversation: Conversat
               <CheckCircle2 className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-muted-foreground text-sm">Stage</span>
               <Badge variant="secondary" className="ms-auto">
-                {contact.status}
+                {contact.status?.trim() || "—"}
               </Badge>
             </div>
             <Row icon={Calendar} label="Qualified since">

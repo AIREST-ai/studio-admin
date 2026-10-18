@@ -614,6 +614,8 @@ function ContactLabels({ contact }: { contact: Contact }) {
 
 type Stat = { icon: typeof Inbox; label: string; value: string; trend?: string; up?: boolean; note: string };
 
+const dash = (v: string) => v?.trim() || "—";
+
 function joinNames(names: string[]): string {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? "");
 }
@@ -766,7 +768,7 @@ export function ContactDetails({ contact: initial }: { contact: Contact }) {
                   .join(" · ")}
               </p>
               <p className="text-muted-foreground text-sm">
-                Created {contact.createdAt} • Last activity {contact.lastActivity}
+                Created {dash(contact.createdAt)} • Last activity {dash(contact.lastActivity)}
               </p>
             </div>
           </div>
