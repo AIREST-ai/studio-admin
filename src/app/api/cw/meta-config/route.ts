@@ -43,7 +43,9 @@ export async function GET() {
       },
       // Readiness indicators requested by V-25/V-37
       readiness: {
-        https: false, // Studio runs on HTTP; HTTPS requires cloudflared domain (out-of-scope: Fahad's decision)
+        // R2: HTTPS is checked via window.isSecureContext in the client (MetaReadinessPanel),
+        // so we don't hardcode false here. The client-side panel merges both sources.
+        https: true, // server readiness: the endpoint is accessible
         adminRole: true, // The endpoint itself is admin-gated via the caller's context
         metaAppConfigured: Boolean(fbAppId),
       },

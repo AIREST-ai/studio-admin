@@ -298,75 +298,165 @@ function WebsiteForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }
 // ---------- Connect-with buttons (Facebook, Instagram, TikTok, Google, Microsoft) ----------
 
 /** V-37: Real Facebook auth via FB SDK — opens FB.login, returns pages from Chatwoot gateway. */
-function useFacebookAuth() {
+/** V-37 R2: Loads Facebook SDK on demand at first click, then calls FB.login with Chatwoot 4.18 scopes. */
+function useFacebookAuth(fbAppId: string, fbApiVersion: string) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [sdkReady, setSdkReady] = React.useState(false);
+  const loadingRef = React.useRef(false);
 
-  const start = React.useCallback((onToken: (omniauthToken: string) => void) => {
-    setBusy(true);
-    setError(null);
-    // Load FB SDK on demand
-    const existing = (window as unknown as Record<string, unknown>).FB as
-      | { login?: (opts: Record<string, unknown>, cb: (res: Record<string, unknown>) => void) => void }
-      | undefined;
-    if (!existing?.login) {
-      setError("Facebook SDK is not loaded. Please ensure the page is served over HTTPS with a registered domain.");
-      setBusy(false);
-      return;
-    }
-    existing.login(
-      {
-        config_id: "",
-        response_type: "code",
-        scope: "pages_manage_metadata,business_management,pages_messaging,pages_show_list,pages_read_engagement",
-      },
-      (response: Record<string, unknown>) => {
-        if (response.status === "connected") {
-          const token =
-            (response.authResponse as Record<string, unknown>)?.code ||
-            (response.authResponse as Record<string, unknown>)?.accessToken;
-          if (typeof token === "string" && token) {
-            onToken(token);
-          } else {
-            setError("Facebook authentication succeeded but no token was returned.");
+  // Load FB SDK once on first use
+  const ensureSdk = React.useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const win = window as unknown as Record<string, unknown>;
+      if (win.FB && typeof (win.FB as Record<string, unknown>).login === "function") {
+        setSdkReady(true);
+        resolve(true);
+        return;
+      }
+      if (loadingRef.current) {
+        // SDK is already loading; wait for fbAsyncInit
+        const check = setInterval(() => {
+          if (win.FB && typeof (win.FB as Record<string, unknown>).login === "function") {
+            clearInterval(check);
+            setSdkReady(true);
+            resolve(true);
           }
-        } else if (response.status === "not_authorized" || response.status === "unknown") {
-          setError("Facebook authorization was cancelled or denied.");
-        } else {
-          setError("Facebook authentication failed.");
-        }
-        setBusy(false);
-      },
-    );
-  }, []);
+        }, 100);
+        setTimeout(() => {
+          clearInterval(check);
+          resolve(false);
+        }, 10000);
+        return;
+      }
+      loadingRef.current = true;
+      // Inject SDK script
+      win.fbAsyncInit = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (win.FB as any).init?.({ appId: fbAppId, cookie: true, xfbml: false, version: fbApiVersion });
+        setSdkReady(true);
+        resolve(true);
+      };
+      const script = document.createElement("script");
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.id = "facebook-jssdk";
+      script.onerror = () => {
+        loadingRef.current = false;
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+  }, [fbAppId, fbApiVersion]);
 
-  return { busy, error, start, clearError: () => setError(null) };
+  const start = React.useCallback(
+    async (onToken: (omniauthToken: string) => void) => {
+      setBusy(true);
+      setError(null);
+      const ready = await ensureSdk();
+      if (!ready) {
+        setError("Facebook SDK could not be loaded. The page must be served over HTTPS with a registered domain.");
+        setBusy(false);
+        return;
+      }
+      const FB = (window as unknown as Record<string, unknown>).FB as {
+        login: (opts: Record<string, unknown>, cb: (res: Record<string, unknown>) => void) => void;
+      };
+      FB.login(
+        {
+          scope: "pages_manage_metadata,business_management,pages_messaging,pages_show_list,pages_read_engagement",
+        },
+        (response: Record<string, unknown>) => {
+          if (response.status === "connected") {
+            const authResponse = response.authResponse as Record<string, unknown> | undefined;
+            const token = authResponse?.code || authResponse?.accessToken;
+            if (typeof token === "string" && token) {
+              onToken(token);
+            } else {
+              setError("Facebook authentication succeeded but no token was returned.");
+            }
+          } else if (response.status === "not_authorized" || response.status === "unknown") {
+            setError("Facebook authorization was cancelled or denied.");
+          } else {
+            setError("Facebook authentication failed.");
+          }
+          setBusy(false);
+        },
+      );
+    },
+    [ensureSdk],
+  );
+
+  return { busy, error, start, clearError: () => setError(null), sdkReady };
 }
 
-/** V-37: Real WhatsApp Embedded Signup via FB SDK. */
-function useWhatsappEmbeddedSignup(configId: string) {
+/** V-37 R2: Real WhatsApp Embedded Signup via FB SDK — loads SDK on demand. */
+function useWhatsappEmbeddedSignup(configId: string, fbAppId: string, fbApiVersion: string) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [state, setState] = React.useState<"idle" | "auth" | "processing">("idle");
+  const loadingRef = React.useRef(false);
+  const [sdkReady, setSdkReady] = React.useState(false);
+
+  const ensureSdk = React.useCallback((): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const win = window as unknown as Record<string, unknown>;
+      if (win.FB && typeof (win.FB as Record<string, unknown>).login === "function") {
+        setSdkReady(true);
+        resolve(true);
+        return;
+      }
+      if (loadingRef.current) {
+        const check = setInterval(() => {
+          if (win.FB && typeof (win.FB as Record<string, unknown>).login === "function") {
+            clearInterval(check);
+            setSdkReady(true);
+            resolve(true);
+          }
+        }, 100);
+        setTimeout(() => {
+          clearInterval(check);
+          resolve(false);
+        }, 10000);
+        return;
+      }
+      loadingRef.current = true;
+      win.fbAsyncInit = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (win.FB as any).init?.({ appId: fbAppId, cookie: true, xfbml: false, version: fbApiVersion });
+        setSdkReady(true);
+        resolve(true);
+      };
+      const script = document.createElement("script");
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.id = "facebook-jssdk";
+      script.onerror = () => {
+        loadingRef.current = false;
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
+  }, [fbAppId, fbApiVersion]);
 
   const start = React.useCallback(
-    (onComplete: (data: { code: string; wabaId: string; phoneNumberId?: string; businessId?: string }) => void) => {
+    async (
+      onComplete: (data: { code: string; wabaId: string; phoneNumberId?: string; businessId?: string }) => void,
+    ) => {
       if (!configId) {
-        setError("WhatsApp configuration ID is not available. Please configure it in Chatwoot Super Admin.");
+        setError(
+          "WhatsApp configuration ID is not available in the studio environment. Please set WHATSAPP_CONFIGURATION_ID.",
+        );
         return;
       }
       setBusy(true);
       setError(null);
       setState("auth");
-
-      const FB = (window as unknown as Record<string, unknown>).FB as
-        | {
-            login?: (opts: Record<string, unknown>, cb: (res: Record<string, unknown>) => void) => void;
-          }
-        | undefined;
-
-      if (!FB?.login) {
-        setError("Facebook SDK is not loaded. Please ensure the page is served over HTTPS with a registered domain.");
+      const ready = await ensureSdk();
+      if (!ready) {
+        setError("Facebook SDK could not be loaded. The page must be served over HTTPS with a registered domain.");
         setBusy(false);
         setState("idle");
         return;
@@ -395,6 +485,8 @@ function useWhatsappEmbeddedSignup(configId: string) {
       };
       window.addEventListener("message", listener);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const FB = (window as unknown as Record<string, any>).FB as any;
       FB.login(
         {
           config_id: configId,
@@ -432,10 +524,10 @@ function useWhatsappEmbeddedSignup(configId: string) {
         },
       );
     },
-    [configId],
+    [configId, ensureSdk],
   );
 
-  return { busy, error, state, start, clearError: () => setError(null), setState };
+  return { busy, error, state, start, clearError: () => setError(null), setState, sdkReady };
 }
 
 /** V-37: Instagram authorization — requests the OAuth URL from Chatwoot via gateway, opens it in a popup. */
@@ -477,22 +569,45 @@ function useInstagramAuth() {
   return { busy, error, start, clearError: () => setError(null) };
 }
 
-/** V-37: Readiness panel for Meta channels — shows HTTPS, app config, admin role status. */
+/** V-37 R2: Consistent error display for Meta API errors (422, etc.). */
+function SaveFailed({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <p
+      role="alert"
+      className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-sm"
+    >
+      Not saved: {error}
+    </p>
+  );
+}
+
+/** V-37 R2: Readiness panel called above each Meta channel form. Merges window.isSecureContext with server config. */
 function MetaReadinessPanel({
   metaConfig,
 }: {
   metaConfig: {
     available: boolean;
-    facebook: { configured: boolean };
-    whatsapp: { configured: boolean };
+    facebook: { appId: string | null; configured: boolean };
+    whatsapp: { configurationId: string | null; configured: boolean };
     instagram: { configured: boolean };
-    readiness: { https: boolean; adminRole: boolean };
+    readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
   } | null;
 }) {
-  if (!metaConfig) return null;
-  const { readiness, facebook, whatsapp, instagram } = metaConfig;
-  const allOk =
-    readiness.https && facebook.configured && whatsapp.configured && instagram.configured && readiness.adminRole;
+  const isHttps = typeof window !== "undefined" ? window.isSecureContext : false;
+
+  if (!metaConfig) {
+    return (
+      <div className="mx-auto max-w-lg rounded-xl border bg-card p-4 text-center">
+        <Loader2 className="inline size-4 animate-spin" />{" "}
+        <span className="text-muted-foreground text-sm">Loading readiness…</span>
+      </div>
+    );
+  }
+
+  const { facebook, whatsapp, instagram, readiness } = metaConfig;
+  const adminOk = readiness.adminRole;
+  const allOk = isHttps && facebook.configured && whatsapp.configured && instagram.configured && adminOk;
 
   return (
     <div className="mx-auto max-w-lg rounded-xl border bg-card p-4">
@@ -500,8 +615,8 @@ function MetaReadinessPanel({
       <div className="grid gap-2 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">HTTPS</span>
-          <span className={readiness.https ? "text-emerald-600" : "text-orange-600"}>
-            {readiness.https ? "✓ Enabled" : "✗ Required"}
+          <span className={isHttps ? "text-emerald-600" : "text-orange-600"}>
+            {isHttps ? "✓ Enabled" : "✗ Required"}
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -638,55 +753,42 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
   const [submitted, setSubmitted] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
-  const fbAuth = useFacebookAuth();
+  const [metaConfig, setMetaConfig] = React.useState<{
+    available: boolean;
+    facebook: { appId: string | null; configured: boolean };
+    whatsapp: { configurationId: string | null; configured: boolean };
+    instagram: { configured: boolean };
+    readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
+  } | null>(null);
+  const fbAppId = metaConfig?.facebook?.appId || "";
+  const fbApiVersion =
+    (metaConfig as Record<string, unknown> & { facebook?: { version?: string } })?.facebook?.version || "v22.0";
+  const fbAuth = useFacebookAuth(fbAppId, fbApiVersion);
   const Icon = channel.icon;
 
-  const handleConnect = () => {
-    fbAuth.start((omniauthToken: string) => {
-      // Fetch pages from Chatwoot via gateway
-      setPagesLoading(true);
-      setPagesError(null);
-      fetch("/api/cw/callbacks/facebook_pages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ omniauth_token: omniauthToken }),
-      })
-        .then(async (res) => {
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            throw new Error(((body as Record<string, unknown>).error as string) || `Server error (${res.status})`);
-          }
-          const body = (await res.json()) as {
-            page_details?: Array<{ id: string; name: string; access_token?: string }>;
-            user_access_token?: string;
-          };
-          const pageList = (body.page_details ?? []).map((p: { id: string; name: string }) => ({
-            id: p.id,
-            name: p.name,
-            exists: true,
-          }));
-          if (pageList.length === 0) {
-            setPagesError(
-              "No Facebook Pages found on your account. Make sure you have admin access to at least one Page.",
-            );
-          }
-          setPages(pageList);
-          setConnected(true);
-          setPagesLoading(false);
-          // Note: user_access_token and page_access_tokens are kept server-side only (V-37 security requirement)
-        })
-        .catch((err) => {
-          setPagesError(err instanceof Error ? err.message : "Failed to fetch Facebook Pages.");
-          setPagesLoading(false);
-          fbAuth.clearError();
-        });
-    });
-  };
+  // Fetch Meta config on mount for readiness panel + fbAppId
+  React.useEffect(() => {
+    fetch("/api/cw/meta-config")
+      .then((res) => res.json())
+      .then((data) => setMetaConfig(data as typeof metaConfig))
+      .catch(() => {});
+  }, []);
 
   if (!connected) {
     if (fbAuth.error) {
       return (
         <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
+          <MetaReadinessPanel
+            metaConfig={
+              metaConfig as {
+                available: boolean;
+                facebook: { appId: string | null; configured: boolean };
+                whatsapp: { configurationId: string | null; configured: boolean };
+                instagram: { configured: boolean };
+                readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
+              } | null
+            }
+          />
           <div className="grid size-14 place-items-center rounded-2xl border bg-muted/50">
             <Icon className="size-7 text-muted-foreground" />
           </div>
@@ -703,7 +805,50 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
               <AlertDescription className="text-destructive">{fbAuth.error}</AlertDescription>
             </Alert>
           ) : null}
-          <Button onClick={handleConnect} disabled={fbAuth.busy} type="button">
+          <Button
+            onClick={() => {
+              fbAuth.start((omniauthToken: string) => {
+                setPagesLoading(true);
+                setPagesError(null);
+                fetch("/api/cw/callbacks/facebook_pages", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ omniauth_token: omniauthToken }),
+                })
+                  .then(async (res) => {
+                    if (!res.ok) {
+                      const body = await res.json().catch(() => ({}));
+                      throw new Error(
+                        ((body as Record<string, unknown>).error as string) || `Server error (${res.status})`,
+                      );
+                    }
+                    const body = (await res.json()) as {
+                      page_details?: Array<{ id: string; name: string; access_token?: string }>;
+                      user_access_token?: string;
+                    };
+                    const pageList = (body.page_details ?? []).map((p: { id: string; name: string }) => ({
+                      id: p.id,
+                      name: p.name,
+                      exists: true,
+                    }));
+                    if (pageList.length === 0) {
+                      setPagesError(
+                        "No Facebook Pages found on your account. Make sure you have admin access to at least one Page.",
+                      );
+                    }
+                    setPages(pageList);
+                    setConnected(true);
+                    setPagesLoading(false);
+                  })
+                  .catch((err) => {
+                    setPagesError(err instanceof Error ? err.message : "Failed to fetch Facebook Pages.");
+                    setPagesLoading(false);
+                  });
+              });
+            }}
+            disabled={fbAuth.busy}
+            type="button"
+          >
             {fbAuth.busy ? <Loader2 className="animate-spin" /> : null}
             Continue with Facebook
           </Button>
@@ -711,18 +856,68 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
       );
     }
     return (
-      <ConnectPanel
-        icon={<Icon className="size-7 text-muted-foreground" />}
-        title="Continue with Facebook"
-        help={`PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by ${accountName}.`}
-        button="Continue with Facebook"
-        onConnected={() => setConnected(true)}
-        connectFn={(onDone) => {
-          fbAuth.start(() => {
-            onDone();
-          });
-        }}
-      />
+      <>
+        <MetaReadinessPanel
+          metaConfig={
+            metaConfig as {
+              available: boolean;
+              facebook: { appId: string | null; configured: boolean };
+              whatsapp: { configurationId: string | null; configured: boolean };
+              instagram: { configured: boolean };
+              readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
+            } | null
+          }
+        />
+        <ConnectPanel
+          icon={<Icon className="size-7 text-muted-foreground" />}
+          title="Continue with Facebook"
+          help={`PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by ${accountName}.`}
+          button="Continue with Facebook"
+          onConnected={() => setConnected(true)}
+          connectFn={(onDone) => {
+            fbAuth.start((omniauthToken: string) => {
+              onDone();
+              // Fetch pages after auth
+              setPagesLoading(true);
+              setPagesError(null);
+              fetch("/api/cw/callbacks/facebook_pages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ omniauth_token: omniauthToken }),
+              })
+                .then(async (res) => {
+                  if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(
+                      ((body as Record<string, unknown>).error as string) || `Server error (${res.status})`,
+                    );
+                  }
+                  const body = (await res.json()) as {
+                    page_details?: Array<{ id: string; name: string; access_token?: string }>;
+                    user_access_token?: string;
+                  };
+                  const pageList = (body.page_details ?? []).map((p: { id: string; name: string }) => ({
+                    id: p.id,
+                    name: p.name,
+                    exists: true,
+                  }));
+                  if (pageList.length === 0) {
+                    setPagesError(
+                      "No Facebook Pages found on your account. Make sure you have admin access to at least one Page.",
+                    );
+                  }
+                  setPages(pageList);
+                  setConnected(true);
+                  setPagesLoading(false);
+                })
+                .catch((err) => {
+                  setPagesError(err instanceof Error ? err.message : "Failed to fetch Facebook Pages.");
+                  setPagesLoading(false);
+                });
+            });
+          }}
+        />
+      </>
     );
   }
 
@@ -757,15 +952,19 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
           .then(async (res) => {
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-              throw new Error(((body as Record<string, unknown>).error as string) || `Server error (${res.status})`);
+              const errMsg = ((body as Record<string, unknown>).error as string) || `Server error (${res.status})`;
+              throw new Error(errMsg);
             }
             const created = body as { id?: number; name?: string };
+            // V-37 R2: require id before declaring success
+            if (!created.id) {
+              throw new Error("Inbox was not created. No inbox ID returned from server.");
+            }
             onCreate({
               channel: "facebook",
               name: name.trim(),
               identifier: pages.find((p) => p.id === page)?.name || name.trim(),
             });
-            // Note: created.id is from Chatwoot — we pass it to onCreate which saves to preview store
           })
           .catch((err) => {
             setCreateError(err instanceof Error ? err.message : "Failed to create Facebook inbox.");
@@ -783,12 +982,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
           <AlertDescription className="text-destructive">{pagesError}</AlertDescription>
         </Alert>
       ) : null}
-      {createError ? (
-        <Alert className="border-destructive/30 bg-destructive/5">
-          <CircleAlert className="text-destructive" />
-          <AlertDescription className="text-destructive">{createError}</AlertDescription>
-        </Alert>
-      ) : null}
+      <SaveFailed error={createError} />
       <FieldGroup className="gap-4">
         <Field data-invalid={pageError || undefined}>
           <FieldLabel htmlFor="fb-page">Choose Page</FieldLabel>
@@ -982,19 +1176,27 @@ function TwilioForm({ medium, onCreate }: { medium: "sms" | "whatsapp"; onCreate
 }
 
 function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => void }) {
-  const [whatsappConfigId, setWhatsappConfigId] = React.useState<string>("");
+  const [metaConfig, setMetaConfig] = React.useState<{
+    available: boolean;
+    facebook: { appId: string | null; configured: boolean };
+    whatsapp: { configurationId: string | null; configured: boolean };
+    instagram: { configured: boolean };
+    readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
+  } | null>(null);
   const [configLoaded, setConfigLoaded] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
-  const wsAuth = useWhatsappEmbeddedSignup(whatsappConfigId);
+  const whatsappConfigId = metaConfig?.whatsapp?.configurationId || "";
+  const fbAppId = metaConfig?.facebook?.appId || "";
+  const fbApiVersion =
+    (metaConfig as Record<string, unknown> & { facebook?: { version?: string } })?.facebook?.version || "v22.0";
+  const wsAuth = useWhatsappEmbeddedSignup(whatsappConfigId, fbAppId, fbApiVersion);
 
   // Fetch Meta config on mount to get WhatsApp configuration ID
   React.useEffect(() => {
     fetch("/api/cw/meta-config")
       .then((res) => res.json())
-      .then((data: { whatsapp?: { configurationId?: string }; available?: boolean }) => {
-        if (data.whatsapp?.configurationId) {
-          setWhatsappConfigId(data.whatsapp.configurationId);
-        }
+      .then((data) => {
+        setMetaConfig(data as typeof metaConfig);
         setConfigLoaded(true);
       })
       .catch(() => setConfigLoaded(true));
@@ -1023,6 +1225,10 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
           if (!res.ok) {
             throw new Error((body.error as string) || `Server error (${res.status})`);
           }
+          // V-37 R2: require id before declaring success
+          if (!body.id) {
+            throw new Error("WhatsApp inbox was not created. No inbox ID returned from server.");
+          }
           const name = (body.name as string) || "WhatsApp Business";
           const phone = (body.phone_number as string) || "";
           onCreate({
@@ -1044,6 +1250,7 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
 
   return (
     <div className="grid max-w-2xl gap-6">
+      <MetaReadinessPanel metaConfig={metaConfig} />
       <FormHeading
         title="Quick setup with Meta"
         description="Use Quick setup with Meta to connect a new number or an existing number from the WhatsApp Business app. You will be redirected to Meta to log into your WhatsApp Business account. Having admin access will help make the setup smooth and easy."
@@ -1053,10 +1260,10 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
           <Loader2 className="size-4 animate-spin" /> Loading configuration…
         </div>
       ) : !whatsappConfigId ? (
-        <Alert className="border-destructive/30 bg-destructive/5">
-          <CircleAlert className="text-destructive" />
+        <Alert>
+          <CircleAlert />
           <AlertDescription>
-            WhatsApp Embedded Signup is not configured. Please set WHATSAPP_CONFIGURATION_ID in Chatwoot Super Admin.
+            WhatsApp Embedded Signup is not configured in the studio environment. Please set WHATSAPP_CONFIGURATION_ID.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -1085,14 +1292,9 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
           <AlertDescription className="text-destructive">{wsAuth.error}</AlertDescription>
         </Alert>
       ) : null}
-      {createError ? (
-        <Alert className="border-destructive/30 bg-destructive/5">
-          <CircleAlert className="text-destructive" />
-          <AlertDescription className="text-destructive">{createError}</AlertDescription>
-        </Alert>
-      ) : null}
+      <SaveFailed error={createError} />
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" disabled={busy || !whatsappConfigId} onClick={handleConnect}>
+        <Button type="button" disabled={busy} onClick={handleConnect}>
           {busy ? <Loader2 className="animate-spin" /> : null}
           Connect with WhatsApp Business
         </Button>
@@ -1549,12 +1751,40 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
   const [started, setStarted] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [polling, setPolling] = React.useState(false);
+  const [metaConfig, setMetaConfig] = React.useState<{
+    available: boolean;
+    facebook: { appId: string | null; configured: boolean };
+    whatsapp: { configurationId: string | null; configured: boolean };
+    instagram: { configured: boolean };
+    readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
+  } | null>(null);
+  const priorIgIdsRef = React.useRef<Set<number>>(new Set());
   const igAuth = useInstagramAuth();
 
+  // Fetch Meta config on mount
+  React.useEffect(() => {
+    fetch("/api/cw/meta-config")
+      .then((res) => res.json())
+      .then((data) => setMetaConfig(data as typeof metaConfig))
+      .catch(() => {});
+  }, []);
+
   const handleConnect = () => {
+    // Snapshot existing inboxes BEFORE opening popup to exclude prior IG inboxes
+    fetch("/api/cw/inboxes")
+      .then((res) => res.json())
+      .then((data) => {
+        const inboxes: Array<{ id: number; channel_type?: string }> = Array.isArray(data)
+          ? data
+          : ((data as { payload?: Array<{ id: number; channel_type?: string }> }).payload ?? []);
+        const igIds = new Set(inboxes.filter((ibx) => ibx.channel_type === "Channel::Instagram").map((ibx) => ibx.id));
+        priorIgIdsRef.current = igIds;
+      })
+      .catch(() => {});
+
     igAuth.start((popup) => {
       setStarted(true);
-      // Poll GET /inboxes every 1s until a Channel::Instagram inbox appears, then close popup
+      // Poll GET /inboxes every 1s until a NEW Channel::Instagram inbox appears, then close popup
       const poll = setInterval(() => {
         fetch("/api/cw/inboxes")
           .then((res) => res.json())
@@ -1567,8 +1797,10 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
               const inboxes = Array.isArray(data)
                 ? data
                 : ((data as { payload?: Array<{ id: number; name: string; channel_type?: string }> }).payload ?? []);
+              // V-37 R2: exclude prior Instagram inboxes (inbox 9) from "new" detection
               const newIg = inboxes.find(
-                (ibx: { id: number; channel_type?: string }) => ibx.channel_type === "Channel::Instagram",
+                (ibx: { id: number; channel_type?: string }) =>
+                  ibx.channel_type === "Channel::Instagram" && !priorIgIdsRef.current.has(ibx.id),
               );
               if (newIg) {
                 clearInterval(poll);
@@ -1610,6 +1842,7 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
   if (igAuth.error) {
     return (
       <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
+        <MetaReadinessPanel metaConfig={metaConfig} />
         <div className="grid size-14 place-items-center rounded-2xl border bg-muted/50">
           <Icon className="size-7 text-pink-600" />
         </div>
@@ -1654,19 +1887,20 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
   }
 
   return (
-    <ConnectPanel
-      icon={<Icon className="size-7 text-pink-600" />}
-      title="Connect your Instagram Profile"
-      help="To add your Instagram profile as a channel, you need to authenticate your Instagram Profile by clicking on 'Continue with Instagram'"
-      button="Continue with Instagram"
-      onConnected={() => setStarted(true)}
-      connectFn={(onDone) => {
-        igAuth.start(() => {
+    <>
+      <MetaReadinessPanel metaConfig={metaConfig} />
+      <ConnectPanel
+        icon={<Icon className="size-7 text-pink-600" />}
+        title="Connect your Instagram Profile"
+        help="To add your Instagram profile as a channel, you need to authenticate your Instagram Profile by clicking on 'Continue with Instagram'"
+        button="Continue with Instagram"
+        onConnected={() => setStarted(true)}
+        connectFn={(onDone) => {
+          handleConnect();
           onDone();
-          setStarted(true);
-        });
-      }}
-    />
+        }}
+      />
+    </>
   );
 }
 

@@ -947,6 +947,7 @@ export async function readWebhookSecrets(force = false): Promise<string[]> {
 /* ------------------------------------------------------------------ V-37: Meta token cache (short-lived, tied to admin session) -------- */
 
 interface MetaTokenCache {
+  sessionId: string; // tied to the admin's browser session (cookie signature)
   userAccessToken?: string;
   pageTokens: Map<string, string>; // page_id -> access_token
   createdAt: number;
@@ -954,33 +955,51 @@ interface MetaTokenCache {
 
 const META_TOKEN_TTL_MS = 10 * 60_000; // 10 minutes
 
-function metaTokenStore(): MetaTokenCache | null {
+function metaTokenStore(sessionId?: string): MetaTokenCache | null {
   const store = globalThis as typeof globalThis & { __studioMetaTokenCache?: MetaTokenCache };
   if (!store.__studioMetaTokenCache) return null;
   if (Date.now() - store.__studioMetaTokenCache.createdAt > META_TOKEN_TTL_MS) {
     delete store.__studioMetaTokenCache;
     return null;
   }
+  if (sessionId && store.__studioMetaTokenCache.sessionId !== sessionId) return null;
   return store.__studioMetaTokenCache;
 }
 
-/** Store Facebook user_access_token and per-page access_tokens in short-lived server memory. */
-export function cacheFacebookTokens(userAccessToken: string, pages: Array<{ id: string; access_token: string }>) {
+/** Derive a session-bound key from the request (cookie signature). Never logs or returns it. */
+export function sessionKeyFromRequest(request?: { headers?: { get?: (k: string) => string | null } }): string {
+  const cookie = request?.headers?.get?.("cookie") ?? "";
+  // Use a stable hash of the session cookie, not the cookie itself
+  let h = 0;
+  for (let i = 0; i < cookie.length; i++) h = ((h << 5) - h + cookie.charCodeAt(i)) | 0;
+  return `s${Math.abs(h).toString(36)}`;
+}
+
+/** Store Facebook user_access_token and per-page access_tokens in short-lived server memory, bound to a session. */
+export function cacheFacebookTokens(
+  sessionId: string,
+  userAccessToken: string,
+  pages: Array<{ id: string; access_token: string }>,
+) {
   const store = globalThis as typeof globalThis & { __studioMetaTokenCache?: MetaTokenCache };
   const pageTokens = new Map<string, string>();
   for (const p of pages) {
     if (p.id && p.access_token) pageTokens.set(p.id, p.access_token);
   }
   store.__studioMetaTokenCache = {
+    sessionId,
     userAccessToken,
     pageTokens,
     createdAt: Date.now(),
   };
 }
 
-/** Retrieve cached tokens for register_facebook_page; returns null if expired or missing. */
-export function getCachedFacebookTokens(pageId: string): { userAccessToken: string; pageAccessToken: string } | null {
-  const cache = metaTokenStore();
+/** Retrieve cached tokens for register_facebook_page; returns null if expired, missing, or wrong session. */
+export function getCachedFacebookTokens(
+  sessionId: string,
+  pageId: string,
+): { userAccessToken: string; pageAccessToken: string } | null {
+  const cache = metaTokenStore(sessionId);
   if (!cache?.userAccessToken) return null;
   const pageToken = cache.pageTokens.get(pageId);
   if (!pageToken) return null;

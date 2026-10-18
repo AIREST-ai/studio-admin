@@ -37,6 +37,7 @@ import {
   gatewayCall,
   getCachedFacebookTokens,
   problemOf,
+  sessionKeyFromRequest,
 } from "@/lib/chatwoot/server";
 import { type Agent, CURRENT_USER_ID, agents as seedAgents } from "@/lib/cw/data";
 import { readPreviewState } from "@/lib/cw/persistence/file-store";
@@ -191,6 +192,7 @@ async function handle(method: GatewayMethod, request: Request, context: { params
       // Pass through to Chatwoot — the omniauth_token is in the request body.
       // Chatwoot will exchange it for a long-lived token and return page_details with access_tokens.
       // We intercept the response below to cache tokens and strip them.
+      const sessionId = sessionKeyFromRequest(request);
       const result = await gatewayCall(method, route.base, route.path, query, payload);
       const body = result.body as
         | { page_details?: Array<{ id: string; name: string; access_token?: string }>; user_access_token?: string }
@@ -199,16 +201,17 @@ async function handle(method: GatewayMethod, request: Request, context: { params
         const pages = body.page_details
           .filter((p) => p.id && p.access_token)
           .map((p) => ({ id: p.id!, access_token: p.access_token! }));
-        cacheFacebookTokens(body.user_access_token, pages);
+        cacheFacebookTokens(sessionId, body.user_access_token, pages);
       }
       return answer(result.status, result.body ?? (result.status < 300 ? { ok: true } : { error: "no body" }));
     }
 
     if (segments[0] === "callbacks" && segments[1] === "register_facebook_page") {
       // Inject cached tokens into the request body. Browser sends only page_id and inbox_name.
+      const sessionId = sessionKeyFromRequest(request);
       const body = payload?.parsed as { page_id?: string; inbox_name?: string } | undefined;
       if (body?.page_id) {
-        const cached = getCachedFacebookTokens(body.page_id);
+        const cached = getCachedFacebookTokens(sessionId, body.page_id);
         if (!cached) {
           return refuse(403, "Facebook authentication expired. Please reconnect your Facebook account.");
         }
@@ -227,13 +230,13 @@ async function handle(method: GatewayMethod, request: Request, context: { params
       }
       try {
         const result = await gatewayCall(method, route.base, route.path, query, effectivePayload);
-        // Clear tokens after successful registration (or failure)
-        clearMetaTokenCache();
         return answer(result.status, result.body ?? (result.status < 300 ? { ok: true } : { error: "no body" }));
       } catch (error) {
-        clearMetaTokenCache();
         const problem = problemOf(error);
         return answer(error instanceof ChatwootError ? error.status : 500, { error: problem.message, problem });
+      } finally {
+        // V-37 R2: clear tokens in success AND failure (finally, not only catch)
+        clearMetaTokenCache();
       }
     }
 
