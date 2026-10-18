@@ -38,6 +38,9 @@ import {
   inboxes as seedInboxes,
   type Team,
 } from "@/lib/cw/data";
+import { channelName, withCleanChannelName } from "@/lib/cw/map";
+
+export { channelName, withCleanChannelName } from "@/lib/cw/map";
 
 type Raw = Record<string, unknown>;
 
@@ -90,9 +93,6 @@ export function messageKind(raw: Raw): LinkedMessageKind {
   if (raw.message_type === "template") return "template";
   return "outgoing";
 }
-
-/** Chatwoot's channel_type without the "Channel::" prefix, e.g. "WebWidget". */
-const channelName = (value: unknown) => (str(value) ?? "").replace(/^Channel::/, "");
 
 export interface InboxName {
   name: string;
@@ -272,7 +272,7 @@ export function channelSlugFromType(
   inboxChannel: ChannelKey;
   channelType: string;
 } {
-  const lower = `${rawType ?? ""} ${inboxName ?? ""}`.toLowerCase();
+  const lower = `${channelName(rawType)} ${inboxName ?? ""}`.toLowerCase();
   if (lower.includes("facebook") || lower.includes("messenger")) {
     return { slug: "facebook", inboxChannel: "facebook", channelType: "Messenger" };
   }
@@ -379,13 +379,13 @@ export function toSharedInboxes(rawInboxes: unknown, realAgentIds: number[]): In
       name,
       channel: ch.inboxChannel,
       channelType: ch.channelType,
-      identifier: str(raw.phone_number) ?? str(raw.website_url) ?? str(raw.channel_type) ?? name,
+      identifier: str(raw.phone_number) ?? str(raw.website_url) ?? (channelName(raw.channel_type) || name),
       agents: memberIds,
       autoAssign: raw.enable_auto_assignment !== false,
       ...(providerRaw === "whatsapp_cloud" || providerRaw === "twilio" ? { provider: providerRaw } : {}),
     });
   }
-  return inboxes;
+  return inboxes.map(withCleanChannelName);
 }
 
 export function toSharedTeams(rawTeams: unknown, realAgentIds: number[]): Team[] {

@@ -28,6 +28,7 @@ import type { Macro, MacroAction } from "@/app/(main)/dashboard/settings/macros/
 import type { ListName, SavedList } from "@/app/api/settings-preview/extras";
 import type { AccountExtras, ProfileSettings, SettingsPreview } from "@/app/api/settings-preview/route";
 import type { Agent, CannedResponse, Inbox, Label, Team } from "@/lib/cw/data";
+import { channelName, withCleanChannelName } from "@/lib/cw/map";
 import { linkedSession } from "@/lib/cw/persistence/client";
 import { type CwListKey, type CwLists, showLinkedLists, useCwShared } from "@/lib/cw/store";
 
@@ -369,7 +370,8 @@ export function isSyncingFromServer(): boolean {
 export function applyServerSharedState(patch: Partial<CwLists>) {
   syncingFromServer = true;
   try {
-    useCwShared.setState(patch);
+    const next = patch.inboxes ? { ...patch, inboxes: patch.inboxes.map(withCleanChannelName) } : patch;
+    useCwShared.setState(next);
     const s = useCwShared.getState();
     setLastSyncedShared({
       agents: s.agents,
@@ -1623,7 +1625,7 @@ export async function ensureLinkedOverviewLoaded(): Promise<void> {
     const channelStats: LinkedReportsState["channelStats"] = {};
     for (const [k, v] of Object.entries(rawCh)) {
       if (v && typeof v === "object") {
-        channelStats[k] = {
+        channelStats[channelName(k) || k] = {
           open: Number(v.open ?? 0),
           resolved: Number(v.resolved ?? 0),
           pending: Number(v.pending ?? 0),
