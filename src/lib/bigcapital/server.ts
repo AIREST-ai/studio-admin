@@ -5,12 +5,14 @@
 // Auth: "Authorization: Bearer <api key>" (packages/server/src/modules/Auth/api-key/AuthApiKey.strategy.ts).
 
 import { ownNames } from "@/lib/own-names";
+import { readVaultSecret } from "@/lib/system-vault";
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 export const BIGCAPITAL_URL = process.env.BIGCAPITAL_URL ?? "http://127.0.0.1:3490";
 const KEY_FILE = process.env.BIGCAPITAL_API_KEY_FILE ?? "/Users/ali/lobehub-hub/bigcapital/preview-api-key.txt";
+const VAULT_NAMES = ["bigcapital_api_key", "BIGCAPITAL_API_KEY"] as const;
 
 export class BigcapitalError extends Error {
   constructor(
@@ -24,8 +26,13 @@ export class BigcapitalError extends Error {
 let cachedKey: string | null = null;
 
 async function apiKey() {
-  if (process.env.BIGCAPITAL_API_KEY) return process.env.BIGCAPITAL_API_KEY;
   if (cachedKey) return cachedKey;
+  const vault = readVaultSecret(VAULT_NAMES);
+  if (vault) {
+    cachedKey = vault;
+    return cachedKey;
+  }
+  if (process.env.BIGCAPITAL_API_KEY) return process.env.BIGCAPITAL_API_KEY;
   try {
     cachedKey = (await readFile(KEY_FILE, "utf8")).trim();
   } catch {

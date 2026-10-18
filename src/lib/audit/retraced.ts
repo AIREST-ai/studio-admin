@@ -7,12 +7,12 @@
 // - POST /publisher/v1/project/{projectId}/graphql     searchPaginated + counts (src/handlers/graphql/schema.ts)
 // Auth header: "Authorization: token=<api key>" (src/security/helpers.ts).
 // Retraced has no API to edit or delete an event, and this file only creates and reads: the log is append-only.
+import { readAuditApiKey } from "./server";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const RETRACED_URL = process.env.RETRACED_URL ?? "http://127.0.0.1:3495/auditlog";
 export const RETRACED_PROJECT_ID = process.env.RETRACED_PROJECT_ID ?? "studio-preview";
-const KEY_FILE = process.env.RETRACED_API_KEY_FILE ?? "/Users/ali/lobehub-hub/retraced/preview-api-key.txt";
 /** Events Retraced did not accept yet (it was down): sent again, oldest first, before the next new event. */
 export const PENDING_FILE = path.join(process.cwd(), ".preview-state", "audit-pending.jsonl");
 const BULK_MAX = 50;
@@ -45,13 +45,10 @@ export class RetracedError extends Error {
 
 let cachedKey: string | null = null;
 async function apiKey() {
-  if (process.env.RETRACED_API_KEY) return process.env.RETRACED_API_KEY;
   if (cachedKey) return cachedKey;
-  try {
-    cachedKey = (await readFile(KEY_FILE, "utf8")).trim();
-  } catch {
-    throw new RetracedError("The audit log server's API key is not configured on the preview server", 503);
-  }
+  const key = await readAuditApiKey();
+  if (!key) throw new RetracedError("The audit log server's API key is not configured on the preview server", 503);
+  cachedKey = key;
   return cachedKey;
 }
 

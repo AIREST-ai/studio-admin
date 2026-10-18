@@ -25,12 +25,15 @@ import {
   type LinkProblemKind,
   type LinkSection,
 } from "@/lib/chatwoot-link-types";
+import { SYSTEM_VAULT_DIRS, vaultDirectories } from "@/lib/system-vault";
 
 import { containsBlocked6888, scrubSecrets } from "./gateway-policy";
 import { profileIdentity } from "./map";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+
+export { SYSTEM_VAULT_DIRS };
 
 // V-1 (2026-10-18, item 160.2 + 160.6): Studio Engine official live link to Chatwoot 3200 (with 8810 & 8812 kept for test/sim).
 export const TEST_COPY_HOSTS = ["127.0.0.1"];
@@ -67,8 +70,6 @@ interface LinkLockConfig {
   allowedIdentities?: ExpectedOriginIdentity[];
 }
 
-export const SYSTEM_VAULT_DIRS = ["/run/credentials/studio-admin.service", "/etc/airest-inbox"] as const;
-
 function readAdapterEnv(): Record<string, string> {
   const out: Record<string, string> = {};
   try {
@@ -102,8 +103,9 @@ function readLinkLock(): LinkLockConfig | null {
 }
 
 /**
- * Resolves a secret file path from Linux system vault directories (`/run/credentials/studio-admin.service/` or
- * `/etc/airest-inbox/`) first, with safe fallback to `.chatwoot-adapter.env` and target-specific token files.
+ * Resolves a secret file path from Linux system vault directories
+ * (`/run/credentials/studio-admin.service/`, `/etc/airest-secrets/`, `/etc/airest-inbox/`) first,
+ * with safe fallback to `.chatwoot-adapter.env` and target-specific token files.
  */
 export function resolveSecretFilePath(targetPort?: string): string {
   if (process.env.CHATWOOT_TOKEN_FILE?.trim()) {
@@ -127,10 +129,7 @@ export function resolveSecretFilePath(targetPort?: string): string {
     return "/Users/ali/lobehub-hub/chatwoot-copy/access-token.txt";
   }
 
-  const vaultDirs = [
-    ...(process.env.CREDENTIALS_DIRECTORY ? [process.env.CREDENTIALS_DIRECTORY] : []),
-    ...SYSTEM_VAULT_DIRS,
-  ];
+  const vaultDirs = vaultDirectories();
   const candidateNames = ["chatwoot_token", "cw_token", "live-3200-token.txt"];
   for (const dir of vaultDirs) {
     for (const name of candidateNames) {
@@ -892,7 +891,7 @@ export async function syncStudioWebhook(
 export async function readWebhookSecrets(force = false): Promise<string[]> {
   const envCfg = readAdapterEnv();
   let vaultSecret = "";
-  for (const dir of SYSTEM_VAULT_DIRS) {
+  for (const dir of vaultDirectories()) {
     const candidate = path.join(dir, "chatwoot_webhook_secret");
     try {
       if (existsSync(candidate)) {

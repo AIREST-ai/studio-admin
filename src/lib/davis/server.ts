@@ -32,6 +32,7 @@ import {
 } from "tsdav";
 
 import { PRODUCT_NAME } from "@/config/app-config";
+import { readVaultSecret, resolveVaultFilePath } from "@/lib/system-vault";
 
 import { buildCalendar, type IcsEvent, parseEvents, parseFreeBusy, patchCalendar, type Repeat } from "./ical";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -40,6 +41,8 @@ import { chmod, readFile, rename, writeFile } from "node:fs/promises";
 export const DAVIS_URL = process.env.DAVIS_URL ?? "http://127.0.0.1:3499";
 export const DAVIS_VERSION = "5.5.0";
 const ENV_FILE = process.env.DAVIS_ENV_FILE ?? "/Users/ali/lobehub-hub/davis/.env";
+const ENV_VAULT_NAMES = ["davis.env", "davis_env"] as const;
+const API_KEY_VAULT_NAMES = ["davis_api_key", "DAVIS_API_KEY"] as const;
 const USERS_FILE = process.env.DAVIS_USERS_FILE ?? "/Users/ali/lobehub-hub/davis/studio-users.json";
 const LEVELS_PROP = "share-levels";
 const OWN_NS = "urn:airest:calendar";
@@ -91,9 +94,10 @@ export const CALENDAR_COLORS = ["#2563EB", "#7C3AED", "#BE185D", "#C2410C", "#0E
 let cachedEnv: Record<string, string> | null = null;
 async function davisEnv() {
   if (cachedEnv) return cachedEnv;
+  const envPath = resolveVaultFilePath(ENV_VAULT_NAMES, ENV_FILE);
   let text: string;
   try {
-    text = await readFile(ENV_FILE, "utf8");
+    text = await readFile(envPath, "utf8");
   } catch {
     throw new DavisError("the calendar server settings file is not readable on this server", 500);
   }
@@ -103,6 +107,8 @@ async function davisEnv() {
       .filter((line) => /^[A-Z_]+=/.test(line))
       .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1).trim()]),
   );
+  const vaultApiKey = readVaultSecret(API_KEY_VAULT_NAMES);
+  if (vaultApiKey) cachedEnv.API_KEY = vaultApiKey;
   return cachedEnv;
 }
 

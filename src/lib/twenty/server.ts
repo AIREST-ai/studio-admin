@@ -9,6 +9,7 @@
 //   - its visible fields are the fields shown on a card (the card design, kept in Twenty, edited from the page).
 
 import { PRODUCT_NAME } from "@/config/app-config";
+import { readVaultSecret } from "@/lib/system-vault";
 
 // F-8 (sim3 11.1c): a task given to a site agent keeps the agent's name in this Task field (see ./agents.ts).
 import { AGENT_FIELD, AGENT_FIELD_LABEL } from "./agents";
@@ -18,6 +19,7 @@ import path from "node:path";
 export const TWENTY_URL = process.env.TWENTY_URL ?? "http://127.0.0.1:3497";
 export const TWENTY_PORT = 3497;
 const KEY_FILE = process.env.TWENTY_API_KEY_FILE ?? "/Users/ali/lobehub-hub/twenty/preview-api-key.txt";
+const VAULT_NAMES = ["twenty_api_key", "TWENTY_API_KEY"] as const;
 // The board view's name inside the tasks engine (an internal record name, never shown on the site).
 // F-23 (Fahad 15 Oct 15:20: "even the internal names all change to my name"): the name comes from PRODUCT_NAME alone.
 // Renaming it in the code only broke the Tasks page at 17:14 on 15 Oct (502). So the page finds its view by the id it
@@ -40,8 +42,13 @@ export class TwentyError extends Error {
 let cachedKey: string | null = null;
 
 async function apiKey() {
-  if (process.env.TWENTY_API_KEY) return process.env.TWENTY_API_KEY;
   if (cachedKey) return cachedKey;
+  const vault = readVaultSecret(VAULT_NAMES);
+  if (vault) {
+    cachedKey = vault;
+    return cachedKey;
+  }
+  if (process.env.TWENTY_API_KEY) return process.env.TWENTY_API_KEY;
   try {
     cachedKey = (await readFile(KEY_FILE, "utf8")).trim();
   } catch {
