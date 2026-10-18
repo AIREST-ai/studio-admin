@@ -417,24 +417,22 @@ export const cw = {
     };
     set((state) => ({ sent: { ...state.sent, [id]: [...(state.sent[id] ?? []), entry] } }));
   },
-  // V-17: Retry passes through the linked adapter when in linked mode,
-  // otherwise fails (no provider in preview mode).
+  // V-17 r2: retry delegates to the linked adapter. The adapter handles its own toast on success/failure.
+  // We return false so the UI's toast "Message sent" never fires before a real 200 from Chatwoot.
   retryMessage(messageId: string): boolean {
     if (linkedAdapter?.retryMessage) {
-      // We need the conversation id to retry; look up from the sent map
       const state = get();
+      // Find conversation id — fall back to focusId if not in sent map
+      let convId: number | null = null;
       for (const [convIdStr, messages] of Object.entries(state.sent)) {
         if (messages.some((m) => m.id === messageId)) {
-          const convId = Number(convIdStr);
-          void linkedAdapter.retryMessage(convId, messageId);
-          return true;
+          convId = Number(convIdStr);
+          break;
         }
       }
-      // If not found in sent, look up in thread data
-      const focusId = state.focusId;
-      if (focusId) {
-        void linkedAdapter.retryMessage(focusId, messageId);
-        return true;
+      convId ??= state.focusId;
+      if (convId !== null) {
+        void linkedAdapter.retryMessage(convId, messageId);
       }
     }
     return false;

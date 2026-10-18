@@ -231,12 +231,19 @@ function toastFrozen(reason: string): void {
 }
 
 function frozenConversationReason(convId: number, action: string): string | null {
+  // V-17 r2: only conversation 2 in inbox 3 is allowed during Meta review.
   if (convId !== TEST_CONVERSATION_ID) {
     return `refused: ${action} is limited to Studio Test conversation 2 during Meta review (403)`;
   }
   const inboxId = conversationInboxById[convId];
-  if (inboxId != null && FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
-    return "refused: writing to frozen live inboxes 9 and 10 is blocked (403)";
+  // If we know the inbox, it must be 3 (not 9 or 10). If unknown, allow through (gateway server-side will enforce).
+  if (inboxId != null) {
+    if (FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
+      return "refused: writing to frozen live inboxes 9 and 10 is blocked (403)";
+    }
+    if (inboxId !== TEST_INBOX_ID) {
+      return `refused: ${action} is limited to Studio Test inbox 3 during Meta review (403)`;
+    }
   }
   return null;
 }
@@ -1261,10 +1268,9 @@ function installLinkedAdapters() {
           toast.error("Folder not deleted in Chatwoot", { description: formatGatewayError(err) });
         });
     },
-    // V-17: Retry a failed message — send it again through the unified gateway.
-    // Guard: only conversation 2 in inbox 3 may be retried during Meta review;
-    // live inboxes 9 and 10 are rejected with 403.
-    // The message status stays "failed" until a real 200 response arrives from Chatwoot.
+    // V-17 r2: Retry a failed message — send it again through the unified gateway.
+    // Guard: must be conversation 2 in inbox 3; live inboxes 9/10 rejected with 403.
+    // The message keeps status "failed" until a real 200 response arrives from Chatwoot (zero fake success).
     async retryMessage(convId: number, messageId: string): Promise<boolean> {
       const frozen = frozenConversationReason(convId, "retrying a message");
       if (frozen) {
@@ -1277,19 +1283,13 @@ function installLinkedAdapters() {
         toast.error("Message not found for retry");
         return false;
       }
-      // Keep the text and attachment info from the failed message
-      const tempId = `cw-pending-${convId}-${Date.now().toString(36)}`;
-      const optimistic: CwMessage = {
-        id: tempId,
-        kind: failedMsg.kind,
-        text: failedMsg.text,
-        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-        at: new Date().toISOString(),
-        sender: failedMsg.sender,
-        ...(failedMsg.replyTo ? { replyTo: failedMsg.replyTo } : {}),
+      // V-17 r2: add a "retrying…" indicator without removing the failed status.
+      // The original message stays in the thread with status "failed" until the server confirms.
+      const retryIndicator: CwMessage = {
+        ...failedMsg,
+        error: "Retrying…",
       };
-      // Replace the failed entry optimistically
-      upsertLinkedMessage(convId, optimistic, messageId);
+      upsertLinkedMessage(convId, retryIndicator, messageId);
       try {
         const res = await unifiedCw.POST("/conversations/{conversation_id}/messages", {
           params: { path: { conversation_id: convId } },
@@ -1305,15 +1305,15 @@ function installLinkedAdapters() {
         if (res.error || !res.data) {
           throw new Error(formatGatewayError(res.error, res.response?.status));
         }
+        // Only now, after a real 200, do we replace the failed entry with the delivered message.
         const mapped = toCwMessage(res.data, agentNamesMap);
-        upsertLinkedMessage(convId, mapped, tempId);
+        upsertLinkedMessage(convId, mapped, messageId);
         toast.success("Message sent — retry succeeded");
         return true;
       } catch (err) {
         const msg = formatGatewayError(err);
-        // Restore the failed state: remove optimistic, put back the original failed message
-        removeFromLinkedThread(convId, tempId);
-        upsertLinkedMessage(convId, { ...failedMsg, error: msg }, tempId);
+        // Restore the failed state — the message shows "failed" again with the error reason.
+        upsertLinkedMessage(convId, { ...failedMsg, error: msg }, messageId);
         toast.error("Message retry failed", { description: msg });
         return false;
       }
@@ -2337,6 +2337,8 @@ export async function enableLinkedStoreAdapter(): Promise<void> {
     });
 
     currentPersonOfMap = { ...mappedConvs.personOfMap };
+    // V-17 r2: fill the inbox map so frozenConversationReason can enforce the guard.
+    rememberInboxMap(mappedConvs.inboxIdByConvId);
     replaceConversations(mappedConvs.conversations, currentPersonOfMap);
     setLinkedThreads(mappedConvs.threadsByConvId);
     replaceConversationTags(mappedConvs.tagsByConvId);
@@ -2442,6 +2444,10 @@ function applyRealtimeConversationEvent(eventName: string, rawConv: Raw): void {
     ...currentPersonOfMap,
     [convId]: mapped.personOfMap[convId] ?? convId,
   };
+  // V-17 r2: keep inbox map up to date on realtime events too.
+  if (mapped.inboxIdByConvId[convId] != null) {
+    rememberInboxMap({ [convId]: mapped.inboxIdByConvId[convId] });
+  }
 
   const existingIdx = baseConversations.findIndex((c) => c.id === convId);
   if (existingIdx >= 0) {

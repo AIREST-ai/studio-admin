@@ -49,7 +49,7 @@ import { toast } from "sonner";
 
 import { TagChips, TagPicker } from "@/app/(main)/chat/_components/chat-tags";
 import { brown, DeliveryTicks, StatusMenu } from "@/app/(main)/chat/_components/chat-thread-extras";
-import type { ConversationStatus } from "@/app/(main)/chat/_components/chat-thread-state";
+import type { ConversationStatus, DeliveryState } from "@/app/(main)/chat/_components/chat-thread-state";
 import { useChat } from "@/app/(main)/chat/_components/use-chat";
 import { Bubble, BubbleContent, BubbleGroup, BubbleReactions } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
@@ -1004,9 +1004,13 @@ function MessageRow({
   onReply: (message: CwMessage) => void;
   onCreateTask?: (message: CwMessage) => void;
 }) {
-  const delivery = useCwStore((s) => s.delivery[message.id]);
-  // Chatwoot MESSAGE_STATUS.FAILED; "Retry" cannot reach a provider here, so it stays failed (cw-store retryMessage).
-  const failed = message.status === "failed" && !delivery;
+  const storeDelivery = useCwStore((s) => s.delivery[message.id]);
+  // V-17 r2: use Chatwoot's real message.status when available (sent, delivered, read, failed);
+  // fall back to the store-based delivery/client "read" flag when status is absent.
+  const cwDelivery: DeliveryState | undefined =
+    message.status === "failed" ? undefined : (message.status as DeliveryState | undefined);
+  const delivery: DeliveryState | undefined = cwDelivery ?? storeDelivery;
+  const failed = message.status === "failed";
   const [menuOpen, setMenuOpen] = useState(false);
   let bubbleVariant: "default" | "muted" | "destructive" = message.kind === "incoming" ? "muted" : "default";
   if (failed) bubbleVariant = "destructive";

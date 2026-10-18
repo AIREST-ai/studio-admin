@@ -145,8 +145,8 @@ export interface CwMessage {
   reaction?: string;
   replyTo?: string;
   emailHead?: { from: string; to: string; subject: string; cc?: string };
-  // Chatwoot MESSAGE_STATUS.FAILED with the provider's content_attributes.external_error (MessageError.vue).
-  status?: "failed";
+  // Chatwoot MESSAGE_STATUS (sent, delivered, read, failed) with provider's content_attributes.external_error (MessageError.vue).
+  status?: "sent" | "delivered" | "read" | "failed";
   error?: string;
   // Chatwoot CSAT survey message (bubbles/CSAT.vue) with the customer's submitted rating and feedback.
   csat?: { rating: number; feedback: string };

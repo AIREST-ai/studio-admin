@@ -510,8 +510,12 @@ export function toCwMessage(value: unknown, agentNames: Map<number, string>): Cw
   // or the top-level status field (Chatwoot MESSAGE_STATUS values: sent, delivered, read, failed).
   const cwStatus = str(raw.status);
   const externalError = str(contentAttrs.external_error);
-  const deliveryStatus: CwMessage["status"] = cwStatus === "failed" ? "failed" : undefined;
-  const errorText = externalError ?? (cwStatus === "failed" ? (str(raw.error) ?? "Message failed to send") : undefined);
+  // V-17 r2: forward all Chatwoot delivery statuses (sent, delivered, read, failed), not just failed.
+  const deliveryStatus: CwMessage["status"] =
+    cwStatus === "sent" || cwStatus === "delivered" || cwStatus === "read" || cwStatus === "failed"
+      ? cwStatus
+      : undefined;
+  const errorText = cwStatus === "failed" ? (externalError ?? str(raw.error) ?? "Message failed to send") : undefined;
 
   if (kindRaw === "activity") {
     return {

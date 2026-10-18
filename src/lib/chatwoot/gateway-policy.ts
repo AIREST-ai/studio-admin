@@ -320,7 +320,7 @@ export const TEST_INBOX_ID = 3;
 /** V-16: the only conversation allowed for mute/unmute/transcript/delete-message during Meta review. */
 export const TEST_CONVERSATION_ID = 2;
 
-const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript"]);
+const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript", "messages"]);
 
 function bodyInboxId(body: unknown): number | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
@@ -356,6 +356,13 @@ export function frozenSensitiveWriteReason(method: string, segments: readonly st
     const convId = NUMBER.test(segments[1]) ? Number(segments[1]) : 0;
     if (convId !== TEST_CONVERSATION_ID) {
       return `refused: ${segments[2]} is limited to Studio Test conversation 2 during Meta review (403)`;
+    }
+    // V-17 r2: additionally check inbox_id from body for POST /conversations/2/messages
+    if (segments[2] === "messages") {
+      const inboxId = bodyInboxId(body);
+      if (inboxId !== null && FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
+        return "refused: sending a message to frozen live inboxes 9 and 10 is blocked (403)";
+      }
     }
   }
 
