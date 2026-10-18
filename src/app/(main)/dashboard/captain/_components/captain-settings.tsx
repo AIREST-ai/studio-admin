@@ -66,6 +66,14 @@ interface ClientWorkspaceStatusDto {
     handoffPath: string;
     signatureDigest: string;
     issuedAt: string;
+    oidc?: {
+      issuer: string;
+      discoveryUrl: string;
+      authorizeUrl: string;
+      tokenUrl: string;
+      userinfoUrl: string;
+      jwksUrl: string;
+    };
   };
 }
 
@@ -87,6 +95,19 @@ interface SsoSessionDto {
   clientId: string;
   workspaceId: string;
   userId: string;
+  session?: {
+    table: string;
+    id: string;
+    userId: string;
+    clientId: string;
+    expiresAt: string;
+    tokenDigest: string;
+    tokenLength: number;
+    active: boolean;
+    reused: boolean;
+    handoffId: string;
+    providerAccountLinked: boolean;
+  };
   sso: {
     provider: string;
     workspaceSlug: string;
@@ -96,6 +117,10 @@ interface SsoSessionDto {
     emailVerified: boolean;
     signatureDigest: string;
     issuedAt: string;
+    oidc?: {
+      issuer: string;
+      discoveryUrl: string;
+    };
   };
 }
 
@@ -330,7 +355,9 @@ export function CaptainSettings() {
         setClientsMap((prev) => ({ ...prev, [data.status!.clientId]: data.status! }));
       }
       toast.success(`Unified Sign-On session ready for ${data.workspaceId}`, {
-        description: `Account ${data.userId} verified with OIDC handoff signature.`,
+        description: data.session?.id
+          ? `Live auth_sessions row ${data.session.id} is active for ${data.userId}.`
+          : `Account ${data.userId} verified with OIDC handoff signature.`,
       });
     } catch (error) {
       toast.error("SSO handoff failed", {
@@ -486,14 +513,18 @@ export function CaptainSettings() {
                   <KeyRound className="size-3.5" />
                   Unified Sign-On (SSO)
                 </span>
-                <ToneBadge tone="violet">Verified Email · OIDC Ready</ToneBadge>
+                <ToneBadge tone="violet">
+                  {ssoSession?.session?.active ? "Live OIDC Session Active" : "Verified Email · OIDC Ready"}
+                </ToneBadge>
               </div>
               <div className="grid gap-0.5">
                 <span className="truncate font-medium text-sm">
                   {activeClientStatus?.email ?? `${selectedClientId}@clients.studio.local`}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  Session bound to {workspaceIdText} · HMAC-SHA256 signed
+                  {ssoSession?.session?.id
+                    ? `auth_sessions ${ssoSession.session.id} · digest ${ssoSession.session.tokenDigest}`
+                    : `Session bound to ${workspaceIdText} · OIDC IdP on 8797`}
                 </span>
               </div>
             </div>
@@ -565,13 +596,21 @@ export function CaptainSettings() {
               <div className="flex flex-wrap items-center gap-2 font-semibold text-sm">
                 <KeyRound className="size-4 shrink-0" />
                 <span>
-                  Unified Sign-On Handoff Active · Workspace {ssoSession.workspaceId} ({ssoSession.userId})
+                  Unified Sign-On Live Session Active · Workspace {ssoSession.workspaceId} ({ssoSession.userId})
                 </span>
+              </div>
+              <div className="text-muted-foreground text-xs" data-testid="sso-live-session-id">
+                Table: <span className="font-mono">{ssoSession.session?.table ?? "auth_sessions"}</span> · Session:{" "}
+                <span className="font-mono">{ssoSession.session?.id ?? "pending"}</span> · Digest:{" "}
+                <span className="font-mono">{ssoSession.session?.tokenDigest ?? ssoSession.sso.signatureDigest}</span> ·
+                Expires: <span className="font-mono">{ssoSession.session?.expiresAt ?? ssoSession.sso.issuedAt}</span>
               </div>
               <div className="text-muted-foreground text-xs">
                 Provider: <span className="font-mono">{ssoSession.sso.provider}</span> · Verified Email:{" "}
-                <span className="font-mono">{ssoSession.sso.email}</span> · Signature:{" "}
-                <span className="font-mono">{ssoSession.sso.signatureDigest}</span>
+                <span className="font-mono">{ssoSession.sso.email}</span> · Discovery:{" "}
+                <span className="font-mono">
+                  {ssoSession.sso.oidc?.discoveryUrl ?? "http://127.0.0.1:8797/.well-known/openid-configuration"}
+                </span>
               </div>
             </div>
           )}

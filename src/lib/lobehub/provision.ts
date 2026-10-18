@@ -5,7 +5,7 @@ import { parseViewAs, VIEW_AS_COOKIE } from "@/lib/cw/view-as-cookie";
 import { permissionsOf } from "@/lib/cw/view-as-permissions";
 
 import { execFile } from "node:child_process";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 
@@ -239,6 +239,16 @@ async function deriveSsoHmacKey(): Promise<string> {
   return "studio-oidc-v8:isolated-workspace-handoff-key";
 }
 
+export interface SsoOidcEndpoints {
+  issuer: string;
+  discoveryUrl: string;
+  nestedDiscoveryUrl: string;
+  authorizeUrl: string;
+  tokenUrl: string;
+  userinfoUrl: string;
+  jwksUrl: string;
+}
+
 export interface SsoHandoffInfo {
   provider: "studio-oidc";
   workspaceSlug: string;
@@ -249,6 +259,21 @@ export interface SsoHandoffInfo {
   handoffPath: string;
   signatureDigest: string;
   issuedAt: string;
+  oidc: SsoOidcEndpoints;
+}
+
+export interface LiveAuthSessionInfo {
+  table: "auth_sessions";
+  id: string;
+  userId: string;
+  clientId: string;
+  expiresAt: string;
+  tokenDigest: string;
+  tokenLength: number;
+  active: true;
+  reused: boolean;
+  handoffId: string;
+  providerAccountLinked: boolean;
 }
 
 export async function buildSsoHandoff(clientId: string, email?: string): Promise<SsoHandoffInfo> {
@@ -262,6 +287,7 @@ export async function buildSsoHandoff(clientId: string, email?: string): Promise
   const payload = `${validClientId}:${workspaceId}:${userId}:${resolvedEmail}:verified`;
   const signatureDigest = createHmac("sha256", key).update(payload).digest("hex").slice(0, 32);
 
+  const issuer = "http://127.0.0.1:8797";
   return {
     provider: "studio-oidc",
     workspaceSlug: validClientId,
@@ -272,6 +298,219 @@ export async function buildSsoHandoff(clientId: string, email?: string): Promise
     handoffPath: `/api/lobehub-provision?action=sso_redirect&clientId=${encodeURIComponent(validClientId)}`,
     signatureDigest,
     issuedAt,
+    oidc: {
+      issuer,
+      discoveryUrl: `${issuer}/.well-known/openid-configuration`,
+      nestedDiscoveryUrl: `${issuer}/api/sso/oidc/.well-known/openid-configuration`,
+      authorizeUrl: `${issuer}/api/sso/oidc/authorize`,
+      tokenUrl: `${issuer}/api/sso/oidc/token`,
+      userinfoUrl: `${issuer}/api/sso/oidc/userinfo`,
+      jwksUrl: `${issuer}/api/sso/oidc/jwks`,
+    },
+  };
+}
+
+const LIVE_SSO_USER_IDS = new Set(["user_client_test_a", "user_client_test_b"]);
+const LIVE_SSO_USER_AGENT = "studio-admin-sso-v26";
+
+function nanoidAlpha(len: number): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = randomBytes(len);
+  let out = "";
+  for (let i = 0; i < len; i += 1) {
+    out += alphabet[bytes[i]! % alphabet.length]!;
+  }
+  return out;
+}
+
+function assertLiveSsoUserId(userId: string): void {
+  if (!LIVE_SSO_USER_IDS.has(userId) || /fahad|user_0ig|6888/i.test(userId)) {
+    throw new ProvisionForbiddenError(
+      `Refused: live SSO session cannot target team users, agents, or bank fahad (403)`,
+    );
+  }
+}
+
+/**
+ * Creates (or reuses) a live, unexpired `auth_sessions` row in `lobechat` for
+ * `client_test_a` / `client_test_b` only. Team users, agents, and bank `fahad` are refused with 403.
+ */
+export async function createLiveAuthSession(clientIdInput: string): Promise<LiveAuthSessionInfo> {
+  const clientId = validateClientId(clientIdInput);
+  if (clientId !== "client_test_a" && clientId !== "client_test_b") {
+    throw new ProvisionForbiddenError(
+      "Refused: live SSO session is limited to isolated test accounts client_test_a and client_test_b (403)",
+    );
+  }
+  const userId = `user_${clientId}`;
+  assertLiveSsoUserId(userId);
+
+  const existingUser = await runLobePsql(`SELECT u.id FROM users u WHERE u.id = ${sqlHexLiteral(userId)} LIMIT 1;`);
+  if (!existingUser) {
+    await provisionClientWorkspace({ clientId });
+  }
+
+  const existingSessionRaw = await runLobePsql(`
+    SELECT json_build_object(
+      'id', s.id,
+      'userId', s.user_id,
+      'expiresAt', to_char(s.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'tokenDigest', substr(encode(sha256(convert_to(s.token, 'UTF8')), 'hex'), 1, 16),
+      'tokenLength', length(s.token)
+    )::text
+    FROM auth_sessions s
+    WHERE s.user_id = ${sqlHexLiteral(userId)}
+      AND s.user_id IN ('user_client_test_a', 'user_client_test_b')
+      AND s.user_agent = ${sqlHexLiteral(LIVE_SSO_USER_AGENT)}
+      AND s.expires_at > now()
+    ORDER BY s.created_at DESC
+    LIMIT 1;
+  `);
+
+  let sessionId: string;
+  let tokenDigest: string;
+  let tokenLength: number;
+  let expiresAt: string;
+  let reused = false;
+
+  if (existingSessionRaw) {
+    const existing = JSON.parse(existingSessionRaw) as {
+      id: string;
+      userId: string;
+      expiresAt: string;
+      tokenDigest: string;
+      tokenLength: number;
+    };
+    assertLiveSsoUserId(existing.userId);
+    sessionId = existing.id;
+    tokenDigest = existing.tokenDigest;
+    tokenLength = existing.tokenLength;
+    expiresAt = existing.expiresAt;
+    reused = true;
+  } else {
+    sessionId = nanoidAlpha(12);
+    const token = nanoidAlpha(32);
+    tokenDigest = createHash("sha256").update(token).digest("hex").slice(0, 16);
+    tokenLength = token.length;
+    expiresAt = await runLobePsql(`
+      INSERT INTO auth_sessions (id, token, user_id, expires_at, created_at, updated_at, ip_address, user_agent)
+      SELECT
+        ${sqlHexLiteral(sessionId)},
+        ${sqlHexLiteral(token)},
+        u.id,
+        now() + interval '7 days',
+        now(),
+        now(),
+        '127.0.0.1',
+        ${sqlHexLiteral(LIVE_SSO_USER_AGENT)}
+      FROM users u
+      WHERE u.id = ${sqlHexLiteral(userId)}
+        AND u.id IN ('user_client_test_a', 'user_client_test_b')
+        AND u.id NOT ILIKE '%fahad%'
+        AND u.id NOT ILIKE '%user_0ig%'
+      RETURNING to_char(expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+    `);
+    if (!expiresAt) {
+      throw new ProvisionForbiddenError("Refused: live session insert blocked by isolation guard (403)");
+    }
+  }
+
+  const accountId = nanoidAlpha(12);
+  await runLobePsql(`
+    INSERT INTO accounts (id, account_id, provider_id, user_id, created_at, updated_at, scope)
+    SELECT
+      ${sqlHexLiteral(accountId)},
+      ${sqlHexLiteral(clientId)},
+      'generic-oidc',
+      u.id,
+      now(),
+      now(),
+      'openid profile email'
+    FROM users u
+    WHERE u.id = ${sqlHexLiteral(userId)}
+      AND u.id IN ('user_client_test_a', 'user_client_test_b')
+      AND NOT EXISTS (
+        SELECT 1 FROM accounts a
+        WHERE a.user_id = u.id AND a.provider_id = 'generic-oidc'
+      );
+  `);
+
+  await runLobePsql(`
+    INSERT INTO nextauth_accounts (provider, "providerAccountId", type, user_id, token_type, scope)
+    SELECT
+      'generic-oidc',
+      ${sqlHexLiteral(clientId)},
+      'oidc',
+      u.id,
+      'Bearer',
+      'openid profile email'
+    FROM users u
+    WHERE u.id = ${sqlHexLiteral(userId)}
+      AND u.id IN ('user_client_test_a', 'user_client_test_b')
+    ON CONFLICT (provider, "providerAccountId") DO UPDATE
+      SET user_id = EXCLUDED.user_id
+      WHERE nextauth_accounts.user_id IN ('user_client_test_a', 'user_client_test_b');
+  `);
+
+  const nextauthToken = nanoidAlpha(32);
+  await runLobePsql(`
+    INSERT INTO nextauth_sessions ("sessionToken", expires, user_id)
+    SELECT
+      ${sqlHexLiteral(nextauthToken)},
+      now() + interval '7 days',
+      u.id
+    FROM users u
+    WHERE u.id = ${sqlHexLiteral(userId)}
+      AND u.id IN ('user_client_test_a', 'user_client_test_b')
+      AND NOT EXISTS (
+        SELECT 1 FROM nextauth_sessions ns
+        WHERE ns.user_id = u.id AND ns.expires > now()
+      );
+  `);
+
+  const handoffId = `handoff_${clientId}_${nanoidAlpha(8)}`;
+  const payloadJson = JSON.stringify({
+    clientId,
+    userId,
+    workspaceId: `ws_${clientId}`,
+    emailVerified: true,
+    sessionId,
+    provider: "studio-oidc",
+  });
+  await runLobePsql(`
+    INSERT INTO oauth_handoffs (id, client, payload, accessed_at, created_at, updated_at)
+    VALUES (
+      ${sqlHexLiteral(handoffId)},
+      'studio-oidc',
+      (${sqlHexLiteral(payloadJson)})::jsonb,
+      now(),
+      now(),
+      now()
+    )
+    ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = now();
+  `);
+
+  const linked = await runLobePsql(`
+    SELECT 'true'
+    FROM accounts
+    WHERE user_id = ${sqlHexLiteral(userId)}
+      AND user_id IN ('user_client_test_a', 'user_client_test_b')
+      AND provider_id = 'generic-oidc'
+    LIMIT 1;
+  `);
+
+  return {
+    table: "auth_sessions",
+    id: sessionId,
+    userId,
+    clientId,
+    expiresAt,
+    tokenDigest,
+    tokenLength,
+    active: true,
+    reused,
+    handoffId,
+    providerAccountLinked: linked === "true",
   };
 }
 

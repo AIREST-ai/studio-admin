@@ -4,6 +4,7 @@ import { scrubSecrets } from "@/lib/chatwoot/gateway-policy";
 import {
   assertSameOrigin,
   buildSsoHandoff,
+  createLiveAuthSession,
   getClientWorkspaceStatus,
   ProvisionForbiddenError,
   ProvisionValidationError,
@@ -53,7 +54,16 @@ export async function GET(req: Request) {
     const action = url.searchParams.get("action") ?? "status";
 
     if (action === "sso_redirect") {
-      const status = await getClientWorkspaceStatus(clientId);
+      if (clientId !== "client_test_a" && clientId !== "client_test_b") {
+        throw new ProvisionForbiddenError(
+          "Refused: live SSO session is limited to isolated test accounts client_test_a and client_test_b (403)",
+        );
+      }
+      let status = await getClientWorkspaceStatus(clientId);
+      if (!status.provisioned) {
+        status = await provisionClientWorkspace({ clientId });
+      }
+      const session = await createLiveAuthSession(clientId);
       const sso = await buildSsoHandoff(clientId, status.email);
       return respond(200, {
         ok: true,
@@ -62,6 +72,7 @@ export async function GET(req: Request) {
         clientId,
         workspaceId: status.workspaceId,
         userId: status.userId,
+        session,
         sso,
         status,
       });
@@ -131,6 +142,37 @@ export async function POST(req: Request) {
     }
 
     const action = typeof body.action === "string" ? body.action.trim() : "provision";
+
+    if (action === "sso_activate" || action === "sso_redirect") {
+      const clientId = validateClientId(body.clientId ?? "client_test_a");
+      if (clientId !== "client_test_a" && clientId !== "client_test_b") {
+        throw new ProvisionForbiddenError(
+          "Refused: live SSO session is limited to isolated test accounts client_test_a and client_test_b (403)",
+        );
+      }
+      let activeClient = await getClientWorkspaceStatus(clientId);
+      if (!activeClient.provisioned) {
+        activeClient = await provisionClientWorkspace({
+          clientId,
+          displayName: typeof body.displayName === "string" ? body.displayName : undefined,
+          email: typeof body.email === "string" ? body.email : undefined,
+        });
+      }
+      const session = await createLiveAuthSession(clientId);
+      const sso = await buildSsoHandoff(clientId, activeClient.email);
+      return respond(200, {
+        ok: true,
+        action: "sso_activate",
+        authenticated: true,
+        clientId,
+        workspaceId: activeClient.workspaceId,
+        userId: activeClient.userId,
+        session,
+        sso,
+        status: activeClient,
+        activeClient,
+      });
+    }
 
     if (action === "verify_isolation") {
       const isolation = await verifyCrossTenantIsolation();
