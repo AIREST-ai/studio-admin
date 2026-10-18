@@ -219,6 +219,8 @@ async function handle(method: "GET" | "POST", request: Request, context: { param
     if (resolvedBlocked) return refuse(403, resolvedBlocked);
   }
 
+  // V-23: Pass through every upstream status code as-is, including 409 Conflict
+  // (another agent already accepted the call).
   return answer(response.status, upstreamBody ?? { ok: response.ok });
 }
 

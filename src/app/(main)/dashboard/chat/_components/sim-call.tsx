@@ -1043,6 +1043,17 @@ function LiveIncomingCallDialog({
         }
       }
     } catch (err) {
+      // V-23: Handle 409 Conflict — another agent already accepted the call
+      const status = (err as { status?: number })?.status;
+      if (status === 409) {
+        cleanupCallResources();
+        onDismiss(call.call_id);
+        // Brief delay so the toast renders after the dialog closes
+        setTimeout(() => {
+          alert("قبلها موظف آخر");
+        }, 100);
+        return;
+      }
       cleanupCallResources();
       setPhase("failed");
       setStatusText(err instanceof Error ? err.message : "تعذر قبول المكالمة");
