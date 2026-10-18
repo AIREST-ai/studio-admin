@@ -7,6 +7,8 @@ export interface Macro {
   id: number;
   name: string;
   createdBy: string;
+  /** F-24: the creator's agent id (Chatwoot macros.created_by_id); a private macro shows to this agent only. */
+  createdById?: number;
   updatedBy: string;
   visibility: "Public" | "Private";
   actions: MacroAction[];

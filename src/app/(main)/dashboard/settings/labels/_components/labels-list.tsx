@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { Label as LabelType } from "@/lib/cw/data";
-import { useCwList } from "@/lib/cw/store";
+import { CHANGED_ELSEWHERE, setCwList, useCwList, whenListsSaved } from "@/lib/cw/store";
 
 import { ConfirmDelete, NoResults, plural, SettingsShell } from "../_shared/settings-shell";
 import { FieldError, RowMenu, ToneBadge, tableClass } from "../_shared/settings-ui";
@@ -70,13 +70,15 @@ function LabelDialog({
   onOpenChange: (open: boolean) => void;
   label?: LabelRow;
   existing: string[];
-  onSave: (row: LabelRow) => void;
+  onSave: (row: LabelRow) => Promise<void>;
 }) {
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [color, setColor] = React.useState(swatches[0]);
   const [sidebar, setSidebar] = React.useState(true);
   const [touched, setTouched] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -85,6 +87,8 @@ function LabelDialog({
     setColor(label?.color ?? randomColor());
     setSidebar(label?.showOnSidebar ?? true);
     setTouched(false);
+    setSaving(false);
+    setSaveError(null);
   }, [open, label]);
 
   const error = titleError(
@@ -92,21 +96,29 @@ function LabelDialog({
     existing.includes(title.trim().toLowerCase()) && title.trim() !== label?.title,
   );
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     setTouched(true);
-    if (error) return;
-    onSave({
-      title: title.trim().toLowerCase(),
-      description: description.trim(),
-      color,
-      showOnSidebar: sidebar,
-    });
-    onOpenChange(false);
+    if (error || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        title: title.trim().toLowerCase(),
+        description: description.trim(),
+        color,
+        showOnSidebar: sidebar,
+      });
+      onOpenChange(false);
+    } catch (err) {
+      setSaveError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
@@ -179,13 +191,20 @@ function LabelDialog({
               Show label on sidebar
             </Label>
           </div>
+          {saveError ? (
+            <p role="alert" data-label-save-error="" className="text-destructive text-sm">
+              Not saved ({saveError})
+            </p>
+          ) : null}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={saving}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit">{label ? "Edit" : "Create"}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : label ? "Edit" : "Create"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -200,6 +219,36 @@ const labelViews: Record<LabelView, { label: string; match: (l: LabelRow) => boo
   sidebar: { label: "Shown on sidebar", match: (l) => l.showOnSidebar },
   hidden: { label: "Hidden from sidebar", match: (l) => !l.showOnSidebar },
 };
+
+function notSavedReason(error: unknown): string {
+  if (error instanceof Error && error.message === CHANGED_ELSEWHERE) return "changed in another tab or device";
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function persistLabels(
+  change: () => void,
+  before: LabelType[],
+  successMessage: string,
+  toastId?: string | number,
+): Promise<void> {
+  const saved = whenListsSaved(["labels"]);
+  change();
+  try {
+    await saved;
+    toast.success(successMessage, toastId !== undefined ? { id: toastId } : undefined);
+  } catch (error) {
+    if (!(error instanceof Error && error.message === CHANGED_ELSEWHERE)) {
+      setCwList("labels", before);
+    }
+    const reason = notSavedReason(error);
+    if (error instanceof Error && error.message === CHANGED_ELSEWHERE && toastId !== undefined) {
+      toast.dismiss(toastId);
+    } else if (!(error instanceof Error && error.message === CHANGED_ELSEWHERE)) {
+      toast.error(`Not saved (${reason})`, toastId !== undefined ? { id: toastId } : undefined);
+    }
+    throw new Error(reason);
+  }
+}
 
 export function LabelsList() {
   const [labels, setLabels] = useCwList("labels");
@@ -247,7 +296,9 @@ export function LabelsList() {
                 <TableHead className="py-3 font-normal">Name</TableHead>
                 <TableHead className="py-3 font-normal">Description</TableHead>
                 <TableHead className="py-3 font-normal">Color</TableHead>
-                <TableHead className="w-20 py-3 text-right font-normal">Actions</TableHead>
+                <TableHead className="sticky right-0 w-20 bg-card py-3 text-right font-normal shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -260,7 +311,7 @@ export function LabelsList() {
                       {label.showOnSidebar ? null : <ToneBadge tone="gray">Hidden from sidebar</ToneBadge>}
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-md truncate py-3.5 text-muted-foreground">
+                  <TableCell className="max-w-md whitespace-normal py-3.5 text-muted-foreground">
                     {label.description || "---"}
                   </TableCell>
                   <TableCell className="py-3.5">
@@ -269,7 +320,7 @@ export function LabelsList() {
                       {label.color}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3.5 text-right">
+                  <TableCell className="sticky right-0 bg-card py-3.5 text-right shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
                     <RowMenu
                       name={label.title}
                       items={[
@@ -277,12 +328,19 @@ export function LabelsList() {
                         {
                           label: label.showOnSidebar ? "Hide from sidebar" : "Show on sidebar",
                           icon: label.showOnSidebar ? EyeOff : Eye,
-                          onSelect: () =>
-                            setLabels((prev) =>
-                              prev.map((l) =>
-                                l.title === label.title ? { ...l, showOnSidebar: !l.showOnSidebar } : l,
-                              ),
-                            ),
+                          onSelect: () => {
+                            const before = labels;
+                            void persistLabels(
+                              () =>
+                                setLabels((prev) =>
+                                  prev.map((l) =>
+                                    l.title === label.title ? { ...l, showOnSidebar: !l.showOnSidebar } : l,
+                                  ),
+                                ),
+                              before,
+                              "Label updated successfully",
+                            ).catch(() => undefined);
+                          },
                         },
                         {
                           label: "Delete",
@@ -309,9 +367,13 @@ export function LabelsList() {
         open={adding}
         onOpenChange={setAdding}
         existing={titles}
-        onSave={(row) => {
-          setLabels((prev) => [...prev, { ...row, id: row.title }]);
-          toast.success("Label added successfully");
+        onSave={async (row) => {
+          const before = labels;
+          await persistLabels(
+            () => setLabels((prev) => [...prev, { ...row, id: row.title }]),
+            before,
+            "Label added successfully",
+          );
         }}
       />
       <LabelDialog
@@ -319,9 +381,16 @@ export function LabelsList() {
         onOpenChange={(o) => !o && setEditing(undefined)}
         label={editing}
         existing={titles}
-        onSave={(row) => {
-          setLabels((prev) => prev.map((l) => (l.title === editing?.title ? { ...row, id: l.id } : l)));
-          toast.success("Label updated successfully");
+        onSave={async (row) => {
+          const before = labels;
+          await persistLabels(
+            () =>
+              setLabels((prev) =>
+                prev.map((l) => (l.title === editing?.title ? { ...row, id: l.id ?? row.title } : l)),
+              ),
+            before,
+            "Label updated successfully",
+          );
         }}
       />
       <ConfirmDelete
@@ -332,8 +401,16 @@ export function LabelsList() {
         yes={`Yes, Delete ${deleting?.title ?? ""}`}
         no={`No, Keep ${deleting?.title ?? ""}`}
         onConfirm={() => {
-          setLabels((prev) => prev.filter((l) => l.title !== deleting?.title));
-          toast.success("Label deleted successfully");
+          if (!deleting) return;
+          const before = labels;
+          const id = `delete-label-${deleting.title}`;
+          toast.loading(`Deleting “${deleting.title}”…`, { id });
+          void persistLabels(
+            () => setLabels((prev) => prev.filter((l) => l.title !== deleting.title)),
+            before,
+            "Label deleted successfully",
+            id,
+          ).catch(() => undefined);
         }}
       />
     </>

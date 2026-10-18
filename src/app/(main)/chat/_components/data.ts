@@ -2,21 +2,21 @@ import type { LucideIcon } from "lucide-react";
 import { Mail, MessageCircle, Phone } from "lucide-react";
 
 import { contacts as directory } from "@/app/(main)/dashboard/contacts/_components/data";
+import { isWebsiteContactOnline, WEBSITE_CHANNEL } from "@/lib/cw/presence/website-presence";
 
 export type Conversation = {
   id: number;
-  group: "Pinned" | "Today" | "Yesterday";
+  group: "Today" | "Yesterday";
   name: string;
   subject: string;
   preview: string;
   time: string;
   isUnread: boolean;
-  isOnline: boolean; // F159: replaced from the person (swapPerson); avatars read isPersonOnline()
   unreadCount: number;
   channel: NavItem["id"]; // F149: channel id from channelItems (email, chat, whatsapp, …)
   contact: Contact;
   messages: Message[];
-  ago?: number; // F159: minutes since the last activity (Pinned and Today conversations), see realClockAges
+  ago?: number; // F159: minutes since the last activity (Today conversations), see realClockAges
 };
 
 export type Message = {
@@ -25,7 +25,7 @@ export type Message = {
   text: string;
   time: string;
   reaction?: string;
-  ago?: number; // F159: minutes since the message was sent (Pinned and Today conversations)
+  ago?: number; // F159: minutes since the message was sent (Today conversations)
 };
 
 export type Contact = {
@@ -53,18 +53,18 @@ export type NavItem = {
 // Studio template threads; the people are swapped for the Contacts page people below (F159).
 // Unattended threads (#3, #8, #15, #16, #21) have no agent reply yet: the customer is still waiting (Chatwoot
 // Unattended = no first reply).
+// T-130 (Fahad 21:21 "ازل"): no Pinned group; #1, #2 and #3 (last active 1, 5 and 8 min ago) are in Today.
 const templateConversations: Conversation[] = [
-  // Pinned
+  // Today
   {
     id: 1,
-    group: "Pinned",
+    group: "Today",
     channel: "whatsapp",
     name: "Olivia Rhye",
     subject: "Deployment pipeline failing on staging since last deploy",
     preview: "We're seeing 502 errors after the latest build went out. Rollback didn't help.",
     time: "Just now",
     isUnread: true,
-    isOnline: true,
     unreadCount: 4,
     contact: {
       name: "Olivia Rhye",
@@ -116,14 +116,13 @@ const templateConversations: Conversation[] = [
   },
   {
     id: 2,
-    group: "Pinned",
+    group: "Today",
     channel: "email",
     name: "Phoenix Baker",
     subject: "Refund for order #8823 — double charged",
     preview: "I was billed twice on the 3rd. Can someone look into this and reverse the duplicate?",
     time: "5m",
     isUnread: false,
-    isOnline: true,
     unreadCount: 0,
     contact: {
       name: "Phoenix Baker",
@@ -175,14 +174,13 @@ const templateConversations: Conversation[] = [
   },
   {
     id: 3,
-    group: "Pinned",
+    group: "Today",
     channel: "instagram",
     name: "Lana Steiner",
     subject: "Access to analytics dashboard — permissions issue",
     preview: "I'm getting a 403 since the role update yesterday. Tried clearing cache already.",
     time: "8m",
     isUnread: true,
-    isOnline: false,
     unreadCount: 2,
     contact: {
       name: "Lana Steiner",
@@ -212,7 +210,6 @@ const templateConversations: Conversation[] = [
       },
     ],
   },
-  // Today
   {
     id: 5,
     group: "Today",
@@ -222,7 +219,6 @@ const templateConversations: Conversation[] = [
     preview: "Hi team, I'm looking for the latest ESG disclosure for our upcoming board meeting.",
     time: "10:42 AM",
     isUnread: true,
-    isOnline: true,
     unreadCount: 5,
     contact: {
       name: "Demi Wilkinson",
@@ -275,7 +271,6 @@ const templateConversations: Conversation[] = [
     preview: "Tried three times this morning. It gets to about 60% then throws a gateway error.",
     time: "10:15 AM",
     isUnread: false,
-    isOnline: false,
     unreadCount: 0,
     contact: {
       name: "Candice Wu",
@@ -327,7 +322,6 @@ const templateConversations: Conversation[] = [
     preview: "Our payment cleared on Friday — screenshot of the confirmation attached here.",
     time: "9:58 AM",
     isUnread: true,
-    isOnline: false,
     unreadCount: 1,
     contact: {
       name: "Natali Craig",
@@ -379,7 +373,6 @@ const templateConversations: Conversation[] = [
     preview: "Got a new backend dev starting Monday. Need the standard checklist and repo access steps.",
     time: "9:32 AM",
     isUnread: false,
-    isOnline: true,
     unreadCount: 0,
     contact: {
       name: "Drew Cano",
@@ -418,7 +411,6 @@ const templateConversations: Conversation[] = [
     preview: "We're winding down the project at end of quarter. Is there an early termination fee?",
     time: "9:12 AM",
     isUnread: false,
-    isOnline: false,
     unreadCount: 0,
     contact: {
       name: "Orlando Diggs",
@@ -469,7 +461,6 @@ const templateConversations: Conversation[] = [
     preview: "Our batch jobs are getting 429s every 15 minutes between 9 and 11 AM. Need a bump.",
     time: "8:47 AM",
     isUnread: true,
-    isOnline: true,
     unreadCount: 3,
     contact: {
       name: "Andi Lane",
@@ -520,7 +511,6 @@ const templateConversations: Conversation[] = [
     preview: "Users are seeing certificate warnings when they hit our shop page. This is urgent.",
     time: "8:05 AM",
     isUnread: true,
-    isOnline: false,
     unreadCount: 6,
     contact: {
       name: "Kate Morrison",
@@ -572,7 +562,6 @@ const templateConversations: Conversation[] = [
     preview: "We're ready to commit for the year. Can you send over the annual pricing sheet?",
     time: "7:38 AM",
     isUnread: false,
-    isOnline: true,
     unreadCount: 0,
     contact: {
       name: "Alec Whitten",
@@ -624,7 +613,6 @@ const templateConversations: Conversation[] = [
     preview: "Selecting June 5 produces June 4 in the CSV export. Screenshot attached for reference.",
     time: "6:52 AM",
     isUnread: false,
-    isOnline: false,
     unreadCount: 0,
     contact: {
       name: "Ariana Decker",
@@ -675,7 +663,6 @@ const templateConversations: Conversation[] = [
     preview: "Getting intermittent 500s on the webhook endpoint since roughly 2 AM UTC. Logs linked.",
     time: "6:10 AM",
     isUnread: true,
-    isOnline: true,
     unreadCount: 2,
     contact: {
       name: "Steven Tey",
@@ -726,7 +713,6 @@ const templateConversations: Conversation[] = [
     preview: "Our engineering leads need read-only on production but full write access on staging.",
     time: "5:44 AM",
     isUnread: false,
-    isOnline: false,
     unreadCount: 0,
     contact: {
       name: "Lori Bryson",
@@ -765,7 +751,6 @@ const templateConversations: Conversation[] = [
     preview: "Three users reported the same crash on launch. Stack trace from Firebase attached.",
     time: "5:18 AM",
     isUnread: true,
-    isOnline: false,
     unreadCount: 2,
     contact: {
       name: "Koray Okumus",
@@ -805,7 +790,6 @@ const templateConversations: Conversation[] = [
     preview: "We're expanding into Mexico and Brazil next quarter. Would love to explore a reseller deal.",
     time: "Yesterday",
     isUnread: false,
-    isOnline: false,
     unreadCount: 0,
     contact: {
       name: "Josh Miller",
@@ -856,7 +840,6 @@ const templateConversations: Conversation[] = [
     preview: "Our compliance audit starts next week. I need a full activity log dump for the auditors.",
     time: "Yesterday",
     isUnread: false,
-    isOnline: true,
     unreadCount: 0,
     contact: {
       name: "Mollie Hall",
@@ -907,7 +890,6 @@ const templateConversations: Conversation[] = [
     preview: "We have five partners asking about branded dashboards. Do you offer white-label tiers?",
     time: "Yesterday",
     isUnread: true,
-    isOnline: true,
     unreadCount: 1,
     contact: {
       name: "Rene Wells",
@@ -958,7 +940,6 @@ const templateConversations: Conversation[] = [
     preview: "Our security team wants to know if SMS fallback is still supported after the enforcement date.",
     time: "Yesterday",
     isUnread: false,
-    isOnline: false,
     unreadCount: 0,
     contact: {
       name: "Rylee Howard",
@@ -1009,7 +990,6 @@ const templateConversations: Conversation[] = [
     preview: "The January invoice export is short by three line items. The PDF version is correct though.",
     time: "Yesterday",
     isUnread: false,
-    isOnline: true,
     unreadCount: 0,
     contact: {
       name: "Sienna Hewitt",
@@ -1048,7 +1028,6 @@ const templateConversations: Conversation[] = [
     preview: "Need a 30-minute walkthrough of the vendor portal for our finance leads this Friday.",
     time: "Yesterday",
     isUnread: true,
-    isOnline: false,
     unreadCount: 5,
     contact: {
       name: "Noah Pierre",
@@ -1099,7 +1078,6 @@ const templateConversations: Conversation[] = [
     preview: "We're migrating from Okta to Azure AD. What's the typical setup timeline for SSO?",
     time: "Yesterday",
     isUnread: false,
-    isOnline: true,
     unreadCount: 0,
     contact: {
       name: "Eve Lechner",
@@ -1152,7 +1130,6 @@ const templateConversations: Conversation[] = [
     preview: "Our ops lead resigned last week. Need to transfer ownership to me before we can cancel.",
     time: "Yesterday",
     isUnread: true,
-    isOnline: true,
     unreadCount: 2,
     contact: {
       name: "Zahir McClure",
@@ -1201,13 +1178,16 @@ const templateConversations: Conversation[] = [
 // their conversations; first names inside the messages follow the new person.
 type Person = { id: number; role: string; website: string; timezone: string; status: string };
 
+// T-285 (Fahad 125.7): a job title shows only with a source: the signature of the person's own email (Support Email
+// mail view, chat-mail-store.ts) or their own words (Omar #24: "I'm the Operations Director"). Sarah 3 (Instagram,
+// website chat) and James 6 (WhatsApp) send no email, so their title stays empty.
 const people: Record<number, Person> = {
   1: { id: 1, role: "Head of Digital Operations", website: "ooredoo.qa", timezone: "AST (UTC+3)", status: "Customer" },
   2: { id: 2, role: "Procurement Manager", website: "emiratesnbd.com", timezone: "GST (UTC+4)", status: "Lead" },
-  3: { id: 3, role: "Programme Coordinator", website: "qf.org.qa", timezone: "AST (UTC+3)", status: "Customer" },
+  3: { id: 3, role: "", website: "qf.org.qa", timezone: "AST (UTC+3)", status: "Customer" },
   4: { id: 4, role: "Partnerships Director", website: "stc.com.sa", timezone: "AST (UTC+3)", status: "Qualified" },
   5: { id: 5, role: "Quality & Compliance Lead", website: "hamad.qa", timezone: "AST (UTC+3)", status: "Lead" },
-  6: { id: 6, role: "Data Engineering Lead", website: "dpworld.com", timezone: "GST (UTC+4)", status: "Customer" },
+  6: { id: 6, role: "", website: "dpworld.com", timezone: "GST (UTC+4)", status: "Customer" },
   7: { id: 7, role: "IT Security Manager", website: "etihad.com", timezone: "GST (UTC+4)", status: "Customer" },
   8: { id: 8, role: "Mobile Product Lead", website: "qatarairways.com", timezone: "AST (UTC+3)", status: "Customer" },
   9: { id: 9, role: "Finance Manager", website: "aramco.com", timezone: "AST (UTC+3)", status: "Customer" },
@@ -1242,11 +1222,18 @@ const personOf: Record<number, number> = {
   24: 12,
 };
 
-// F159: presence belongs to the person, not to the conversation, so every avatar of one person shows the same dot.
-// Same rule as the Contacts page ContactAvatar: active in the last hour = online (green dot).
-export function isPersonOnline(conversationId: number): boolean {
-  const entry = directory.find((item) => item.id === personOf[conversationId]);
-  return entry ? entry.lastActivityMinutes < 60 : false;
+// T-268: online only for a Website contact with a live widget heartbeat (lib/cw/presence/website-presence.ts).
+// Other channels and recent activity are never presence; until a heartbeat is bound this is always null.
+export function isPersonOnline(conversationId: number): true | null {
+  const conversation = conversations.find((c) => c.id === conversationId);
+  if (!conversation) return null;
+  return isWebsiteContactOnline(conversation.channel, contactIdOf(conversationId)) || null;
+}
+
+// The same for a contact (contacts page): only a contact who writes on the Website channel can be online.
+export function isContactOnline(contactId: number): true | null {
+  const onWebsite = conversations.some((c) => c.channel === WEBSITE_CHANNEL && contactIdOf(c.id) === contactId);
+  return (onWebsite && isWebsiteContactOnline(WEBSITE_CHANNEL, contactId)) || null;
 }
 
 // Lines that only made sense for the template people.
@@ -1280,7 +1267,6 @@ function swapPerson(conversation: Conversation): Conversation {
   return {
     ...conversation,
     name: entry.name,
-    isOnline: entry.lastActivityMinutes < 60,
     subject: fix(conversation.subject),
     preview: fix(conversation.preview),
     contact: {
@@ -1291,7 +1277,8 @@ function swapPerson(conversation: Conversation): Conversation {
       email: entry.email,
       phone: entry.phone,
       website: person.website,
-      location: `${entry.city}, ${entry.country}`,
+      // T-285 (125.7): an unknown city stays out instead of leaving ", Qatar".
+      location: [entry.city, entry.country].filter(Boolean).join(", "),
       timezone: person.timezone,
       status: person.status,
       qualifiedAt: entry.createdAt,
@@ -1388,6 +1375,23 @@ export const conversations: Conversation[] = templateConversations
   .map(realClockAges)
   .map(lastMessagePreview);
 
+const initialConversationsSnapshot: Conversation[] = [...conversations];
+const initialPersonOfSnapshot: Record<number, number> = { ...personOf };
+
+/** U-2: Replace the in-memory conversations and contact-id map in-place when linked mode loads. */
+export function replaceConversations(next: Conversation[], nextPersonOf: Record<number, number>): void {
+  conversations.splice(0, conversations.length, ...next);
+  for (const key of Object.keys(personOf)) delete personOf[Number(key)];
+  Object.assign(personOf, nextPersonOf);
+}
+
+/** U-2: Restore the original preview conversations and contact-id map when leaving linked mode. */
+export function restorePreviewConversations(): void {
+  conversations.splice(0, conversations.length, ...initialConversationsSnapshot);
+  for (const key of Object.keys(personOf)) delete personOf[Number(key)];
+  Object.assign(personOf, initialPersonOfSnapshot);
+}
+
 // F159: channel counts for the channels bar (chat-channel-strip.tsx), from the conversations above.
 function channelCount(id: string): string {
   return String(conversations.filter((conversation) => conversation.channel === id).length);
@@ -1401,6 +1405,13 @@ export const channelItems: NavItem[] = [
   { id: "facebook", title: "Facebook", label: channelCount("facebook"), icon: Phone, isActive: false },
   { id: "phone", title: "Phone", label: channelCount("phone"), icon: Phone, isActive: false },
 ];
+
+// F161: a conversation started from "New conversation" joins the same list (newest activity first) and keeps the
+// person's Contacts page id. Module state like the rest of the mock: it stays while moving around, not on reload.
+export function addConversation(conversation: Conversation, contactId: number | null): void {
+  conversations.unshift(conversation);
+  if (contactId !== null) personOf[conversation.id] = contactId;
+}
 
 // Contact id on the Contacts page for a conversation (used by "View Profile").
 export function contactIdOf(conversationId: number): number | null {

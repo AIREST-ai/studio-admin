@@ -23,7 +23,6 @@ import {
   UserRoundCheck,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,9 +40,16 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  computeLinkedMetric,
+  ensureLinkedPeriodReportLoaded,
+  useLinkedReportsStore,
+} from "@/lib/chatwoot/settings-adapter";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
 
 import type { MetricDef } from "./data";
-import { type DrillRequest, type DrillScope, DrilldownSheet } from "./drilldown-sheet";
+import { DrilldownSheet, type DrillRequest, type DrillScope } from "./drilldown-sheet";
+import { type CsvValue, downloadReport, type ReportFile, reportFilename, sampleSource } from "./report-export";
 import { type GroupBy, type PeriodState, ReportDatePicker, usePeriod } from "./report-period";
 
 export function ReportHeader({
@@ -78,9 +84,11 @@ export function ReportHeader({
   );
 }
 
-export function DownloadButton({ label }: { label: string }) {
+// T-39: saves a CSV of the report the caller passes (built at click time from the current period and filters).
+export function DownloadButton({ label, file }: { label: string; file: (period: PeriodState) => ReportFile }) {
+  const period = usePeriod();
   return (
-    <Button size="sm" onClick={() => toast.success("Report download started (sample)")}>
+    <Button size="sm" onClick={() => downloadReport(file(period))}>
       <Download />
       {label}
     </Button>
@@ -254,8 +262,25 @@ export interface MetricValues {
   trend: number;
 }
 
+type ReportScopeFilter = { type?: "account" | "agent" | "inbox" | "label" | "team"; id?: string };
+
+function toScopeFilter(scope?: DrillScope): ReportScopeFilter | undefined {
+  if (!scope) return undefined;
+  const type =
+    scope.kind === "agents" ? "agent" : scope.kind === "inboxes" ? "inbox" : scope.kind === "teams" ? "team" : "label";
+  return { type, id: scope.row.id };
+}
+
 // One function for the chart, its header and the KPI cards, so all three always show the same numbers.
-export function computeMetric(metric: MetricDef, seed: number, period: PeriodState): MetricValues {
+export function computeMetric(
+  metric: MetricDef,
+  seed: number,
+  period: PeriodState,
+  scope?: ReportScopeFilter,
+): MetricValues {
+  if (linkedSession()) {
+    return computeLinkedMetric(metric, period, scope);
+  }
   const rand = seeded(seed * 7 + period.salt);
   const avg = metric.unit === "min";
   const hours = period.businessHours ? 0.72 : 1;
@@ -281,8 +306,7 @@ export function computeMetric(metric: MetricDef, seed: number, period: PeriodSta
     }
   }
   const sum = data.reduce((s, d) => s + d.value, 0);
-  const total =
-    avg && metric.anchor !== undefined ? metric.anchor : avg ? (data.length ? sum / data.length : 0) : sum;
+  const total = avg && metric.anchor !== undefined ? metric.anchor : avg ? (data.length ? sum / data.length : 0) : sum;
   const trend = period.salt ? metric.trend + ((period.salt % 9) - 4) || metric.trend : metric.trend;
   return {
     data,
@@ -294,6 +318,54 @@ export function computeMetric(metric: MetricDef, seed: number, period: PeriodSta
 
 export function metricSeed(seed: number, index: number) {
   return seed * 31 + index * 7;
+}
+
+// Title, period, Group By (when the range offers it) and the caller's filters, for the CSV head.
+export function periodMeta(
+  title: string,
+  period: PeriodState,
+  filters: [string, CsvValue][] = [],
+): [string, CsvValue][] {
+  return [
+    ["Report", title],
+    ["Period", period.label],
+    ...(period.groupOptions.length ? ([["Group By", period.group]] as [string, CsvValue][]) : []),
+    ...filters,
+    sampleSource,
+  ];
+}
+
+export function businessHoursMeta(period: PeriodState): [string, CsvValue] {
+  return ["Business Hours", period.businessHours ? "On" : "Off"];
+}
+
+// The CSV of a chart report: one row per bar (the same computeMetric numbers as the charts and KPI cards), then the
+// totals shown in the chart headers.
+export function metricsReport(
+  title: string,
+  metrics: MetricDef[],
+  seed: number,
+  period: PeriodState,
+  filters: [string, CsvValue][] = [],
+): ReportFile {
+  const all = metrics.map((m, i) => ({ metric: m, values: computeMetric(m, metricSeed(seed, i), period) }));
+  return {
+    filename: reportFilename(title, period.from, period.to),
+    meta: periodMeta(title, period, filters),
+    header: [period.group, ...all.map(({ metric }) => `${metric.name}${metric.desc ? ` ${metric.desc}` : ""}`)],
+    rows: [
+      ...period.buckets.map((b, j) => [
+        b.long,
+        ...all.map(({ metric, values }) =>
+          metric.unit === "min" ? formatDuration(values.data[j].value) : values.data[j].value,
+        ),
+      ]),
+      [
+        "Total",
+        ...all.map(({ metric, values }) => (metric.unit === "min" ? values.totalText : Math.round(values.total))),
+      ],
+    ],
+  };
 }
 
 export function TrendBadge({ trend, inverse }: { trend: number; inverse?: boolean }) {
@@ -429,8 +501,23 @@ export function MetricChartsGrid({
   scope?: DrillScope;
 }) {
   const period = usePeriod();
+  useLinkedAdapterStatus((s) => s.active);
+  useLinkedReportsStore((s) => s.lastUpdatedAt);
+  const scopeFilter = React.useMemo(() => toScopeFilter(scope), [scope]);
+  React.useEffect(() => {
+    if (!linkedSession()) return;
+    void ensureLinkedPeriodReportLoaded(
+      period,
+      metrics.map((m) => m.key),
+      scopeFilter,
+    );
+  }, [period, metrics, scopeFilter]);
+
   const [drill, setDrill] = React.useState<{ metric: MetricDef; values: MetricValues; index: number } | null>(null);
-  const all = metrics.map((m, i) => ({ metric: m, values: computeMetric(m, metricSeed(seed, i), period) }));
+  const all = metrics.map((m, i) => ({
+    metric: m,
+    values: computeMetric(m, metricSeed(seed, i), period, scopeFilter),
+  }));
   const counted = all.find((x) => ["resolutionCount", "conversations"].includes(x.metric.key));
   const conversationsUsed = Math.round(counted?.values.total ?? 0);
 
@@ -537,13 +624,25 @@ const kpiIcons: Record<string, LucideIcon> = {
 };
 
 // KPI cards for a report page: the same numbers as the chart headers below them.
-export function MetricKpis({ metrics, seed = 1, keys }: { metrics: MetricDef[]; seed?: number; keys: string[] }) {
+export function MetricKpis({
+  metrics,
+  seed = 1,
+  keys,
+  scope,
+}: {
+  metrics: MetricDef[];
+  seed?: number;
+  keys: string[];
+  scope?: ReportScopeFilter;
+}) {
   const period = usePeriod();
+  useLinkedAdapterStatus((s) => s.active);
+  useLinkedReportsStore((s) => s.lastUpdatedAt);
   const items = keys.flatMap((key) => {
     const i = metrics.findIndex((m) => m.key === key);
     if (i < 0) return [];
     const m = metrics[i];
-    const v = computeMetric(m, metricSeed(seed, i), period);
+    const v = computeMetric(m, metricSeed(seed, i), period, scope);
     return [
       {
         label: `${m.name}${m.desc ? ` ${m.desc}` : ""}`,

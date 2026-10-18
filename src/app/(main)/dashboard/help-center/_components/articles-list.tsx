@@ -18,7 +18,6 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
-  Search,
   Send,
   Shapes,
   Trash2,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,7 +39,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -161,7 +160,11 @@ function RowActions({
         {article.pendingEdits ? (
           <DropdownMenuItem
             onSelect={() => {
-              hc.updateArticle(article.id, { pendingEdits: false, title: article.liveTitle ?? article.title, liveTitle: undefined });
+              hc.updateArticle(article.id, {
+                pendingEdits: false,
+                title: article.liveTitle ?? article.title,
+                liveTitle: undefined,
+              });
               toast.success("Changes discarded");
             }}
           >
@@ -192,9 +195,7 @@ export function ArticlesList({ categorySlug }: { categorySlug?: string }) {
 
   const activeCategoryId = fixedCategory ? String(fixedCategory.id) : category;
   const inScope = articles.filter(
-    (a) =>
-      articleLocale(a) === locale &&
-      (activeCategoryId === "all" || String(a.categoryId) === activeCategoryId),
+    (a) => articleLocale(a) === locale && (activeCategoryId === "all" || String(a.categoryId) === activeCategoryId),
   );
   const q = query.trim().toLowerCase();
   const rows = inScope.filter((a) => matchesTab(a, tab) && (!q || a.title.toLowerCase().includes(q)));
@@ -228,7 +229,10 @@ export function ArticlesList({ categorySlug }: { categorySlug?: string }) {
   if (categorySlug && !fixedCategory) {
     return (
       <div className="flex flex-col gap-4">
-        <HelpCenterHeader section="categories" description="Group the articles of your portal so readers find them by topic." />
+        <HelpCenterHeader
+          section="categories"
+          description="Group the articles of your portal so readers find them by topic."
+        />
         <Empty className="border border-dashed py-14">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -299,18 +303,14 @@ export function ArticlesList({ categorySlug }: { categorySlug?: string }) {
               {activeCategory && !fixedCategory ? ` · ${activeCategory.name}` : ""}
             </CardDescription>
             <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap items-center justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
-              <InputGroup className="h-7 w-full md:w-64">
-                <InputGroupAddon align="inline-start">
-                  <Search className="size-3.5" />
-                </InputGroupAddon>
-                <InputGroupInput
-                  className="h-7"
-                  type="search"
-                  placeholder="Search articles..."
-                  value={query}
-                  onChange={(event) => resetPage(setQuery)(event.target.value)}
-                />
-              </InputGroup>
+              <ExpandingSearch
+                name="articles"
+                label="Search articles"
+                placeholder="Search articles..."
+                className="w-full md:w-64"
+                value={query}
+                onChange={resetPage(setQuery)}
+              />
             </CardAction>
           </CardHeader>
 
@@ -334,12 +334,11 @@ export function ArticlesList({ categorySlug }: { categorySlug?: string }) {
                     ]}
                   />
                 )}
-
               </div>
               <Tabs value={tab} onValueChange={(v) => resetPage(setTab)(v as Tab)}>
                 <TabsList className="h-auto flex-wrap">
                   {tabs.map((t) => (
-                    <TabsTrigger key={t.value} value={t.value} className="px-2.5">
+                    <TabsTrigger key={t.value} value={t.value} className="px-1.5 sm:px-2.5">
                       {t.label}
                       <span className="text-muted-foreground text-xs tabular-nums">
                         {inScope.filter((a) => matchesTab(a, t.value)).length}
@@ -431,12 +430,12 @@ export function ArticlesList({ categorySlug }: { categorySlug?: string }) {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="py-4 font-normal">Article</TableHead>
+                    <TableHead className="min-w-64 py-4 font-normal">Article</TableHead>
                     <TableHead className="py-4 font-normal">Author</TableHead>
                     <TableHead className="py-4 font-normal">Status</TableHead>
                     <TableHead className="py-4 text-right font-normal">Views</TableHead>
                     <TableHead className="py-4 font-normal">Last updated</TableHead>
-                    <TableHead className="py-4 font-normal">
+                    <TableHead className="sticky right-0 bg-card py-4 font-normal">
                       <div className="text-right">Actions</div>
                     </TableHead>
                   </TableRow>
@@ -491,7 +490,7 @@ export function ArticlesList({ categorySlug }: { categorySlug?: string }) {
                           </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap py-4 align-middle text-sm">{article.updated}</TableCell>
-                        <TableCell className="py-4 align-middle">
+                        <TableCell className="sticky right-0 bg-card py-4 align-middle [tr[data-state=selected]>&]:bg-muted">
                           <div className="text-right">
                             <RowActions
                               article={article}

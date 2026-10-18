@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   title: "Two-Factor Authentication",
 };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ state?: string }> }) {
-  const { state } = await searchParams;
-  return <MfaSettings key={state ?? "disabled"} initialEnabled={state === "enabled"} />;
+// F-6A: the page shows the saved state (api/settings-preview/mfa). The old ?state=enabled showed a made-up enabled
+// account with made-up backup codes, so it is gone.
+export default function Page() {
+  return <MfaSettings />;
 }

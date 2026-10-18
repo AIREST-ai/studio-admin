@@ -93,9 +93,7 @@ export const dataImports: DataImport[] = [
     duration: "1h 12m",
     startedBy: "Arham Khan",
     errors: [],
-    skipLogs: [
-      { kind: "skipped", sourceObject: "contact: 6512998", reason: "Contact has no email or phone number" },
-    ],
+    skipLogs: [{ kind: "skipped", sourceObject: "contact: 6512998", reason: "Contact has no email or phone number" }],
   },
   {
     id: 2,

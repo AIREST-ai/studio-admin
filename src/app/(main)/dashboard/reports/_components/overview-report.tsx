@@ -13,8 +13,11 @@ import {
   MessagesSquare,
   UserRoundX,
 } from "lucide-react";
-import { toast } from "sonner";
 
+import { inboxes as cwInboxes } from "@/app/(main)/dashboard/chat/_components/cw-data";
+import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
+import { ChannelIcon } from "@/app/(main)/dashboard/chat/_components/cw-ui";
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,14 +36,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ensureLinkedOverviewLoaded, useLinkedReportsStore } from "@/lib/chatwoot/settings-adapter";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
 import { getInitials } from "@/lib/utils";
 
-import { inboxes as cwInboxes } from "@/app/(main)/dashboard/chat/_components/cw-data";
-import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
-import { ChannelIcon } from "@/app/(main)/dashboard/chat/_components/cw-ui";
-import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
-
 import { type AgentStatus, agentLiveRows, liveCounts, teamLiveRows } from "./data";
+import { downloadReport, reportFilename, sampleSource } from "./report-export";
 import { TODAY } from "./report-period";
 import { ReportHeader } from "./report-ui";
 import { TablePager, usePager } from "./table-pager";
@@ -89,7 +90,17 @@ function useLiveMeta() {
 }
 
 // Studio metric tile (default/_components/metric-cards.tsx): icon tile, label, big number.
-function StatTile({ label, value, icon: Icon, dot }: { label: string; value: number; icon?: LucideIcon; dot?: string }) {
+function StatTile({
+  label,
+  value,
+  icon: Icon,
+  dot,
+}: {
+  label: string;
+  value: number;
+  icon?: LucideIcon;
+  dot?: string;
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border bg-linear-to-t from-primary/5 to-card p-4 shadow-xs dark:bg-card">
       <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -110,7 +121,11 @@ function StatTile({ label, value, icon: Icon, dot }: { label: string; value: num
 function OpenConversations() {
   const [team, setTeam] = React.useState("all");
   const { meta, deleted } = useLiveMeta();
-  const counts = liveCounts(meta, team === "all" ? null : team, deleted);
+  useLinkedAdapterStatus((s) => s.active);
+  const liveMetrics = useLinkedReportsStore((s) => s.liveMetrics);
+  const isLinked = linkedSession();
+  const localCounts = liveCounts(meta, team === "all" ? null : team, deleted);
+  const counts = isLinked && liveMetrics && team === "all" ? liveMetrics : localCounts;
   const teamLive = teamLiveRows(meta, deleted);
   const agentLive = agentLiveRows(meta, deleted);
   const stats = [
@@ -196,7 +211,7 @@ function seeded(seed: number) {
 // One row per date x 24 hours. Gulf week: busy Sun-Thu daytime, quiet Friday morning.
 function heatGrid(dates: Date[], seed: number, scale: number) {
   return dates.map((date, row) => {
-    const rand = seeded(seed * 1000 + Number(format(date, "yyyyMMdd")) % 9973 + row);
+    const rand = seeded(seed * 1000 + (Number(format(date, "yyyyMMdd")) % 9973) + row);
     const d = date.getDay();
     return Array.from({ length: 24 }, (_, h) => {
       const work = h >= 8 && h <= 21 ? 1 : 0.15;
@@ -260,13 +275,18 @@ function InboxPicker({ value, onChange }: { value: string | null; onChange: (id:
 function Heatmap({ title, seed, tone }: { title: string; seed: number; tone: "blue" | "green" }) {
   const [rangeValue, setRangeValue] = React.useState("last7");
   const [inbox, setInbox] = React.useState<string | null>(null);
+  useLinkedAdapterStatus((s) => s.active);
+  const lastUpdatedAt = useLinkedReportsStore((s) => s.lastUpdatedAt);
   const range = heatRanges.find((r) => r.value === rangeValue) ?? heatRanges[0];
   const dates = React.useMemo(() => heatDates(range), [range]);
   const inboxIndex = inbox ? cwInboxes.findIndex((i) => i.id === inbox) : -1;
-  const grid = React.useMemo(
-    () => heatGrid(dates, seed + inboxIndex + 2, inboxIndex >= 0 ? 0.18 + (inboxIndex % 3) * 0.08 : 1),
-    [dates, seed, inboxIndex],
-  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: lastUpdatedAt triggers recomputation when linked overview arrives
+  const grid: number[][] = React.useMemo(() => {
+    if (linkedSession()) {
+      return dates.map(() => Array.from({ length: 24 }, () => 0));
+    }
+    return heatGrid(dates, seed + inboxIndex + 2, inboxIndex >= 0 ? 0.18 + (inboxIndex % 3) * 0.08 : 1);
+  }, [dates, seed, inboxIndex, lastUpdatedAt]);
   const max = Math.max(1, ...grid.flat());
   // CW heatmaps: Conversation Traffic is blue, Resolutions is green (Tailwind blue-500 / emerald-500).
   const color = tone === "blue" ? "#3b82f6" : "#10b981";
@@ -314,7 +334,23 @@ function Heatmap({ title, seed, tone }: { title: string; seed: number; tone: "bl
                 variant="outline"
                 size="icon-sm"
                 aria-label="Download report"
-                onClick={() => toast.success(`${title} report download started (sample)`)}
+                onClick={() => {
+                  // T-39: the rows and numbers shown, with the selected range and inbox.
+                  const from = dates[0];
+                  const to = dates[dates.length - 1];
+                  downloadReport({
+                    filename: reportFilename(title, from, to),
+                    meta: [
+                      ["Report", title],
+                      ["Date range", range.label],
+                      ["Period", `${format(from, "MMM d, yyyy")} - ${format(to, "MMM d, yyyy")}`],
+                      ["Inbox", cwInboxes.find((i) => i.id === inbox)?.name ?? "All Inboxes"],
+                      sampleSource,
+                    ],
+                    header: ["Date", ...Array.from({ length: 24 }, (_, h) => `${h}:00`)],
+                    rows: grid.map((row, d) => [format(dates[d], "MMM d, yyyy"), ...row]),
+                  });
+                }}
               >
                 <Download />
               </Button>
@@ -464,13 +500,17 @@ function TeamTable() {
 
 // CW LiveReports.vue (the Overview is the live view in v4.18).
 export function OverviewReport() {
+  const isLinked = useLinkedAdapterStatus((s) => s.active);
+  React.useEffect(() => {
+    if (linkedSession()) void ensureLinkedOverviewLoaded();
+  }, [isLinked]);
   return (
     <TooltipProvider delayDuration={100}>
       <div className="@container/main flex flex-col gap-4 md:gap-6">
         <ReportHeader
           title={
             <span className="flex items-center gap-3">
-              Overview <LiveBadge />
+              Conversations overview <LiveBadge />
             </span>
           }
           description="Live view of open conversations, traffic, resolutions and who is online right now."
@@ -484,4 +524,3 @@ export function OverviewReport() {
     </TooltipProvider>
   );
 }
-

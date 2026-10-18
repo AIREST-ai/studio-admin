@@ -14,46 +14,58 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 import { SettingsCard } from "../../_components/settings-card";
-import { agents, inboxes } from "../../inboxes/_components/data";
+import { useAgentRoster, useInboxes } from "../../inboxes/_components/inboxes-store";
 import { AgentAvatar } from "../../inboxes/_components/settings-ui";
-import { accountLabels, type CapacityPolicy, capacityPolicies } from "./data";
+import { useLivePickerNames } from "../../labels/_shared/live-picker-names";
+import type { CapacityPolicy } from "./data";
+import { capacityPoliciesStore } from "./policies-store";
 import { AddDropdown, ConfirmDialog, EmptyBox, POLICY_HOME, PolicyFormShell } from "./policy-ui";
 
 function agentLinkedElsewhere(agentId: number, policyId?: number) {
-  return capacityPolicies.find((p) => p.id !== policyId && p.agents.includes(agentId));
+  return capacityPoliciesStore.get().find((p) => p.id !== policyId && p.agents.includes(agentId));
 }
 
 let nextKey = 100;
+// T-232 (item 78.1a): a new inbox limit starts at 10, as Chatwoot's InboxCapacityLimits.vue (DEFAULT_CONVERSATION_LIMIT).
+// The limit only stops automatic assignment; a manual assignment above it is allowed with no message and is counted.
+const DEFAULT_CONVERSATION_LIMIT = 10;
 
 export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
   const router = useRouter();
+  const inboxes = useInboxes();
+  // F-6B: the live agents (an invited agent too) and the live labels of Settings > Labels, not the seeds
+  const agents = useAgentRoster();
+  const { labels: accountLabels } = useLivePickerNames();
   const [name, setName] = React.useState(policy?.name ?? "");
   const [description, setDescription] = React.useState(policy?.description ?? "");
   const [limits, setLimits] = React.useState(
     (policy?.limits ?? []).map((l, i) => ({ key: i, inbox: String(l.inbox), max: String(l.max) })),
   );
   const [labels, setLabels] = React.useState(policy?.labels ?? []);
-  const [olderThan, setOlderThan] = React.useState(String(policy?.excludeOlderThan ?? ""));
+  // T-232: 0 means no age rule; show it empty, since "0" fails the box's min={1} and the browser blocks Update policy.
+  const [olderThan, setOlderThan] = React.useState(policy?.excludeOlderThan ? String(policy.excludeOlderThan) : "");
   const [olderUnit, setOlderUnit] = React.useState("hours");
   const [linked, setLinked] = React.useState<number[]>(policy?.agents ?? []);
   const [pending, setPending] = React.useState<number | null>(null);
   const [submitted, setSubmitted] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const nameError = submitted && !name.trim();
   const pendingAgent = agents.find((a) => a.id === pending);
   const pendingOwner = pending !== null ? agentLinkedElsewhere(pending, policy?.id) : undefined;
   const usedInboxes = limits.map((l) => l.inbox);
 
+  // Adding or removing an agent or inbox limit here changes the form draft only; it is saved on Create / Update policy.
   const addAgent = (id: number) => {
     setLinked((prev) => [...prev, id]);
-    toast.success(policy ? "Agent added to policy successfully" : "Agent successfully added to policy");
   };
 
   return (
     <>
       <PolicyFormShell
         crumbs={[
-          { label: "Agent assignment", href: POLICY_HOME },
+          { label: "Agent Assignment", href: POLICY_HOME },
           { label: "Agent capacity", href: `${POLICY_HOME}/capacity` },
           { label: policy ? policy.name : "New policy" },
         ]}
@@ -61,13 +73,47 @@ export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
         description="Manage workload for agents."
         backHref={`${POLICY_HOME}/capacity`}
         submit={policy ? "Update policy" : "Create policy"}
+        saving={saving}
+        saveError={saveError}
         onSubmit={() => {
           setSubmitted(true);
-          if (!name.trim()) return;
-          toast.success(
-            policy ? "Agent capacity policy updated successfully" : "Agent capacity policy created successfully",
-          );
-          router.push(`${POLICY_HOME}/capacity`);
+          if (!name.trim() || saving) return;
+          const saved: CapacityPolicy = {
+            id: policy?.id ?? capacityPoliciesStore.nextId(),
+            name: name.trim(),
+            description: description.trim(),
+            limits: limits.filter((l) => l.inbox && l.max).map((l) => ({ inbox: Number(l.inbox), max: Number(l.max) })),
+            labels,
+            excludeOlderThan: Number(olderThan) || 0,
+            agents: linked,
+          };
+          setSaving(true);
+          setSaveError(null);
+          // One atomic save: the policy and taking its linked agents out of any other capacity policy.
+          capacityPoliciesStore
+            .apply((items) => {
+              const withSaved = items.some((x) => x.id === saved.id)
+                ? items.map((x) => (x.id === saved.id ? saved : x))
+                : [...items, saved];
+              return withSaved.map((other) =>
+                other.id !== saved.id && other.agents.some((a) => linked.includes(a))
+                  ? { ...other, agents: other.agents.filter((a) => !linked.includes(a)) }
+                  : other,
+              );
+            })
+            .then(
+              () => {
+                toast.success(
+                  policy ? "Agent capacity policy updated successfully" : "Agent capacity policy created successfully",
+                );
+                router.push(`${POLICY_HOME}/capacity`);
+              },
+              (error: Error) => {
+                setSaveError(error.message);
+                toast.error(`Not saved (${error.message})`);
+              },
+            )
+            .finally(() => setSaving(false));
         }}
       >
         <SettingsCard title="Policy details">
@@ -103,7 +149,9 @@ export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
               variant="outline"
               size="sm"
               disabled={limits.length >= inboxes.length}
-              onClick={() => setLimits((prev) => [...prev, { key: nextKey++, inbox: "", max: "" }])}
+              onClick={() =>
+                setLimits((prev) => [...prev, { key: nextKey++, inbox: "", max: String(DEFAULT_CONVERSATION_LIMIT) }])
+              }
             >
               Add inbox
             </Button>
@@ -143,7 +191,6 @@ export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
                     onChange={(e) =>
                       setLimits((prev) => prev.map((l) => (l.key === limit.key ? { ...l, max: e.target.value } : l)))
                     }
-                    onBlur={() => limit.inbox && limit.max && toast.success("Inbox limit updated successfully")}
                   />
                   <Button
                     type="button"
@@ -152,7 +199,6 @@ export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
                     aria-label="Remove inbox limit"
                     onClick={() => {
                       setLimits((prev) => prev.filter((l) => l.key !== limit.key));
-                      toast.success("Inbox limit deleted successfully");
                     }}
                   >
                     <Trash2 />
@@ -210,7 +256,12 @@ export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
                   onChange={(e) => setOlderThan(e.target.value)}
                   className="h-8 w-24"
                 />
-                <NativeSelect size="sm" aria-label="Unit" value={olderUnit} onChange={(e) => setOlderUnit(e.target.value)}>
+                <NativeSelect
+                  size="sm"
+                  aria-label="Unit"
+                  value={olderUnit}
+                  onChange={(e) => setOlderUnit(e.target.value)}
+                >
                   <NativeSelectOption value="minutes">Minutes</NativeSelectOption>
                   <NativeSelectOption value="hours">Hours</NativeSelectOption>
                   <NativeSelectOption value="days">Days</NativeSelectOption>
@@ -263,7 +314,6 @@ export function CapacityPolicyForm({ policy }: { policy?: CapacityPolicy }) {
                       aria-label={`Remove ${agent.name}`}
                       onClick={() => {
                         setLinked((prev) => prev.filter((x) => x !== agent.id));
-                        toast.success("Agent removed from policy successfully");
                       }}
                     >
                       <Trash2 />

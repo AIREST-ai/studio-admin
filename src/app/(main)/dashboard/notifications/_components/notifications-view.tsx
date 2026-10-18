@@ -1,25 +1,39 @@
 "use client";
-// My Inbox in the Studio pattern (page heading + tabs with counts + filter chips + one card), keeping Chatwoot v4.18's
-// inbox (routes/dashboard/inbox, components-next/Inbox/InboxCard.vue): Display menu (Sort Newest / Oldest / Priority,
-// Display : Snoozed, Read), options menu (Mark all as read, Delete all, Delete all read), notification cards with
-// type line, snooze state, SLA label, priority, inbox icon and time, the right-click menu (here also a "..." menu per
-// row), and the right pane with up / down pagination, Snooze notification (+ Custom...), Delete notification and
-// the conversation thread.
+// My Inbox as Chatwoot v4.18 draws it (routes/dashboard/inbox: InboxList.vue, InboxListHeader.vue, InboxView.vue,
+// InboxItemHeader.vue, components-next/Inbox/InboxCard.vue), inside the Studio frame of the Conversations page
+// (conversations-workspace.tsx): one card under the header holding the notification list, the open conversation and
+// the contact panel. T-140 (Fahad 2026-10-14 00:45, item 58: the page heading, the tabs with counts and the big
+// message were not standard): the list header is "My Inbox" + Display + options only; nothing opens by itself (the
+// right side shows Chatwoot's empty state); an opened notification shows the conversation itself (the same
+// ConversationPane as Conversations, like Chatwoot's ConversationBox), under Chatwoot's item header (back, n / N,
+// Snooze notification, Delete notification). Studio's extra filters (type, inbox, priority, sort by priority) moved
+// into the Display menu, with a chip under the header while one is on. T-286 (Fahad 2026-10-15, item 125.5): three tabs
+// under the header, Unread / Read / Snoozed, in place of Display's Read and Snoozed checkboxes; Snoozed is grouped by
+// return day with a Today / Tomorrow / date filter; a returned notification tops Unread with "Returned from snooze".
+// F-10b (Fahad item 51b, 01:23:54: «الاشعارات تكون للنظام التسجيل التغيير الموافقات اشعارات عامه بكل شيئ»): the list also
+// holds the bell's System, Sign-ups, Changes, Approvals and Automation notifications (the activity log's, the same
+// `feed` of notifications-store.ts the bell reads, with the same saved read state). They sit with the conversation
+// ones by time, under Unread and Read; opening one marks it read and goes to its place, as in the bell. Display > Type
+// lists their categories. They cannot be snoozed or deleted: they are records of the activity log, which is append-only.
 import * as React from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
 import {
-  AlarmClockOff,
+  AlarmClockCheck,
   AlarmClockPlus,
   ArrowDownUp,
   AtSign,
   BellMinus,
+  CalendarDays,
+  Check,
+  CheckCheck,
   ChevronDown,
+  ChevronLeft,
   ChevronsRight,
   ChevronUp,
-  CheckCheck,
   HeartCrack,
   Inbox,
   Mail,
@@ -27,18 +41,24 @@ import {
   MailPlus,
   MessageSquarePlus,
   MoreHorizontal,
-  Paperclip,
   Settings2,
   SlidersVertical,
+  SquareArrowOutUpRight,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
+import { useChat } from "@/app/(main)/chat/_components/use-chat";
+import { ContactPanel } from "@/app/(main)/dashboard/chat/_components/contact-panel";
+import { ConversationPane } from "@/app/(main)/dashboard/chat/_components/conversation-pane";
+import { inboxes, inboxOf, priorities } from "@/app/(main)/dashboard/chat/_components/cw-data";
+import { CwDialogs } from "@/app/(main)/dashboard/chat/_components/cw-dialogs";
+import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
+import { AgentAvatar, ChannelIcon, PriorityIcon, SlaBadge } from "@/app/(main)/dashboard/chat/_components/cw-ui";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Card } from "@/components/ui/card";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -52,47 +72,51 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CATEGORY_LABELS } from "@/lib/notifications/feed";
 
-import { useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
+import { FeedAvatar } from "./header-inbox";
 import {
-  buildThread,
-  type CwMessage,
-  inboxes,
-  inboxOf,
-  initialMeta,
-  priorities,
-} from "@/app/(main)/dashboard/chat/_components/cw-data";
-import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
+  conversationRows,
+  dayKey,
+  defaultFilters,
+  feedFiltered,
+  feedInTab,
+  feedMinutes,
+  feedTypeGroups,
+  filtered as filteredOf,
+  type InboxTab,
+  inboxTabs,
+  inTab,
+  type ListFilters,
+  listedGroups,
+  mergeRows,
+  returnedFirstRows,
+  type SnoozeDay,
+  type SortKey,
+  snoozedByReturn,
+  tabCounts,
+  typeCounts,
+  typeGroups,
+} from "./my-inbox-filters";
 import {
-  AgentAvatar,
-  ChannelIcon,
-  PersonAvatar,
-  PriorityIcon,
-  SlaBadge,
-  StatusPill,
-} from "@/app/(main)/dashboard/chat/_components/cw-ui";
-import { LabelBadge, PageHeading } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
-
-import {
-  buildNotification,
   exactTime,
   type InboxNotification,
   type NotificationType,
-  notificationSeeds,
   relativeTime,
+  type SnoozeKey,
   snoozeOptions,
+  snoozeTime,
   typeLabels,
 } from "./notification-data";
+import { type FeedEntry, useNotifications, useNotificationsStore } from "./notifications-store";
 
-type SortKey = "newest" | "oldest" | "priority";
-type View = "all" | "unread" | "mentioned" | "assigned" | "sla";
-
+// Chatwoot NOTIFICATION_TYPES_MAPPING (InboxViewHelpers.js): blue, SLA in red.
 const typeIcons: Record<NotificationType, [React.ElementType, string]> = {
   conversation_mention: [AtSign, "text-primary"],
   conversation_assignment: [ChevronsRight, "text-primary"],
@@ -104,58 +128,39 @@ const typeIcons: Record<NotificationType, [React.ElementType, string]> = {
   sla_missed_resolution: [HeartCrack, "text-destructive"],
 };
 
-const views: { value: View; label: string; match: (n: InboxNotification) => boolean }[] = [
-  { value: "all", label: "All", match: () => true },
-  { value: "unread", label: "Unread", match: (n) => n.unread },
-  { value: "mentioned", label: "Mentioned", match: (n) => n.type === "conversation_mention" },
-  {
-    value: "assigned",
-    label: "Assigned to you",
-    match: (n) => n.type === "conversation_assignment" || n.type === "assigned_conversation_new_message",
-  },
-  { value: "sla", label: "SLA breach", match: (n) => n.type.startsWith("sla_missed") },
-];
+// The Display choices outlive the page, as Chatwoot keeps them in the agent's UI settings (inbox_filter_by). The tab
+// is kept in the store (notifications-store.ts), Unread by default.
+let savedFilters: ListFilters = defaultFilters;
+let savedSnoozeDay: SnoozeDay = "all";
 
-const priorityRank: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
+// The clock the Snoozed tab reads ("Snoozed for 2h", Today / Tomorrow), refreshed every 30 seconds.
+function useNow(ms = 30_000) {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), ms);
+    return () => window.clearInterval(timer);
+  }, [ms]);
+  return now;
+}
 
-const seed: InboxNotification[] = notificationSeeds
-  .map((s, i) => buildNotification(s, i))
-  .filter((n): n is InboxNotification => n !== null);
-
-function ChipSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm">
-        <span className="text-muted-foreground">{label}:</span>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent position="popper" align="start">
-        <SelectGroup>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
+function useMinWidth(px: number) {
+  const [matches, setMatches] = React.useState(false);
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${px}px)`);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [px]);
+  return matches;
 }
 
 function CardMessage({ item }: { item: InboxNotification }) {
   return (
     <p className="line-clamp-2 text-sm">
-      {item.unread ? <span className="me-1.5 mb-px inline-flex size-2 shrink-0 rounded-full bg-primary" /> : null}
+      {item.unread ? (
+        <span data-unread="" className="me-1.5 mb-px inline-flex size-2 shrink-0 rounded-full bg-primary" />
+      ) : null}
       <span className={item.unread ? "font-semibold" : "font-medium text-muted-foreground"}>{item.actor}:</span>{" "}
       <span className={item.unread ? "font-medium text-foreground" : "text-muted-foreground"}>{item.message}</span>
     </p>
@@ -188,12 +193,14 @@ function RowMenuItems({
 
 function NotificationCard({
   item,
+  now,
   active,
   onOpen,
   onToggleRead,
   onDelete,
 }: {
   item: InboxNotification;
+  now: number;
   active: boolean;
   onOpen: () => void;
   onToggleRead: () => void;
@@ -211,6 +218,8 @@ function NotificationCard({
         <div
           role="button"
           tabIndex={0}
+          data-slot="notification-card"
+          data-active={active}
           onClick={onOpen}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -223,29 +232,34 @@ function NotificationCard({
             active && "bg-muted",
           )}
         >
+          {/* T-286: the snooze state on its own line, so it is never cut by the SLA badge; the type stays below. */}
+          {item.snoozedUntil !== undefined ? (
+            <span className={cn("flex items-center gap-1.5 ps-1 font-medium text-xs", snoozeAccent)}>
+              <AlarmClockPlus className="size-3.5 shrink-0" />
+              Snoozed for {relativeTime(Math.max(1, Math.ceil((item.snoozedUntil - now) / 60_000)))}
+            </span>
+          ) : null}
+          {item.snoozedUntil === undefined && item.returnedAt !== undefined ? (
+            // Its own mark, so a notification back from a snooze is not taken for a new one.
+            <span
+              data-slot="returned-from-snooze"
+              className={cn(
+                "inline-flex h-5 w-fit items-center gap-1 rounded-md px-1.5 font-medium text-xs",
+                item.unread ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground",
+              )}
+            >
+              <AlarmClockCheck className="size-3.5 shrink-0" />
+              Returned from snooze
+            </span>
+          ) : null}
           <div className="flex items-start gap-2 pe-7">
             <AgentAvatar id={item.assigneeId} size="sm" className="mt-0.5 size-5" />
             <CardMessage item={item} />
           </div>
           <div className="flex h-6 items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 ps-1">
-              {item.snoozedUntil || item.snoozeEnded ? (
-                <>
-                  {item.snoozeEnded ? (
-                    <AlarmClockOff className={cn("size-4 shrink-0", snoozeAccent)} />
-                  ) : (
-                    <AlarmClockPlus className={cn("size-4 shrink-0", snoozeAccent)} />
-                  )}
-                  <span className={cn("truncate font-medium text-xs", snoozeAccent)}>
-                    {item.snoozeEnded ? "Snooze ended" : `Snoozed for ${item.snoozedUntil}`}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <TypeIcon className={cn("size-4 shrink-0", accent)} />
-                  <span className={cn("truncate font-medium text-xs", accent)}>{typeLabels[item.type]}</span>
-                </>
-              )}
+              <TypeIcon className={cn("size-4 shrink-0", accent)} />
+              <span className={cn("truncate font-medium text-xs", accent)}>{typeLabels[item.type]}</span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {meta?.sla ? (
@@ -290,82 +304,254 @@ function NotificationCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44" onClick={(event) => event.stopPropagation()}>
-                <RowMenuItems
-                  item={item}
-                  Item={DropdownMenuItem}
-                  onToggleRead={onToggleRead}
-                  onDelete={onDelete}
-                />
+                <RowMenuItems item={item} Item={DropdownMenuItem} onToggleRead={onToggleRead} onDelete={onDelete} />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
-        <RowMenuItems
-          item={item}
-          Item={ContextMenuItem}
-          onToggleRead={onToggleRead}
-          onDelete={onDelete}
-        />
+        <RowMenuItems item={item} Item={ContextMenuItem} onToggleRead={onToggleRead} onDelete={onDelete} />
       </ContextMenuContent>
     </ContextMenu>
   );
 }
 
-function DisplayMenu({
-  sort,
-  onSort,
-  showSnoozed,
-  showRead,
-  onSnoozed,
-  onRead,
+// F-10b: a System / Sign-ups / Changes / Approvals / Automation notification from the activity log. Same card shape as
+// a conversation notification: the mark (the bell's), the type and the log's sentence, the category and the time.
+function FeedCard({
+  entry,
+  now,
+  onOpen,
+  onToggleRead,
 }: {
-  sort: SortKey;
-  onSort: (value: SortKey) => void;
-  showSnoozed: boolean;
-  showRead: boolean;
-  onSnoozed: (value: boolean) => void;
-  onRead: (value: boolean) => void;
+  entry: FeedEntry;
+  now: number;
+  onOpen: () => void;
+  onToggleRead: () => void;
 }) {
-  const sortLabel = { newest: "Newest", oldest: "Oldest", priority: "Priority" }[sort];
+  const accent = entry.unread ? "text-primary" : "text-muted-foreground";
+  const minutes = feedMinutes(entry, now);
+  const menuItems = (Item: typeof DropdownMenuItem | typeof ContextMenuItem) => (
+    <Item onSelect={onToggleRead}>
+      {entry.unread ? <MailOpen /> : <Mail />}
+      {entry.unread ? "Mark as read" : "Mark as unread"}
+    </Item>
+  );
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          role="button"
+          tabIndex={0}
+          data-slot="notification-card"
+          data-kind="feed"
+          data-category={entry.category}
+          data-href={entry.href}
+          data-unread={entry.unread}
+          onClick={onOpen}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onOpen();
+            }
+          }}
+          className="group/row relative flex w-full cursor-pointer flex-col gap-1 rounded-lg p-3 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <div className="flex items-start gap-2 pe-7">
+            <FeedAvatar entry={entry} size="sm" />
+            <p className="line-clamp-3 text-sm">
+              {entry.unread ? (
+                <span data-unread="" className="me-1.5 mb-px inline-flex size-2 shrink-0 rounded-full bg-primary" />
+              ) : null}
+              <span className={entry.unread ? "font-semibold" : "font-medium text-muted-foreground"}>{entry.type}</span>
+              {" · "}
+              <span className={entry.unread ? "font-medium text-foreground" : "text-muted-foreground"}>
+                {entry.text}
+              </span>
+            </p>
+          </div>
+          <div className="flex h-6 items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 ps-1">
+              <span className={cn("truncate font-medium text-xs", accent)}>{CATEGORY_LABELS[entry.category]}</span>
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{relativeTime(minutes)}</span>
+              </TooltipTrigger>
+              <TooltipContent>{exactTime(minutes)}</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="absolute end-2 top-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Open actions for notification: ${entry.type}`}
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44" onClick={(event) => event.stopPropagation()}>
+                {menuItems(DropdownMenuItem)}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">{menuItems(ContextMenuItem)}</ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+function MenuSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex h-9 items-center justify-between gap-2 px-3">
+      <span className="font-medium text-xs">{label}</span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger size="sm" className="h-6 min-w-24 max-w-36 text-xs" aria-label={label}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper" align="end">
+          <SelectGroup>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// Chatwoot InboxDisplayMenu (Sort; its "Display :" Snoozed / Read are the tabs now, T-286), then Studio's filters: type
+// (Chatwoot's card labels, each with how many are listed), inbox and priority.
+function DisplayMenu({
+  showSort,
+  filters,
+  onFilters,
+  counts,
+  inboxOptions,
+  active,
+}: {
+  showSort: boolean; // Snoozed is always ordered by return time
+  filters: ListFilters;
+  onFilters: (value: ListFilters) => void;
+  counts: Record<string, number>;
+  inboxOptions: { value: string; label: string }[];
+  active: number;
+}) {
+  const sortLabel = { newest: "Newest", oldest: "Oldest", priority: "Priority" }[filters.sort];
+  const priorityOptions = [
+    { value: "all", label: "All" },
+    ...priorities.map((p) => ({ value: p.value, label: p.label })),
+  ];
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
-          Display <ChevronDown />
+        <Button variant="secondary" size="xs" aria-label={active ? `Display, ${active} filters on` : "Display"}>
+          Display
+          {active ? (
+            <span className="grid size-4 place-items-center rounded-full bg-primary text-[10px] text-primary-foreground tabular-nums">
+              {active}
+            </span>
+          ) : null}
+          <ChevronDown />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-60 p-0">
-        <div className="flex h-11 items-center justify-between gap-2 px-3">
-          <span className="flex items-center gap-1.5 font-medium text-xs">
-            <ArrowDownUp className="size-3.5" /> Sort
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="xs" className="min-w-24 justify-between">
-                {sortLabel} <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              <DropdownMenuRadioGroup value={sort} onValueChange={(v) => onSort(v as SortKey)}>
-                <DropdownMenuRadioItem value="newest">Newest</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="oldest">Oldest</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="priority">Priority</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <PopoverContent align="start" className="w-64 p-0">
+        {showSort ? (
+          <>
+            <div className="flex h-11 items-center justify-between gap-2 px-3">
+              <span className="flex items-center gap-1.5 font-medium text-xs">
+                <ArrowDownUp className="size-3.5" /> Sort
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="xs" className="min-w-24 justify-between">
+                    {sortLabel} <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-32">
+                  <DropdownMenuRadioGroup
+                    value={filters.sort}
+                    onValueChange={(v) => onFilters({ ...filters, sort: v as SortKey })}
+                  >
+                    <DropdownMenuRadioItem value="newest">Newest</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="oldest">Oldest</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="priority">Priority</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <Separator />
+          </>
+        ) : null}
+        <div className="px-3 pt-2 pb-1 font-medium text-muted-foreground text-xs">Type</div>
+        <div className="flex flex-col px-1.5 pb-1.5">
+          {[{ value: "all", label: "All" }, ...listedGroups(), ...feedTypeGroups].map((g) => {
+            const on = filters.type === g.value;
+            return (
+              <button
+                key={g.value}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onFilters({ ...filters, type: g.value })}
+                className={cn(
+                  "flex h-7 items-center gap-2 rounded-md px-1.5 text-left font-medium text-xs hover:bg-muted",
+                  on && "bg-primary/10 text-primary",
+                )}
+              >
+                <Check className={cn("size-3", !on && "invisible")} />
+                <span className="flex-1 truncate">{g.label}</span>
+                <span className="text-muted-foreground tabular-nums">{counts[g.value] ?? 0}</span>
+              </button>
+            );
+          })}
         </div>
         <Separator />
-        <div className="px-3 pt-2 pb-0.5 font-medium text-muted-foreground text-xs">Display :</div>
-        <div className="divide-y">
-          <Label className="flex h-9 cursor-pointer items-center gap-2 px-3 font-medium text-xs">
-            <Checkbox checked={showSnoozed} onCheckedChange={(c) => onSnoozed(c === true)} /> Snoozed
-          </Label>
-          <Label className="flex h-9 cursor-pointer items-center gap-2 px-3 font-medium text-xs">
-            <Checkbox checked={showRead} onCheckedChange={(c) => onRead(c === true)} /> Read
-          </Label>
-        </div>
+        <MenuSelect
+          label="Inbox"
+          value={filters.inbox}
+          options={inboxOptions}
+          onChange={(inbox) => onFilters({ ...filters, inbox })}
+        />
+        <MenuSelect
+          label="Priority"
+          value={filters.priority}
+          options={priorityOptions}
+          onChange={(priority) => onFilters({ ...filters, priority })}
+        />
+        {active ? (
+          <>
+            <Separator />
+            <div className="p-1.5">
+              <Button
+                variant="ghost"
+                size="xs"
+                className="w-full"
+                onClick={() => onFilters({ ...defaultFilters, sort: filters.sort })}
+              >
+                Clear filters
+              </Button>
+            </div>
+          </>
+        ) : null}
       </PopoverContent>
     </Popover>
   );
@@ -378,10 +564,20 @@ function CustomSnoozeDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onApply: (label: string) => void;
+  onApply: (until: number) => void;
 }) {
-  const [date, setDate] = React.useState<Date | undefined>(new Date(2026, 9, 14));
+  // T-286: the picked day and time are the return time (it was the day only, as a label). Nothing in the past.
+  const [date, setDate] = React.useState<Date | undefined>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  });
   const [time, setTime] = React.useState("09:00");
+  const [hours, minutes] = time.split(":").map(Number);
+  const until =
+    date && Number.isFinite(hours) && Number.isFinite(minutes)
+      ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes).getTime()
+      : null;
+  const today = new Date();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
@@ -393,7 +589,7 @@ function CustomSnoozeDialog({
             mode="single"
             selected={date}
             onSelect={setDate}
-            disabled={{ before: new Date(2026, 9, 12) }}
+            disabled={{ before: new Date(today.getFullYear(), today.getMonth(), today.getDate()) }}
             className="rounded-lg border"
           />
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full" />
@@ -403,10 +599,10 @@ function CustomSnoozeDialog({
             <Button variant="outline">Cancel</Button>
           </DialogClose>
           <Button
-            disabled={!date || !time}
+            disabled={until === null || until <= Date.now()}
             onClick={() => {
-              if (!date) return;
-              onApply(date.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+              if (until === null || until <= Date.now()) return;
+              onApply(until);
               onOpenChange(false);
             }}
           >
@@ -418,46 +614,13 @@ function CustomSnoozeDialog({
   );
 }
 
-function ThreadMessage({ message }: { message: CwMessage }) {
-  if (message.kind === "activity") {
-    return (
-      <div className="self-center rounded-full bg-muted px-3 py-1 text-center text-muted-foreground text-xs">
-        {message.text}
-      </div>
-    );
-  }
-  const incoming = message.kind === "incoming";
-  return (
-    <div className={cn("flex max-w-[75%] flex-col gap-1", incoming ? "self-start" : "items-end self-end")}>
-      <div
-        className={cn(
-          "grid gap-1.5 rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
-          incoming && "rounded-bl-sm border bg-card",
-          message.kind === "outgoing" && "rounded-br-sm bg-primary text-primary-foreground",
-          message.kind === "note" &&
-            "rounded-br-sm border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200",
-        )}
-      >
-        {message.text ? <span className="whitespace-pre-line">{message.text}</span> : null}
-        {message.attachments?.map((file) => (
-          <span key={file.name} className="inline-flex items-center gap-1.5 text-xs opacity-80">
-            <Paperclip className="size-3" /> {file.name}
-          </span>
-        ))}
-      </div>
-      <span className="text-muted-foreground text-xs">
-        {message.kind === "note" ? "Private note • " : ""}
-        {message.sender ? `${message.sender} • ` : ""}
-        {message.time}
-      </span>
-    </div>
-  );
-}
-
-function ConversationPane({
+// Chatwoot InboxItemHeader.vue: back (when the list is hidden), n / N with up / down, Snooze notification, Delete
+// notification; plus Studio's link to the conversation on the Conversations page.
+function ItemHeader({
   item,
   index,
   total,
+  onBack,
   onPrev,
   onNext,
   onSnooze,
@@ -467,24 +630,34 @@ function ConversationPane({
   item: InboxNotification;
   index: number;
   total: number;
+  onBack: () => void;
   onPrev: () => void;
   onNext: () => void;
-  onSnooze: (short: string) => void;
+  onSnooze: (short: SnoozeKey) => void;
   onCustomSnooze: () => void;
   onDelete: () => void;
 }) {
-  const meta = useCwStore((s) => s.meta[item.conversationId]) ?? initialMeta[item.conversationId];
-  const { byConv } = useChatTags();
-  const labels = byConv[String(item.conversationId)] ?? [];
-  const thread = React.useMemo(() => buildThread(item.conversation, meta), [item.conversation, meta]);
-  const inbox = inboxOf(item.conversation);
-
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
-      <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3">
-        <div className="flex items-center gap-2">
+    <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Back to notifications"
+          className="lg:hidden"
+          onClick={onBack}
+        >
+          <ChevronLeft />
+        </Button>
+        {total > 1 ? (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon-xs" aria-label="Previous notification" disabled={index <= 0} onClick={onPrev}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Previous notification"
+              disabled={index <= 0}
+              onClick={onPrev}
+            >
               <ChevronUp />
             </Button>
             <Button
@@ -496,307 +669,509 @@ function ConversationPane({
             >
               <ChevronDown />
             </Button>
-          </div>
-          <span className="whitespace-nowrap text-sm tabular-nums">
-            <span className="font-medium">{total <= 1 ? 1 : index + 1}</span>
-            {total > 1 ? <span className="text-muted-foreground"> / {total}</span> : null}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <BellMinus /> Snooze notification
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Snooze Notification</DropdownMenuLabel>
-              {snoozeOptions.map((option) => (
-                <DropdownMenuItem key={option.label} onSelect={() => onSnooze(option.short)}>
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onCustomSnooze}>Custom...</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={onDelete}>
-            <Trash2 /> Delete notification
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <PersonAvatar name={item.contactName} />
-          <div className="grid min-w-0 gap-0.5">
-            <span className="truncate font-medium text-sm">
-              {item.contactName} <span className="font-normal text-muted-foreground">#{item.conversationId}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 truncate text-muted-foreground text-xs">
-              <ChannelIcon channel={item.conversation.channel} className="size-3" /> {inbox.name} •{" "}
-              {item.conversation.subject}
+            <span className="whitespace-nowrap text-sm tabular-nums">
+              <span className="font-medium">{index + 1}</span>
+              <span className="text-muted-foreground"> / {total}</span>
             </span>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {meta ? <StatusPill status={meta.status} /> : null}
-          {labels.map((label) => (
-            <LabelBadge key={label} label={label} />
-          ))}
-          <Button size="sm" asChild>
-            <Link href={`/dashboard/chat?conversation=${item.conversationId}`}>Open conversation</Link>
-          </Button>
-        </div>
+        ) : null}
       </div>
-
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto bg-muted/30 p-6">
-        {thread.map((message) => (
-          <ThreadMessage key={message.id} message={message} />
-        ))}
+      <div className="flex items-center gap-1.5">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="xs" aria-label="Snooze notification">
+              <BellMinus /> <span className="hidden md:inline">Snooze notification</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel>Snooze Notification</DropdownMenuLabel>
+            {snoozeOptions.map((option) => (
+              <DropdownMenuItem key={option.label} onSelect={() => onSnooze(option.short)}>
+                {option.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={onCustomSnooze}>Custom...</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="secondary" size="xs" aria-label="Delete notification" onClick={onDelete}>
+          <Trash2 /> <span className="hidden md:inline">Delete notification</span>
+        </Button>
+        <Button variant="secondary" size="xs" asChild>
+          <Link href={`/dashboard/chat?conversation=${item.conversationId}`} aria-label="Open conversation">
+            <SquareArrowOutUpRight /> <span className="hidden md:inline">Open conversation</span>
+          </Link>
+        </Button>
       </div>
     </div>
   );
 }
 
-export function NotificationsView() {
-  const [items, setItems] = React.useState<InboxNotification[]>(seed);
-  const [view, setView] = React.useState<View>("all");
-  const [inboxFilter, setInboxFilter] = React.useState("all");
-  const [priorityFilter, setPriorityFilter] = React.useState("all");
-  const [sort, setSort] = React.useState<SortKey>("newest");
-  const [showSnoozed, setShowSnoozed] = React.useState(true);
-  const [showRead, setShowRead] = React.useState(true);
-  const [activeId, setActiveId] = React.useState<number | null>(1);
-  const [customFor, setCustomFor] = React.useState<number | null>(null);
+const emptyText: Record<InboxTab, string> = {
+  unread: "No unread notifications",
+  read: "No read notifications",
+  snoozed: "No snoozed notifications",
+};
 
-  const displayed = React.useMemo(
-    () => items.filter((n) => (showSnoozed || !n.snoozedUntil) && (showRead || n.unread)),
-    [items, showSnoozed, showRead],
+// T-286: the Snoozed filter by return day, "All" first (item 123), then Today, Tomorrow and a picked date.
+function SnoozeDayFilter({
+  value,
+  onChange,
+  now,
+}: {
+  value: SnoozeDay;
+  onChange: (v: SnoozeDay) => void;
+  now: number;
+}) {
+  const [pickOpen, setPickOpen] = React.useState(false);
+  const picked = value !== "all" && value !== "today" && value !== "tomorrow" ? value : null;
+  const pickedDate = picked ? new Date(`${picked}T12:00:00`) : undefined;
+  const today = new Date(now);
+  const chip = (on: boolean) =>
+    cn(
+      "inline-flex h-6 items-center gap-1 rounded-md px-2 font-medium text-xs transition-colors",
+      on ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+    );
+  return (
+    <div data-slot="snooze-day-filter" className="flex items-center gap-1 px-3 pt-2">
+      {[
+        { value: "all", label: "All" },
+        { value: "today", label: "Today" },
+        { value: "tomorrow", label: "Tomorrow" },
+      ].map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          className={chip(value === o.value)}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+      <Popover open={pickOpen} onOpenChange={setPickOpen}>
+        <PopoverTrigger asChild>
+          <button type="button" aria-pressed={Boolean(picked)} className={chip(Boolean(picked))}>
+            <CalendarDays className="size-3.5" />
+            {pickedDate ? pickedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Date"}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <Calendar
+            mode="single"
+            selected={pickedDate}
+            onSelect={(d) => {
+              if (!d) return;
+              onChange(dayKey(d.getTime()));
+              setPickOpen(false);
+            }}
+            disabled={{ before: new Date(today.getFullYear(), today.getMonth(), today.getDate()) }}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function EmptyPane({ hasItems }: { hasItems: boolean }) {
+  // Chatwoot InboxEmptyState.vue
+  return (
+    <div className="hidden h-full flex-col items-center justify-center gap-2 text-center lg:flex">
+      <Inbox className="size-10 text-muted-foreground" strokeWidth={1.5} />
+      <span className="font-medium text-muted-foreground text-sm">
+        {hasItems ? "Notifications from all subscribed inboxes" : "No notifications"}
+      </span>
+    </div>
+  );
+}
+
+export function NotificationsView() {
+  const router = useRouter();
+  const [chat, setChat] = useChat();
+  // T-98: the same notifications as the header bell (notifications-store.ts), so read / unread, snooze and delete
+  // agree in both places.
+  const items = useNotifications();
+  // Live inbox state (cw-store): SLA and priority as the conversations show them now.
+  const meta = useCwStore((s) => s.meta);
+  const tab = useNotificationsStore((s) => s.tab);
+  // F-10b: the bell's activity-log notifications (read by the header bell, notifications-store.ts useFeedPolling).
+  const feed = useNotificationsStore((s) => s.feed);
+  const feedStatus = useNotificationsStore((s) => s.feedStatus);
+  const feedError = useNotificationsStore((s) => s.feedError);
+  const [snoozeDay, setSnoozeDayState] = React.useState<SnoozeDay>(savedSnoozeDay);
+  const [filters, setFiltersState] = React.useState(savedFilters);
+  const now = useNow();
+  const [keep, setKeep] = React.useState<Set<number>>(() => new Set());
+  const [activeId, setActiveId] = React.useState<number | null>(null);
+  const [customFor, setCustomFor] = React.useState<number | null>(null);
+  const wide = useMinWidth(1440);
+  const [panelOpen, setPanelOpen] = React.useState(true);
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+
+  function setTab(value: InboxTab) {
+    useNotificationsStore.getState().setTab(value);
+    setKeep(new Set()); // a fresh list, as Chatwoot fetches it again when its Display option changes
+    setActiveId(null);
+  }
+  function setSnoozeDay(value: SnoozeDay) {
+    savedSnoozeDay = value;
+    setSnoozeDayState(value);
+  }
+  function setFilters(value: ListFilters) {
+    savedFilters = value;
+    setFiltersState(value);
+  }
+
+  const listed = React.useMemo(() => inTab(items, meta, tab, { keep }), [items, meta, tab, keep]);
+  const feedListed = React.useMemo(() => feedInTab(feed, tab, keep), [feed, tab, keep]);
+  const counts = typeCounts(listed, undefined, feedListed);
+  const countsByTab = tabCounts(items, meta, undefined, feed);
+  // Unread / Read: the Display sort, conversation and activity-log notifications together, returned-from-snooze on top
+  // of Unread. Snoozed: by return time, one group a day (conversation notifications only).
+  const groups = React.useMemo(() => {
+    const rows = filteredOf(listed, meta, filters);
+    if (tab === "snoozed")
+      return snoozedByReturn(rows, snoozeDay, now).map((g) => ({ ...g, items: conversationRows(g.items) }));
+    const merged = mergeRows(rows, feedFiltered(feedListed, filters), filters.sort, meta, now);
+    return [{ key: tab, label: "", items: tab === "unread" ? returnedFirstRows(merged) : merged }];
+  }, [listed, feedListed, meta, filters, tab, snoozeDay, now]);
+  const visible = React.useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  // The open conversation, with n / N and up / down over the conversation notifications (an activity-log one opens its
+  // place instead of a conversation).
+  const openable = React.useMemo(
+    () => visible.flatMap((row) => (row.kind === "conversation" ? [row.item] : [])),
+    [visible],
   );
 
-  const visible = React.useMemo(() => {
-    const viewMatch = views.find((v) => v.value === view)?.match ?? (() => true);
-    const filtered = displayed.filter(
-      (n) =>
-        viewMatch(n) &&
-        (inboxFilter === "all" || n.conversation.channel === inboxFilter) &&
-        (priorityFilter === "all" || (initialMeta[n.conversationId]?.priority ?? "none") === priorityFilter),
-    );
-    return [...filtered].sort((a, b) => {
-      if (sort === "oldest") return b.minutesAgo - a.minutesAgo;
-      if (sort === "priority") {
-        const pa = priorityRank[initialMeta[a.conversationId]?.priority ?? "none"];
-        const pb = priorityRank[initialMeta[b.conversationId]?.priority ?? "none"];
-        return pb - pa || a.minutesAgo - b.minutesAgo;
-      }
-      return a.minutesAgo - b.minutesAgo;
-    });
-  }, [displayed, view, inboxFilter, priorityFilter, sort]);
+  const activeIndex = openable.findIndex((n) => n.id === activeId);
+  const active = activeIndex >= 0 ? openable[activeIndex] : null;
+  const conversation = active?.conversation;
 
-  const activeIndex = visible.findIndex((n) => n.id === activeId);
-  const active = activeIndex >= 0 ? visible[activeIndex] : null;
-  const unreadCount = items.filter((n) => n.unread).length;
+  // The conversation pane's own links (previous / next chat with this customer) pick another conversation: that one
+  // opens on the Conversations page, as it has no notification here.
+  const lastSelected = React.useRef(chat.selected);
+  React.useEffect(() => {
+    if (chat.selected === lastSelected.current) return;
+    lastSelected.current = chat.selected;
+    if (chat.selected !== null && conversation && chat.selected !== conversation.id) {
+      router.push(`/dashboard/chat?conversation=${chat.selected}`);
+    }
+  }, [chat.selected, conversation, router]);
 
   function update(id: number, patch: Partial<InboxNotification>) {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+    useNotificationsStore.getState().update(id, patch);
+  }
+
+  function stay(...ids: number[]) {
+    setKeep((k) => new Set([...k, ...ids]));
   }
 
   function remove(id: number) {
-    setItems((prev) => prev.filter((n) => n.id !== id));
+    useNotificationsStore.getState().remove(id);
     if (activeId === id) setActiveId(null);
     toast.success("Notification deleted");
   }
 
-  function open(id: number) {
-    setActiveId(id);
-    update(id, { unread: false });
+  function open(item: InboxNotification) {
+    setActiveId(item.id);
+    stay(item.id);
+    update(item.id, { unread: false });
+    // Same conversation selected on the Conversations page afterwards (Chatwoot opens it by its route).
+    lastSelected.current = item.conversationId;
+    setChat({ selected: item.conversationId });
   }
 
   function toggleRead(item: InboxNotification) {
+    stay(item.id);
     update(item.id, { unread: !item.unread });
     toast.success(item.unread ? "Notification marked as read" : "Notification marked as unread");
   }
 
-  function snooze(id: number, short: string) {
-    update(id, { snoozedUntil: short, snoozeEnded: false });
+  function snooze(id: number, until: number) {
+    useNotificationsStore.getState().snooze(id, until);
     if (activeId === id) setActiveId(null);
     toast.success("Notification snoozed");
   }
 
+  // F-10b: an activity-log notification opens its place and is read, as in the bell.
+  function openFeed(entry: FeedEntry) {
+    stay(entry.id);
+    useNotificationsStore.getState().readFeed(entry.id);
+    router.push(entry.href);
+  }
+
+  function toggleFeedRead(entry: FeedEntry) {
+    stay(entry.id);
+    useNotificationsStore.getState().readFeed(entry.id, !entry.unread);
+    toast.success(entry.unread ? "Notification marked as read" : "Notification marked as unread");
+  }
+
   function markAllRead() {
-    setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
+    stay(...listed.map((n) => n.id), ...feedListed.map((f) => f.id));
+    useNotificationsStore.getState().markAllRead();
     toast.success("All notifications marked as read");
   }
 
+  // The activity log is append-only, so its notifications are not deleted with the conversation ones.
+  const keptNote = feed.length
+    ? "System, sign-up, change, approval and automation notifications stay: they come from the activity log, which cannot be edited."
+    : undefined;
+
   const inboxOptions = [
     { value: "all", label: "All" },
-    ...inboxes.filter((i) => seed.some((n) => n.conversation.channel === i.id)).map((i) => ({ value: i.id, label: i.name })),
+    ...inboxes
+      .filter((i) => items.some((n) => n.conversation.channel === i.id))
+      .map((i) => ({ value: i.id, label: i.name })),
   ];
-  const priorityOptions = [{ value: "all", label: "All" }, ...priorities.map((p) => ({ value: p.value, label: p.label }))];
-  const filtersOn = inboxFilter !== "all" || priorityFilter !== "all";
+  const chips = [
+    filters.type !== "all" && {
+      label: [...typeGroups, ...feedTypeGroups].find((g) => g.value === filters.type)?.label ?? filters.type,
+      clear: () => setFilters({ ...filters, type: "all" }),
+    },
+    filters.inbox !== "all" && {
+      label: inboxOptions.find((o) => o.value === filters.inbox)?.label ?? filters.inbox,
+      clear: () => setFilters({ ...filters, inbox: "all" }),
+    },
+    filters.priority !== "all" && {
+      label: priorities.find((p) => p.value === filters.priority)?.label ?? filters.priority,
+      clear: () => setFilters({ ...filters, priority: "all" }),
+    },
+  ].filter((c): c is { label: string; clear: () => void } => Boolean(c));
+  const togglePanel = () => (wide ? setPanelOpen((v) => !v) : setSheetOpen((v) => !v));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeading title="My Inbox" subtitle="Notifications from all subscribed inboxes" />
-        <Button size="sm" onClick={markAllRead} disabled={unreadCount === 0}>
-          <CheckCheck /> Mark all as read
-        </Button>
-      </div>
-
-      <Tabs value={view} onValueChange={(v) => setView(v as View)} className="gap-4">
-        <TabsList
-          variant="line"
-          className="w-full justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none"
+    // Same frame as the Conversations page (conversations-workspace.tsx): the card takes the height under the header,
+    // so the page itself never scrolls.
+    <div className="flex h-[calc(100svh-var(--dashboard-header-height)-5rem)] flex-col md:h-[calc(100svh-var(--dashboard-header-height)-3rem)]">
+      <Card className="min-h-[24rem] flex-1 gap-0 overflow-hidden p-0">
+        <div
+          className={cn(
+            "grid h-full min-h-0 grid-cols-1 *:min-h-0 *:min-w-0",
+            wide && panelOpen && active
+              ? "lg:grid-cols-[21rem_minmax(0,1fr)_20rem]"
+              : "lg:grid-cols-[21rem_minmax(0,1fr)]",
+          )}
         >
-          {views.map((v) => (
-            <TabsTrigger key={v.value} value={v.value}>
-              {v.label}
-              <Badge variant="secondary" className="ms-1 tabular-nums">
-                {displayed.filter(v.match).length}
-              </Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
-      <Card className="gap-0 pb-0">
-        <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-          <CardTitle className="text-xl leading-none">Notifications</CardTitle>
-          <CardDescription className="leading-snug">
-            {unreadCount ? `${unreadCount} unread` : "You are all caught up"} · {items.length} in total
-          </CardDescription>
-          <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap items-center justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
-            <DisplayMenu
-              sort={sort}
-              onSort={setSort}
-              showSnoozed={showSnoozed}
-              showRead={showRead}
-              onSnoozed={setShowSnoozed}
-              onRead={setShowRead}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon-sm" aria-label="Inbox options">
-                  <SlidersVertical />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onSelect={markAllRead}>
-                  <CheckCheck /> Mark all as read
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setItems([]);
-                    setActiveId(null);
-                    toast.success("All notifications deleted");
-                  }}
-                >
-                  <Trash2 /> Delete all
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setItems((prev) => prev.filter((n) => n.unread));
-                    if (active && !active.unread) setActiveId(null);
-                    toast.success("All read notifications deleted");
-                  }}
-                >
-                  <MailOpen /> Delete all read
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings/profile">
-                    <Settings2 /> Notification preferences
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardAction>
-        </CardHeader>
-
-        <CardContent className="flex flex-col px-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <ChipSelect label="Inbox" value={inboxFilter} options={inboxOptions} onChange={setInboxFilter} />
-              <ChipSelect
-                label="Priority"
-                value={priorityFilter}
-                options={priorityOptions}
-                onChange={setPriorityFilter}
-              />
+          <div data-slot="my-inbox-list" className={cn("flex h-full flex-col lg:border-e", active && "hidden lg:flex")}>
+            {/* Chatwoot InboxListHeader.vue: title, Display, options. */}
+            <div className="flex h-13 shrink-0 items-center justify-between gap-2 px-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate font-medium text-base">My Inbox</h2>
+                <DisplayMenu
+                  showSort={tab !== "snoozed"}
+                  filters={filters}
+                  onFilters={setFilters}
+                  counts={counts}
+                  inboxOptions={inboxOptions}
+                  active={chips.length}
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label="Inbox options">
+                    <SlidersVertical />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onSelect={markAllRead}>
+                    <CheckCheck /> Mark all as read
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      useNotificationsStore.getState().deleteAll();
+                      setActiveId(null);
+                      toast.success(keptNote ? "Conversation notifications deleted" : "All notifications deleted", {
+                        description: keptNote,
+                      });
+                    }}
+                  >
+                    <Trash2 /> Delete all
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      useNotificationsStore.getState().deleteAllRead();
+                      if (active && !active.unread) setActiveId(null);
+                      toast.success(
+                        keptNote ? "Read conversation notifications deleted" : "All read notifications deleted",
+                        { description: keptNote },
+                      );
+                    }}
+                  >
+                    <MailOpen /> Delete all read
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings/profile">
+                      <Settings2 /> Notification preferences
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            {filtersOn ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setInboxFilter("all");
-                  setPriorityFilter("all");
-                }}
-              >
-                Clear filters
-              </Button>
+            {/* T-286: Unread / Read / Snoozed, same tab row as the Conversations list (conversation-list.tsx). */}
+            <div data-slot="my-inbox-tabs" className="border-b px-1.5">
+              <Tabs value={tab} onValueChange={(value) => setTab(value as InboxTab)}>
+                <TabsList
+                  variant="line"
+                  aria-label="Notifications"
+                  className="w-full justify-start gap-0.5 *:data-[slot=tabs-trigger]:flex-none"
+                >
+                  {inboxTabs.map((t) => (
+                    <TabsTrigger key={t.value} value={t.value} className="gap-1 px-1.5">
+                      {t.label}
+                      <span className="text-muted-foreground text-xs tabular-nums">{countsByTab[t.value]}</span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+            {tab === "snoozed" ? <SnoozeDayFilter value={snoozeDay} onChange={setSnoozeDay} now={now} /> : null}
+            {chips.length ? (
+              <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
+                {chips.map((chip) => (
+                  <span
+                    key={chip.label}
+                    className="inline-flex h-6 items-center gap-1 rounded-md bg-muted ps-2 pe-0.5 font-medium text-xs"
+                  >
+                    {chip.label}
+                    <button
+                      type="button"
+                      aria-label={`Remove filter ${chip.label}`}
+                      onClick={chip.clear}
+                      className="grid size-5 place-items-center rounded-sm text-muted-foreground hover:bg-background hover:text-foreground"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
             ) : null}
-          </div>
-
-          <div className="flex h-[calc(100svh-22rem)] min-h-[520px] border-t">
-            <div
-              className={cn(
-                "flex w-full shrink-0 flex-col border-e lg:w-[380px]",
-                active ? "hidden lg:flex" : "flex",
-              )}
-            >
-              <div className="flex flex-1 flex-col gap-0.5 divide-y divide-border/60 overflow-y-auto p-2">
-                {visible.map((item) => (
-                  <NotificationCard
-                    key={item.id}
-                    item={item}
-                    active={item.id === activeId}
-                    onOpen={() => open(item.id)}
-                    onToggleRead={() => toggleRead(item)}
-                    onDelete={() => remove(item.id)}
-                  />
+            {/* T-140 round 2: the cards' tooltips (SLA badge, inbox, time) close as soon as the pointer leaves them, so
+                the SLA tooltip of the first card no longer stays over "Display" while the pointer moves up to it. */}
+            <TooltipProvider disableHoverableContent>
+              <div className="flex min-h-0 flex-1 flex-col gap-0.5 divide-y divide-border/60 overflow-y-auto px-2 pb-4">
+                {feedStatus === "error" ? (
+                  <div
+                    data-slot="my-inbox-feed-error"
+                    className="flex items-start gap-2 rounded-lg px-1 py-3 text-muted-foreground text-sm"
+                  >
+                    <FeedAvatar entry={{ category: "system", href: "/dashboard/settings/audit-logs" }} size="sm" />
+                    <span className="min-w-0 flex-1">
+                      <span className="font-semibold text-foreground">System · Activity log not reachable</span>
+                      {": "}
+                      {feedError}. System, sign-up, change and approval notifications cannot be shown.
+                    </span>
+                  </div>
+                ) : null}
+                {groups.map((group) => (
+                  <React.Fragment key={group.key}>
+                    {group.label ? (
+                      <div data-slot="snooze-day" className="px-1 pt-3 pb-1 font-medium text-muted-foreground text-xs">
+                        {group.label}
+                      </div>
+                    ) : null}
+                    {group.items.map((row) =>
+                      row.kind === "feed" ? (
+                        <FeedCard
+                          key={`f-${row.id}`}
+                          entry={row.entry}
+                          now={now}
+                          onOpen={() => openFeed(row.entry)}
+                          onToggleRead={() => toggleFeedRead(row.entry)}
+                        />
+                      ) : (
+                        <NotificationCard
+                          key={row.id}
+                          item={row.item}
+                          now={now}
+                          active={row.id === activeId}
+                          onOpen={() => open(row.item)}
+                          onToggleRead={() => toggleRead(row.item)}
+                          onDelete={() => remove(row.id)}
+                        />
+                      ),
+                    )}
+                  </React.Fragment>
                 ))}
                 {visible.length === 0 ? (
-                  <p className="p-6 text-center font-medium text-muted-foreground text-sm">No notifications</p>
+                  <div className="flex flex-col items-center gap-2 p-4 text-center">
+                    <p className="font-medium text-muted-foreground text-sm">
+                      {feedStatus === "idle" && tab !== "snoozed" ? "Loading notifications…" : emptyText[tab]}
+                    </p>
+                    {tab === "snoozed" && snoozeDay !== "all" ? (
+                      <Button variant="ghost" size="xs" onClick={() => setSnoozeDay("all")}>
+                        Show all snoozed
+                      </Button>
+                    ) : null}
+                    {chips.length ? (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setFilters({ ...defaultFilters, sort: filters.sort })}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-            </div>
+            </TooltipProvider>
+          </div>
 
-            {active ? (
-              <ConversationPane
+          {active && conversation ? (
+            // Chatwoot InboxView.vue: item header, then the conversation itself (ConversationBox).
+            <div data-slot="my-inbox-pane" className="flex h-full min-h-0 flex-col">
+              <ItemHeader
                 item={active}
                 index={activeIndex}
-                total={visible.length}
-                onPrev={() => open(visible[activeIndex - 1].id)}
-                onNext={() => open(visible[activeIndex + 1].id)}
-                onSnooze={(short) => snooze(active.id, short)}
+                total={openable.length}
+                onBack={() => setActiveId(null)}
+                onPrev={() => open(openable[activeIndex - 1])}
+                onNext={() => open(openable[activeIndex + 1])}
+                onSnooze={(short) => snooze(active.id, snoozeTime(short, Date.now()))}
                 onCustomSnooze={() => setCustomFor(active.id)}
                 onDelete={() => remove(active.id)}
               />
-            ) : (
-              <div className="hidden flex-1 flex-col items-center justify-center gap-2 text-center lg:flex">
-                <Inbox className="size-10 text-muted-foreground" strokeWidth={1.5} />
-                <span className="font-medium text-muted-foreground text-sm">
-                  {items.length ? "Notifications from all subscribed inboxes" : "No notifications"}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardContent>
+              <ConversationPane
+                conversation={conversation}
+                panelOpen={wide ? panelOpen : sheetOpen}
+                onTogglePanel={togglePanel}
+                className="min-h-0 flex-1"
+              />
+            </div>
+          ) : (
+            <EmptyPane hasItems={items.length > 0 || feed.length > 0} />
+          )}
+          {wide && panelOpen && active && conversation ? (
+            <div className="border-s">
+              <ContactPanel conversation={conversation} onClose={() => setPanelOpen(false)} />
+            </div>
+          ) : null}
+        </div>
       </Card>
+
+      {!wide && active && conversation ? (
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetContent side="right" className="w-[22rem] p-0 sm:max-w-[22rem]" showCloseButton={false}>
+            <SheetTitle className="sr-only">Contact</SheetTitle>
+            <SheetDescription className="sr-only">Contact details and conversation actions</SheetDescription>
+            <ContactPanel conversation={conversation} onClose={() => setSheetOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      ) : null}
 
       <CustomSnoozeDialog
         open={customFor !== null}
         onOpenChange={(o) => {
           if (!o) setCustomFor(null);
         }}
-        onApply={(label) => {
-          if (customFor !== null) snooze(customFor, label);
+        onApply={(until) => {
+          if (customFor !== null) snooze(customFor, until);
           setCustomFor(null);
         }}
       />
+      {/* The conversation pane's menus (snooze, transcript, resolve, translate...) open these dialogs. */}
+      <CwDialogs />
     </div>
   );
 }

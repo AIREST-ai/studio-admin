@@ -71,7 +71,11 @@ export function RolesTable({
                 <TableHead
                   key={header.id}
                   style={{ width: header.getSize() }}
-                  className="h-10 px-4 text-center font-medium text-foreground text-sm first:text-left"
+                  className={cn(
+                    "h-10 px-4 text-left font-medium text-foreground text-sm",
+                    // T-42: actions stay pinned to the right edge while the 1440px table scrolls.
+                    header.column.id === "actions" && "sticky right-0 z-20 bg-background",
+                  )}
                 >
                   {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                 </TableHead>
@@ -201,6 +205,7 @@ function TableBodyGroup({
                 "border-r px-4 align-middle",
                 index === row.getVisibleCells().length - 1 && "border-r-0",
                 index === 0 ? "text-left" : "text-center",
+                cell.column.id === "actions" && "sticky right-0 z-10 bg-background",
               )}
             >
               <FlexRender cell={cell} />

@@ -5,6 +5,7 @@
 // read it, so changing the range redraws everything.
 import * as React from "react";
 
+import { cn } from "cn";
 import {
   addMonths,
   addWeeks,
@@ -26,8 +27,6 @@ import {
 } from "date-fns";
 import { CalendarRange, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { DateRange } from "react-day-picker";
-
-import { cn } from "cn";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -81,7 +80,7 @@ export interface PeriodState {
   // The period of the same length just before (what the change % compares with).
   previousLabel: string;
   salt: number;
-  apply:(type: RangeType, from: Date, to: Date) => void;
+  apply: (type: RangeType, from: Date, to: Date) => void;
   navigate: (step: -1 | 1) => void;
   setGroup: (group: GroupBy) => void;
   setBusinessHours: (on: boolean) => void;
@@ -420,4 +419,3 @@ export function ReportDatePicker() {
     </div>
   );
 }
-

@@ -29,8 +29,9 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { CannedResponse } from "@/lib/cw/data";
-import { useCwList } from "@/lib/cw/store";
+import { CHANGED_ELSEWHERE, setCwList, useCwList, whenListsSaved } from "@/lib/cw/store";
 
+import { copyText } from "../../_components/copy-text";
 import { ConfirmDelete, NoResults, plural, SettingsShell } from "../../labels/_shared/settings-shell";
 import { FieldError, RowMenu, tableClass } from "../../labels/_shared/settings-ui";
 
@@ -61,11 +62,13 @@ function CannedDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Canned;
-  onSave: (shortCode: string, content: string) => void;
+  onSave: (shortCode: string, content: string) => Promise<void>;
 }) {
   const [shortCode, setShortCode] = React.useState("");
   const [content, setContent] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
   const textRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
@@ -73,6 +76,8 @@ function CannedDialog({
     setShortCode(item?.shortCode ?? "");
     setContent(item?.content ?? "");
     setSubmitted(false);
+    setSaving(false);
+    setSaveError(null);
   }, [open, item]);
 
   const codeError = shortCode.trim() ? "" : item ? "Short code is required." : "Short Code is required.";
@@ -86,16 +91,24 @@ function CannedDialog({
     setContent(content.slice(0, start) + token + content.slice(end));
   }
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitted(true);
-    if (codeError || contentError) return;
-    onSave(shortCode.trim(), content.trim());
-    onOpenChange(false);
+    if (codeError || contentError || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(shortCode.trim(), content.trim());
+      onOpenChange(false);
+    } catch (err) {
+      setSaveError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
@@ -148,13 +161,20 @@ function CannedDialog({
             />
             <FieldError>{submitted ? contentError : ""}</FieldError>
           </div>
+          {saveError ? (
+            <p role="alert" data-canned-save-error="" className="text-destructive text-sm">
+              Not saved ({saveError})
+            </p>
+          ) : null}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={saving}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit">Submit</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Submit"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -180,6 +200,36 @@ function ContentPreview({ text }: { text: string }) {
       )}
     </>
   );
+}
+
+function notSavedReason(error: unknown): string {
+  if (error instanceof Error && error.message === CHANGED_ELSEWHERE) return "changed in another tab or device";
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function persistCanned(
+  change: () => void,
+  before: Canned[],
+  successMessage: string,
+  toastId?: string | number,
+): Promise<void> {
+  const saved = whenListsSaved(["cannedResponses"]);
+  change();
+  try {
+    await saved;
+    toast.success(successMessage, toastId !== undefined ? { id: toastId } : undefined);
+  } catch (error) {
+    if (!(error instanceof Error && error.message === CHANGED_ELSEWHERE)) {
+      setCwList("cannedResponses", before);
+    }
+    const reason = notSavedReason(error);
+    if (error instanceof Error && error.message === CHANGED_ELSEWHERE && toastId !== undefined) {
+      toast.dismiss(toastId);
+    } else if (!(error instanceof Error && error.message === CHANGED_ELSEWHERE)) {
+      toast.error(`Not saved (${reason})`, toastId !== undefined ? { id: toastId } : undefined);
+    }
+    throw new Error(reason);
+  }
 }
 
 export function CannedList() {
@@ -248,8 +298,7 @@ export function CannedList() {
                           label: "Copy message",
                           icon: Copy,
                           onSelect: () => {
-                            navigator.clipboard?.writeText(item.content).catch(() => undefined);
-                            toast.success("Copied to clipboard");
+                            void copyText(item.content, "Copied to clipboard");
                           },
                         },
                         {
@@ -278,18 +327,27 @@ export function CannedList() {
       <CannedDialog
         open={adding}
         onOpenChange={setAdding}
-        onSave={(shortCode, content) => {
-          setResponses((prev) => [...prev, { id: Date.now(), shortCode, content }]);
-          toast.success("Canned response added successfully.");
+        onSave={async (shortCode, content) => {
+          const before = responses;
+          const nextId = Math.max(0, ...responses.map((r) => r.id)) + 1;
+          await persistCanned(
+            () => setResponses((prev) => [...prev, { id: nextId, shortCode, content }]),
+            before,
+            "Canned response added successfully.",
+          );
         }}
       />
       <CannedDialog
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(undefined)}
         item={editing}
-        onSave={(shortCode, content) => {
-          setResponses((prev) => prev.map((r) => (r.id === editing?.id ? { ...r, shortCode, content } : r)));
-          toast.success("Canned response is updated successfully.");
+        onSave={async (shortCode, content) => {
+          const before = responses;
+          await persistCanned(
+            () => setResponses((prev) => prev.map((r) => (r.id === editing?.id ? { ...r, shortCode, content } : r))),
+            before,
+            "Canned response is updated successfully.",
+          );
         }}
       />
       <ConfirmDelete
@@ -300,8 +358,16 @@ export function CannedList() {
         yes={`Yes, delete ${deleting?.shortCode ?? ""}`}
         no={`No, keep ${deleting?.shortCode ?? ""}`}
         onConfirm={() => {
-          setResponses((prev) => prev.filter((r) => r.id !== deleting?.id));
-          toast.success("Canned response deleted successfully.");
+          if (!deleting) return;
+          const before = responses;
+          const id = `delete-canned-${deleting.id}`;
+          toast.loading(`Deleting “/${deleting.shortCode}”…`, { id });
+          void persistCanned(
+            () => setResponses((prev) => prev.filter((r) => r.id !== deleting.id)),
+            before,
+            "Canned response deleted successfully.",
+            id,
+          ).catch(() => undefined);
         }}
       />
     </>

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import Link from "next/link";
 
 import { Globe } from "lucide-react";
@@ -6,12 +8,14 @@ import type { Metadata } from "next";
 import { APP_CONFIG } from "@/config/app-config";
 
 import { LoginForm } from "../../_components/login-form";
+import { LiveDemoButton, PreviewFormNote, SignedOutNotice } from "../../_components/preview-entry";
 import { GoogleButton } from "../../_components/social-auth/google-button";
 
+// F-6A (task items 5 and 6): the tab carries the product's name, not the template's; the page says what login is in
+// this preview, offers the demo account, and confirms a Log out.
 export const metadata: Metadata = {
-  title: "Open Source Branded Login Page with shadcn/ui",
-  description:
-    "Explore an open source branded login page with a two-column layout, social sign-in, and email and password fields.",
+  title: `Login · ${APP_CONFIG.name}`,
+  description: `Log in to ${APP_CONFIG.name}. Preview: no account is checked and nothing typed is kept.`,
   alternates: {
     canonical: "/auth/v2/login",
   },
@@ -25,12 +29,17 @@ export default function LoginV2() {
           <h1 className="font-medium text-3xl">Login to your account</h1>
           <p className="text-muted-foreground text-sm">Please enter your details to login.</p>
         </div>
+        <Suspense fallback={null}>
+          <SignedOutNotice />
+        </Suspense>
         <div className="space-y-4">
+          <LiveDemoButton />
           <GoogleButton className="w-full" />
           <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-border after:border-t">
             <span className="relative z-10 bg-background px-2 text-muted-foreground">Or continue with</span>
           </div>
           <LoginForm />
+          <PreviewFormNote kind="login" />
         </div>
       </div>
 

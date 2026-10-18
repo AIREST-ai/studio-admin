@@ -36,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
-import { allLocaleOptions, type Article, type Category, type Locale } from "./data";
+import { type Article, allLocaleOptions, type Category, type Locale } from "./data";
 import { articleLocale, hc, useActivePortal, useHelpCenter } from "./hc-store";
 
 interface DialogProps {
@@ -218,9 +218,7 @@ export function BulkTranslateDialog({
   // A translation "exists" when an article with the same author and category is already in the target locale.
   const duplicates = locale
     ? source.filter((a) =>
-        articles.some(
-          (o) => articleLocale(o) === locale && o.categoryId === a.categoryId && o.authorId === a.authorId,
-        ),
+        articles.some((o) => articleLocale(o) === locale && o.categoryId === a.categoryId && o.authorId === a.authorId),
       ).length
     : 0;
 
@@ -333,8 +331,30 @@ export function BulkTranslateDialog({
 }
 
 const emojiChoices = [
-  "🚀", "💳", "📊", "🔐", "🔌", "📣", "📚", "🧭", "💡", "🛠️", "⚙️", "📦",
-  "🧾", "👥", "📱", "🌐", "✉️", "🔔", "🎯", "🧩", "📝", "❓", "⭐", "🏷️",
+  "🚀",
+  "💳",
+  "📊",
+  "🔐",
+  "🔌",
+  "📣",
+  "📚",
+  "🧭",
+  "💡",
+  "🛠️",
+  "⚙️",
+  "📦",
+  "🧾",
+  "👥",
+  "📱",
+  "🌐",
+  "✉️",
+  "🔔",
+  "🎯",
+  "🧩",
+  "📝",
+  "❓",
+  "⭐",
+  "🏷️",
 ];
 
 export function CategoryDialog({
@@ -528,8 +548,8 @@ export function AddLocaleDialog({ open, onOpenChange }: DialogProps) {
         <DialogHeader>
           <DialogTitle>Add a new locale</DialogTitle>
           <DialogDescription>
-            Select the language in which this article will be written. This will be added to your list of
-            translations, and you can add more later.
+            Select the language in which this article will be written. This will be added to your list of translations,
+            and you can add more later.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -595,9 +615,7 @@ export function AddLocaleDialog({ open, onOpenChange }: DialogProps) {
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-          <Button onClick={submit}>
-            Create
-          </Button>
+          <Button onClick={submit}>Create</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -671,7 +689,12 @@ function AddAnother<T extends { id: number }>({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="justify-start font-normal text-muted-foreground" disabled={disabled}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="justify-start font-normal text-muted-foreground"
+          disabled={disabled}
+        >
           Add another...
         </Button>
       </PopoverTrigger>

@@ -4,9 +4,10 @@
 import * as React from "react";
 
 import { cn } from "cn";
-import { KeyRound, Pencil, Plus, Search, Trash2, TriangleAlert, Wrench } from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2, TriangleAlert, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,13 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { scenarios, type Tool, tools } from "./data";
+import type { Tool } from "./data";
 import { ConfirmDialog, ToolDialog } from "./dialogs";
 import { CaptainShell, ChipSelect, RowMenuTrigger, ToneBadge } from "./shared";
+import { useCaptainList, useCaptainState } from "./store";
 
 const SOFT_LIMIT = 10;
 const statusOptions = [
@@ -34,13 +35,12 @@ const statusOptions = [
 ];
 const authOptions = ["All", "None", "Bearer Token", "Basic Auth", "API Key"];
 
-const usedBy = (t: Tool) => scenarios.filter((s) => s.enabled && s.tools.includes(t.title)).length;
-
 export function ToolsList() {
-  const [items, setItems] = React.useState(tools);
-  const [enabled, setEnabled] = React.useState<Record<number, boolean>>(
-    Object.fromEntries(tools.map((t) => [t.id, t.enabled])),
-  );
+  const [items, setItems] = useCaptainState("tools");
+  const scenarios = useCaptainList("scenarios");
+  const usedBy = (t: Tool) => scenarios.filter((s) => s.enabled && s.tools.includes(t.title)).length;
+  // On/off lives on each tool, so a deleted tool no longer counts in "{n} of {m} enabled".
+  const enabled: Record<number, boolean> = Object.fromEntries(items.map((t) => [t.id, t.enabled]));
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [auth, setAuth] = React.useState("All");
@@ -58,7 +58,7 @@ export function ToolsList() {
   );
 
   function toggle(t: Tool, v: boolean) {
-    setEnabled((p) => Object.assign({}, p, { [t.id]: v }));
+    setItems((list) => list.map((x) => (x.id === t.id ? { ...x, enabled: v } : x)));
     toast.success(v ? "Tool enabled successfully" : "Tool disabled successfully");
   }
 
@@ -90,17 +90,14 @@ export function ToolsList() {
             {Object.values(enabled).filter(Boolean).length} of {items.length} enabled
           </CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                <Search className="size-3.5" />
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
-                placeholder="Search tools..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </InputGroup>
+            <ExpandingSearch
+              name="tools"
+              label="Search tools"
+              placeholder="Search tools..."
+              className="w-full md:w-64"
+              value={query}
+              onChange={setQuery}
+            />
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 px-0">

@@ -18,7 +18,7 @@ export function ChipSelect({
   const items = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm">
+      <SelectTrigger size="sm" aria-label={label}>
         <span className="text-muted-foreground">{label}:</span>
         <SelectValue />
       </SelectTrigger>

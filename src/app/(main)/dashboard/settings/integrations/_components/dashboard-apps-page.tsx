@@ -27,8 +27,21 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
-import { type DashboardApp, dashboardApps } from "./data";
+import type { DashboardApp } from "./data";
 import { BackToIntegrations, ConfirmAction } from "./integration-ui";
+import { dashboardAppsStore, INTEGRATION_NOTE, useDashboardApps, useDashboardAppsLoaded } from "./integrations-store";
+
+// F-6A: the dashboard apps are saved in this preview (integrations-store.ts); each message shows after the save.
+async function saved(saving: Promise<void>, message: string) {
+  try {
+    await saving;
+    toast.success(message, { description: INTEGRATION_NOTE });
+    return true;
+  } catch (error) {
+    toast.error("Not saved", { description: (error as Error).message });
+    return false;
+  }
+}
 
 function AppDialog({
   app,
@@ -119,7 +132,8 @@ function AppDialog({
 }
 
 export function DashboardAppsPage() {
-  const [rows, setRows] = React.useState<DashboardApp[]>(dashboardApps);
+  const rows = useDashboardApps();
+  const loaded = useDashboardAppsLoaded();
   const [query, setQuery] = React.useState("");
   const [dialog, setDialog] = React.useState<{ open: boolean; app: DashboardApp | null }>({ open: false, app: null });
   const [deleting, setDeleting] = React.useState<DashboardApp | null>(null);
@@ -127,21 +141,20 @@ export function DashboardAppsPage() {
   const q = query.trim().toLowerCase();
   const visible = q ? rows.filter((a) => `${a.title} ${a.url}`.toLowerCase().includes(q)) : rows;
 
-  function save(values: { title: string; url: string }) {
+  async function save(values: { title: string; url: string }) {
     const editing = dialog.app;
-    if (editing) {
-      setRows((prev) => prev.map((a) => (a.id === editing.id ? { ...a, ...values } : a)));
-      toast.success("Dashboard app updated successfully");
-    } else {
-      setRows((prev) => [...prev, { id: Date.now(), ...values }]);
-      toast.success("Dashboard app configured successfully");
-    }
-    setDialog({ open: false, app: null });
+    const ok = editing
+      ? await saved(dashboardAppsStore.update(editing.id, values), "Dashboard app updated successfully")
+      : await saved(
+          dashboardAppsStore.save({ id: dashboardAppsStore.nextId(), ...values }),
+          "Dashboard app configured successfully",
+        );
+    if (ok) setDialog({ open: false, app: null });
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <BackToIntegrations />
+      <BackToIntegrations current="Dashboard Apps" />
       <SettingsShell
         title="Dashboard Apps"
         description="Dashboard Apps allow organizations to embed an application inside the dashboard to provide the context for customer support agents. This feature allows you to create an application independently and embed that to provide user information, their orders, or their previous payment history."
@@ -156,7 +169,9 @@ export function DashboardAppsPage() {
         count={`${rows.length} ${rows.length === 1 ? "dashboard app" : "dashboard apps"}`}
         search={{ placeholder: "Search dashboard apps...", value: query, onChange: setQuery }}
       >
-        {rows.length === 0 ? (
+        {!loaded ? (
+          <NoResults>Loading saved dashboard apps…</NoResults>
+        ) : rows.length === 0 ? (
           <NoResults>There are no dashboard apps configured on this account yet</NoResults>
         ) : (
           <Table className="**:data-[slot='table-cell']:px-6 **:data-[slot='table-head']:px-6">
@@ -231,8 +246,7 @@ export function DashboardAppsPage() {
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(null)}
         onConfirm={() => {
-          setRows((prev) => prev.filter((a) => a.id !== deleting?.id));
-          toast.success("Dashboard app deleted successfully");
+          if (deleting) void saved(dashboardAppsStore.remove(deleting.id), "Dashboard app deleted successfully");
         }}
         title="Confirm deletion"
         message={`Are you sure to delete the app - ${deleting?.title ?? ""}?`}

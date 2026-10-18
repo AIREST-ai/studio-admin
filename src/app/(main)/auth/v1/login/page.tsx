@@ -3,13 +3,15 @@ import Link from "next/link";
 import { Command } from "lucide-react";
 import type { Metadata } from "next";
 
+import { APP_CONFIG } from "@/config/app-config";
+
 import { LoginForm } from "../../_components/login-form";
 import { GoogleButton } from "../../_components/social-auth/google-button";
 
+// F-6A (task item 6): the tab carries the product's name, not the template's.
 export const metadata: Metadata = {
-  title: "Open Source Split Screen Login Page with shadcn/ui",
-  description:
-    "Explore an open source split screen login page with email and password fields, social sign-in, and a registration link.",
+  title: `Login · ${APP_CONFIG.name}`,
+  description: "Login page of the preview. No real account is checked or created.",
   alternates: {
     canonical: "/auth/v1/login",
   },

@@ -8,7 +8,6 @@ import Link from "next/link";
 
 import {
   ArrowRight,
-  BookOpen,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
@@ -80,101 +79,119 @@ interface Metric {
   icon: typeof MessagesSquare;
 }
 
-const metrics: Metric[] = [
-  {
-    metricId: "hours_saved",
-    label: "Saved in agent effort and time",
-    value: "41h",
-    change: "+6h",
-    up: true,
-    support: "1,230 public Captain replies",
-    hint: "An estimate of how much agent reply time Captain saved.",
-    note: "Based on two minutes saved for each public Captain reply.",
-    total: 1230,
-    icon: Hourglass,
-  },
-  {
-    metricId: "durable_resolution_rate",
-    label: "Captain resolutions remained closed",
-    value: "93%",
-    change: "+1 pt",
-    up: true,
-    support: "903 of 971",
-    hint: "The share of Captain-resolved conversations that were still closed seven days later.",
-    note: "Only resolutions old enough to observe for seven days are included.",
-    total: 903,
-    icon: ShieldCheck,
-  },
-  {
-    metricId: "conversations_handled",
-    label: "Conversations handled",
-    value: "1,360",
-    change: "+12%",
-    up: true,
-    support: "vs 1,214 in the previous period",
-    hint: "Conversations where Captain replied to the customer or handed the conversation to your team.",
-    total: 1360,
-    icon: MessagesSquare,
-  },
-  {
-    metricId: "auto_resolution_rate",
-    label: "Auto-resolution rate",
-    value: "71.4%",
-    change: "+3.2 pts",
-    up: true,
-    support: "971 of 1,360",
-    hint: "The share of handled conversations Captain resolved without help from your team. Higher means Captain resolved more on its own.",
-    total: 971,
-    icon: CheckCheck,
-  },
-  {
-    metricId: "handoff_rate",
-    label: "Handoff rate",
-    value: "22.8%",
-    change: "-1.9 pts",
-    up: false,
-    support: "310 of 1,360",
-    hint: "The share of handled conversations Captain passed to your team. Lower means fewer conversations needed an agent.",
-    total: 310,
-    icon: UserRoundCheck,
-  },
-  {
-    metricId: "conversation_depth",
-    label: "Messages per conversation",
-    value: "2.4",
-    change: "-0.3",
-    up: false,
-    support: "Captain replies on average",
-    hint: "The average number of replies Captain sent in each conversation it handled.",
-    note: "A lower number can mean quicker answers, but complex questions may need more replies.",
-    total: 1360,
-    icon: MessagesSquare,
-  },
-  {
-    metricId: "reopen_rate",
-    label: "Reopen rate",
-    value: "7%",
-    change: "-1 pt",
-    up: false,
-    support: "68 of 971",
-    hint: "The share of Captain-resolved conversations that customers returned to later.",
-    note: "Lower means more resolutions stayed resolved.",
-    total: 68,
-    icon: Repeat,
-  },
-  {
-    metricId: "median_resolution_seconds",
-    label: "Median resolution time",
-    value: "4 min",
-    change: "-40s",
-    up: false,
-    support: "From reaching Captain to resolved",
-    hint: "The typical time from when a conversation reached Captain until it was resolved.",
-    note: "Lower means customers generally got resolved sooner.",
-    total: 971,
-    icon: Clock,
-  },
-];
+// Mock numbers (no backend): "This week" is the base, and every other range scales the counts by its length, so
+// picking a range changes the cards and the drilldown. Rates stay the same; with no history every count is 0.
+const rangeScale: Record<string, number> = {
+  this_week: 1,
+  last_week: 1214 / 1360,
+  last_30: 4.3,
+  this_month: 1.9,
+  last_month: 4.1,
+};
+const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
+
+function metricsFor(scale: number): Metric[] {
+  const n = (base: number) => Math.round(base * scale);
+  const handled = n(1360);
+  const resolved = n(971);
+  const replies = n(1230);
+  const rate = (value: string) => (handled ? value : "—");
+  return [
+    {
+      metricId: "hours_saved",
+      label: "Saved in agent effort and time",
+      value: `${Math.round((replies * 2) / 60)}h`,
+      change: "+6h",
+      up: true,
+      support: `${fmt(replies)} public Captain replies`,
+      hint: "An estimate of how much agent reply time Captain saved.",
+      note: "Based on two minutes saved for each public Captain reply.",
+      total: replies,
+      icon: Hourglass,
+    },
+    {
+      metricId: "durable_resolution_rate",
+      label: "Captain resolutions remained closed",
+      value: rate("93%"),
+      change: "+1 pt",
+      up: true,
+      support: `${fmt(n(903))} of ${fmt(resolved)}`,
+      hint: "The share of Captain-resolved conversations that were still closed seven days later.",
+      note: "Only resolutions old enough to observe for seven days are included.",
+      total: n(903),
+      icon: ShieldCheck,
+    },
+    {
+      metricId: "conversations_handled",
+      label: "Conversations handled",
+      value: fmt(handled),
+      change: "+12%",
+      up: true,
+      support: `vs ${fmt(n(1214))} in the previous period`,
+      hint: "Conversations where Captain replied to the customer or handed the conversation to your team.",
+      total: handled,
+      icon: MessagesSquare,
+    },
+    {
+      metricId: "auto_resolution_rate",
+      label: "Auto-resolution rate",
+      value: rate("71.4%"),
+      change: "+3.2 pts",
+      up: true,
+      support: `${fmt(resolved)} of ${fmt(handled)}`,
+      hint: "The share of handled conversations Captain resolved without help from your team. Higher means Captain resolved more on its own.",
+      total: resolved,
+      icon: CheckCheck,
+    },
+    {
+      metricId: "handoff_rate",
+      label: "Handoff rate",
+      value: rate("22.8%"),
+      change: "-1.9 pts",
+      up: false,
+      support: `${fmt(n(310))} of ${fmt(handled)}`,
+      hint: "The share of handled conversations Captain passed to your team. Lower means fewer conversations needed an agent.",
+      total: n(310),
+      icon: UserRoundCheck,
+    },
+    {
+      metricId: "conversation_depth",
+      label: "Messages per conversation",
+      value: rate("2.4"),
+      change: "-0.3",
+      up: false,
+      support: "Captain replies on average",
+      hint: "The average number of replies Captain sent in each conversation it handled.",
+      note: "A lower number can mean quicker answers, but complex questions may need more replies.",
+      total: handled,
+      icon: MessagesSquare,
+    },
+    {
+      metricId: "reopen_rate",
+      label: "Reopen rate",
+      value: rate("7%"),
+      change: "-1 pt",
+      up: false,
+      support: `${fmt(n(68))} of ${fmt(resolved)}`,
+      hint: "The share of Captain-resolved conversations that customers returned to later.",
+      note: "Lower means more resolutions stayed resolved.",
+      total: n(68),
+      icon: Repeat,
+    },
+    {
+      metricId: "median_resolution_seconds",
+      label: "Median resolution time",
+      value: rate("4 min"),
+      change: "-40s",
+      up: false,
+      support: "From reaching Captain to resolved",
+      hint: "The typical time from when a conversation reached Captain until it was resolved.",
+      note: "Lower means customers generally got resolved sooner.",
+      total: resolved,
+      icon: Clock,
+    },
+  ];
+}
 
 const drilldownRows = [
   {
@@ -280,10 +297,16 @@ function DrilldownSheet({ metric, onClose }: { metric: Metric | null; onClose: (
           <>
             <SheetHeader className="border-b">
               <SheetTitle>{metric.label}</SheetTitle>
-              <SheetDescription>{metric.total.toLocaleString()} conversations</SheetDescription>
+              <SheetDescription>
+                <span className="font-medium text-foreground tabular-nums">{metric.value}</span> ·{" "}
+                {metric.total.toLocaleString()} conversations
+              </SheetDescription>
             </SheetHeader>
             <div className="grid flex-1 content-start gap-2 overflow-y-auto p-4">
-              {drilldownRows.slice(0, count).map((r) => (
+              {metric.total === 0 && (
+                <p className="py-8 text-center text-muted-foreground text-sm">No records found for this metric.</p>
+              )}
+              {drilldownRows.slice(0, metric.total === 0 ? 0 : Math.min(count, metric.total)).map((r) => (
                 <Link
                   key={r.id}
                   href="/dashboard/chat"
@@ -299,7 +322,7 @@ function DrilldownSheet({ metric, onClose }: { metric: Metric | null; onClose: (
                   <span className="text-muted-foreground text-xs">{r.inbox}</span>
                 </Link>
               ))}
-              {count < drilldownRows.length && (
+              {metric.total > 0 && count < Math.min(drilldownRows.length, metric.total) && (
                 <Button variant="outline" size="sm" onClick={() => setCount(drilldownRows.length)}>
                   Load more
                 </Button>
@@ -312,12 +335,62 @@ function DrilldownSheet({ metric, onClose }: { metric: Metric | null; onClose: (
   );
 }
 
+interface LiveCaptainEvalSummary {
+  totalEvaluated: number;
+  avgJudgeScore: number;
+  autoResolutionRate: number;
+  needsReviewCount: number;
+  passedCount: number;
+  singleTurnResolutionRate: number;
+  avgLatencyMs: number;
+  verifyRunsCount: number;
+  tracingCount: number;
+}
+
 export function CaptainOverview() {
   const assistant = useCurrentAssistant();
   const [point, setPoint] = React.useState(0);
   const [coverageBanner, setCoverageBanner] = React.useState(true);
   const [inboxBanner, setInboxBanner] = React.useState(true);
   const [range, setRange] = React.useState("this_week");
+  const [evalSummary, setEvalSummary] = React.useState<LiveCaptainEvalSummary | null>(null);
+  const [loadingEval, setLoadingEval] = React.useState(false);
+
+  const loadLiveEvalSummary = React.useCallback(async (showToast = false) => {
+    setLoadingEval(true);
+    try {
+      const res = await fetch("/api/cw/csat-notes?clientId=client_test_a", {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok?: boolean; summary?: LiveCaptainEvalSummary };
+      if (data.ok && data.summary) {
+        setEvalSummary(data.summary);
+        if (showToast) {
+          toast.success(
+            `AI Quality Rubric refreshed (${data.summary.avgJudgeScore}% avg · ${data.summary.verifyRunsCount} runs)`,
+          );
+        }
+      }
+    } catch {
+      // keep current state
+    } finally {
+      setLoadingEval(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadLiveEvalSummary(false);
+  }, [loadLiveEvalSummary]);
+
+  const noHistory = assistant.inboxes === 0 && assistant.faqs === 0 && assistant.documents === 0;
+  const metrics = metricsFor(noHistory ? 0 : (rangeScale[range] ?? 1));
+  const rangeLabel = (rangeOptions.find((o) => o.value === range)?.label ?? "This week").toLowerCase();
+  const points = [
+    `Captain handled ${metrics[2].value} conversations ${rangeLabel === "this week" ? "this week" : `in ${rangeLabel}`} and resolved ${metrics[3].value} of them on its own.`,
+    ...summaryPoints.slice(1),
+  ];
   const [drill, setDrill] = React.useState<Metric | null>(null);
   const [trendView, setTrendView] = React.useState("count");
   const [aligned, setAligned] = React.useState(true);
@@ -327,7 +400,15 @@ export function CaptainOverview() {
     <CaptainShell
       title="Overview"
       subtitle="How Captain is doing for your customers: conversations handled, resolutions, handoffs and knowledge coverage."
-      actions={<ChipSelect label="Range" value={range} options={rangeOptions} onChange={setRange} align="end" />}
+      actions={
+        noHistory ? (
+          <Button variant="outline" size="sm" disabled>
+            Not enough reporting history yet
+          </Button>
+        ) : (
+          <ChipSelect label="Range" value={range} options={rangeOptions} onChange={setRange} align="end" />
+        )
+      }
     >
       {assistant.inboxes === 0 && inboxBanner && (
         <Alert className="flex items-center gap-3 border-amber-500/30 bg-amber-500/5">
@@ -358,6 +439,82 @@ export function CaptainOverview() {
           </Button>
         </Alert>
       )}
+
+      <Card
+        data-testid="captain-ai-quality-rubric-card"
+        className="border-primary/20 bg-gradient-to-r from-primary/5 via-card to-card shadow-xs"
+      >
+        <CardHeader className="pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg border bg-primary/10 text-primary">
+                <ShieldCheck className="size-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base">AI Quality & Verification Rubric</CardTitle>
+                <CardDescription>
+                  Automated resolution judge · Accuracy (30%) · Tone (25%) · No Hallucination (25%) · Speed (20%)
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="refresh-captain-eval-btn"
+                disabled={loadingEval}
+                onClick={() => void loadLiveEvalSummary(true)}
+              >
+                <RefreshCw className={loadingEval ? "size-3.5 animate-spin" : "size-3.5"} />
+                Refresh Rubric
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/dashboard/reports/csat">Inspect CSAT & Judge</Link>
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border bg-background/60 p-3">
+            <div className="text-muted-foreground text-xs">Avg AI Judge Score</div>
+            <div className="mt-1 font-semibold text-2xl tabular-nums">
+              {evalSummary ? `${evalSummary.avgJudgeScore}%` : "85%"}
+            </div>
+            <div className="text-muted-foreground text-xs tabular-nums">
+              {evalSummary
+                ? `${evalSummary.passedCount} passed · ${evalSummary.needsReviewCount} needs review`
+                : "4 passed · 1 needs review"}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-background/60 p-3">
+            <div className="text-muted-foreground text-xs">Verification Runs</div>
+            <div className="mt-1 font-semibold text-2xl tabular-nums">
+              {evalSummary ? evalSummary.verifyRunsCount : 5}
+            </div>
+            <div className="text-muted-foreground text-xs tabular-nums">
+              {evalSummary ? `${evalSummary.tracingCount} generation traces` : "5 generation traces"}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-background/60 p-3">
+            <div className="text-muted-foreground text-xs">Auto-Resolution Rate</div>
+            <div className="mt-1 font-semibold text-2xl tabular-nums">
+              {evalSummary ? `${evalSummary.autoResolutionRate}%` : "80%"}
+            </div>
+            <div className="text-muted-foreground text-xs tabular-nums">
+              Single-turn: {evalSummary ? `${evalSummary.singleTurnResolutionRate}%` : "60%"}
+            </div>
+          </div>
+          <div className="rounded-lg border bg-background/60 p-3">
+            <div className="text-muted-foreground text-xs">Needs Review</div>
+            <div className="mt-1 font-semibold text-2xl text-amber-600 tabular-nums dark:text-amber-400">
+              {evalSummary ? evalSummary.needsReviewCount : 1}
+            </div>
+            <div className="text-muted-foreground text-xs tabular-nums">
+              Avg Judge Latency: {evalSummary ? `${evalSummary.avgLatencyMs} ms` : "788 ms"}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
         {metrics.map((m) => (
@@ -425,7 +582,7 @@ export function CaptainOverview() {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <p className="text-base">{summaryPoints[point]}</p>
+          <p className="text-base">{points[point]}</p>
         </CardContent>
       </Card>
 
@@ -633,14 +790,9 @@ export function CaptainOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* F-16: the "Captain docs" card opened Chatwoot's help centre (chatwoot.com); removed, no outside links. */}
+      <div className="grid gap-4 md:grid-cols-2">
         {[
-          {
-            icon: BookOpen,
-            title: "Captain docs",
-            desc: "Guides and how-tos for Captain",
-            href: "https://www.chatwoot.com/hc/user-guide/en/categories/captain",
-          },
           {
             icon: SquareTerminal,
             title: "Playground",

@@ -3,9 +3,10 @@
 // Every menu item works on the mock store: make default, move to draft, publish, localize, recommended, delete.
 import * as React from "react";
 
-import { FilePen, Globe, Languages, MoreHorizontal, Plus, Search, Send, Sparkles, Star, Trash2 } from "lucide-react";
+import { FilePen, Globe, Languages, MoreHorizontal, Plus, Send, Sparkles, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -60,18 +60,14 @@ export function LocalesList() {
             <CardTitle className="text-xl leading-none">Locales</CardTitle>
             <CardDescription className="max-w-sm leading-snug tabular-nums">{countText(rows.length)}</CardDescription>
             <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap items-center justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
-              <InputGroup className="h-7 w-full md:w-64">
-                <InputGroupAddon align="inline-start">
-                  <Search className="size-3.5" />
-                </InputGroupAddon>
-                <InputGroupInput
-                  className="h-7"
-                  type="search"
-                  placeholder="Search locales..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </InputGroup>
+              <ExpandingSearch
+                name="locales"
+                label="Search locales"
+                placeholder="Search locales..."
+                className="w-full md:w-64"
+                value={query}
+                onChange={setQuery}
+              />
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 px-0">
@@ -89,9 +85,8 @@ export function LocalesList() {
                       {label}
                       <span className="text-muted-foreground text-xs tabular-nums">
                         {
-                          locales.filter((l) =>
-                            value === "all" ? true : value === "draft" ? l.isDraft : !l.isDraft,
-                          ).length
+                          locales.filter((l) => (value === "all" ? true : value === "draft" ? l.isDraft : !l.isDraft))
+                            .length
                         }
                       </span>
                     </TabsTrigger>
@@ -107,7 +102,7 @@ export function LocalesList() {
                     <TableHead className="py-4 font-normal">Status</TableHead>
                     <TableHead className="py-4 font-normal">Articles</TableHead>
                     <TableHead className="py-4 font-normal">Categories</TableHead>
-                    <TableHead className="py-4 font-normal">
+                    <TableHead className="sticky right-0 bg-card py-4 font-normal">
                       <div className="text-right">Actions</div>
                     </TableHead>
                   </TableRow>
@@ -145,7 +140,7 @@ export function LocalesList() {
                         <TableCell className="py-4 align-middle text-sm tabular-nums">
                           {categoriesN} {categoriesN === 1 ? "category" : "categories"}
                         </TableCell>
-                        <TableCell className="py-4 align-middle">
+                        <TableCell className="sticky right-0 bg-card py-4 align-middle">
                           <div className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

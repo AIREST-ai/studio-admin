@@ -241,9 +241,7 @@ export function ArticleEditor({ articleId }: { articleId?: number }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       const pending =
-        article.status === "published"
-          ? { pendingEdits: true, liveTitle: article.liveTitle ?? article.title }
-          : {};
+        article.status === "published" ? { pendingEdits: true, liveTitle: article.liveTitle ?? article.title } : {};
       hc.updateArticle(article.id, { ...pending, ...patch });
       setSaveState("saved");
     }, 700);
@@ -284,10 +282,17 @@ export function ArticleEditor({ articleId }: { articleId?: number }) {
     setPendingStatus(null);
   }
 
+  // T-282 (item 123): the CKEditor 5 / TinyMCE toolbar order: block style (headings) | inline styles | link and
+  // inserts (image, table, quote, code block) | lists. Same buttons and actions, order only.
   const toolbar: ToolbarItem[] = [
+    { icon: Heading1, label: "Heading 1", run: () => format("formatBlock", "h1") },
+    { icon: Heading2, label: "Heading 2", run: () => format("formatBlock", "h2") },
+    { icon: Heading3, label: "Heading 3", run: () => format("formatBlock", "h3") },
+    null,
     { icon: Bold, label: "Bold", run: () => format("bold") },
     { icon: Italic, label: "Italic", run: () => format("italic") },
     { icon: Strikethrough, label: "Strikethrough", run: () => format("strikeThrough") },
+    null,
     {
       icon: Link2,
       label: "Link",
@@ -296,16 +301,6 @@ export function ArticleEditor({ articleId }: { articleId?: number }) {
         if (url) format("createLink", url);
       },
     },
-    null,
-    { icon: Heading1, label: "Heading 1", run: () => format("formatBlock", "h1") },
-    { icon: Heading2, label: "Heading 2", run: () => format("formatBlock", "h2") },
-    { icon: Heading3, label: "Heading 3", run: () => format("formatBlock", "h3") },
-    null,
-    { icon: List, label: "Bulleted list", run: () => format("insertUnorderedList") },
-    { icon: ListOrdered, label: "Numbered list", run: () => format("insertOrderedList") },
-    { icon: Quote, label: "Quote", run: () => format("formatBlock", "blockquote") },
-    { icon: Code, label: "Code", run: () => format("formatBlock", "pre") },
-    null,
     { icon: ImageIcon, label: "Upload image", run: () => fileRef.current?.click() },
     {
       icon: Table,
@@ -316,6 +311,11 @@ export function ArticleEditor({ articleId }: { articleId?: number }) {
           "<table><tbody><tr><th>Plan</th><th>Price</th></tr><tr><td>Starter</td><td>$19</td></tr></tbody></table><p></p>",
         ),
     },
+    { icon: Quote, label: "Quote", run: () => format("formatBlock", "blockquote") },
+    { icon: Code, label: "Code", run: () => format("formatBlock", "pre") },
+    null,
+    { icon: List, label: "Bulleted list", run: () => format("insertUnorderedList") },
+    { icon: ListOrdered, label: "Numbered list", run: () => format("insertOrderedList") },
   ];
 
   const draftBody = editorRef.current

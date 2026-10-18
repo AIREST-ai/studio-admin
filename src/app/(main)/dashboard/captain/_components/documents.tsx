@@ -1,9 +1,10 @@
 "use client";
 import * as React from "react";
 
-import { Copy, Eye, FileText, Globe, Plus, RefreshCw, Search, Trash2, TriangleAlert, X } from "lucide-react";
+import { Copy, Eye, FileText, Globe, Plus, RefreshCw, Trash2, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,14 +16,17 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { type CaptainDocument, type DocStatus, documentLimit, documents, faqs } from "./data";
+import { type CaptainDocument, type DocStatus, documentLimit } from "./data";
 import { ConfirmDialog, DocumentDialog } from "./dialogs";
 import { CaptainShell, ChipSelect, RowMenuTrigger, type Tone, ToneBadge } from "./shared";
+import { type StoredDocument, useCaptainList, useCaptainState } from "./store";
+
+const sampleRaw = (name: string) =>
+  `# ${name}\n\nChoose the speed that suits your home. All plans include unlimited data, a free Wi-Fi 6 router and free installation for new customers in Doha, Al Rayyan, Al Wakrah and Lusail.\n\n- Home 100 Mbps: QAR 250 per month\n- Home 500 Mbps: QAR 360 per month\n- Home 1 Gbps: QAR 499 per month, includes TV Starter pack\n\nPrices include VAT where applicable. A 24-month commitment applies to all plans.`;
 
 function syncText(d: CaptainDocument) {
   if (d.status === "Updating") return "updating...";
@@ -31,9 +35,84 @@ function syncText(d: CaptainDocument) {
   return `last updated ${d.syncedAgo}`;
 }
 
-function DocumentSheet({ doc, onClose }: { doc: CaptainDocument | null; onClose: () => void }) {
+// Copies by selecting a hidden textarea and running the browser's copy command, for pages where navigator.clipboard
+// is missing (plain HTTP other than localhost, e.g. the Tailscale preview link) or refuses the write.
+// The textarea goes inside the open sheet: outside it the dialog's focus trap pulls focus back and drops the selection.
+// It counts as copied only when the command succeeds and the copy event really fired.
+function copyBySelection(text: string, host: HTMLElement | null) {
+  try {
+    const previous = document.activeElement as HTMLElement | null;
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.setAttribute("aria-hidden", "true");
+    Object.assign(area.style, { position: "fixed", top: "0", left: "0", opacity: "0", pointerEvents: "none" });
+    let fired = false;
+    const onCopy = (e: ClipboardEvent) => {
+      fired = true;
+      if (!e.clipboardData) return; // the browser copies the selected textarea instead
+      e.clipboardData.setData("text/plain", text);
+      e.preventDefault();
+    };
+    (host ?? document.body).appendChild(area);
+    document.addEventListener("copy", onCopy);
+    try {
+      area.focus({ preventScroll: true });
+      area.select();
+      return document.execCommand("copy") && fired;
+    } finally {
+      document.removeEventListener("copy", onCopy);
+      area.remove();
+      previous?.focus({ preventScroll: true });
+    }
+  } catch {
+    return false;
+  }
+}
+
+function DocumentSheet({ doc, onClose }: { doc: StoredDocument | null; onClose: () => void }) {
+  const faqs = useCaptainList("faqs");
   const related = faqs.filter((f) => f.source === doc?.name);
   const [raw, setRaw] = React.useState(false);
+  const [selectRaw, setSelectRaw] = React.useState(false);
+  const actionsRef = React.useRef<HTMLDivElement>(null);
+  const rawRef = React.useRef<HTMLPreElement>(null);
+  // A Playground document carries its pasted text in `content`; seed documents keep the sample crawled page.
+  const saved = doc?.content;
+
+  // After a blocked copy the raw text is shown and selected, so it can be copied by hand.
+  React.useEffect(() => {
+    const pre = rawRef.current;
+    if (!selectRaw || !pre) return;
+    setSelectRaw(false);
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    pre.scrollIntoView({ block: "nearest" });
+  }, [selectRaw]);
+
+  async function copy() {
+    if (!doc) return;
+    const text = saved ?? sampleRaw(doc.name);
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      copied = await navigator.clipboard.writeText(text).then(
+        () => true,
+        () => false,
+      );
+    }
+    // Without navigator.clipboard this runs inside the click itself, as the browser's copy command requires.
+    if (!copied) copied = copyBySelection(text, actionsRef.current);
+    if (copied) {
+      toast.success(saved === undefined ? "Crawled content copied to clipboard" : "Reference text copied to clipboard");
+      return;
+    }
+    setRaw(true);
+    setSelectRaw(true);
+    toast.error("The browser blocked copying. The text is selected below: press Ctrl+C (⌘C on Mac) to copy it.");
+  }
   return (
     <Sheet open={doc !== null} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full gap-0 sm:max-w-xl">
@@ -41,7 +120,11 @@ function DocumentSheet({ doc, onClose }: { doc: CaptainDocument | null; onClose:
           <>
             <SheetHeader className="border-b">
               <SheetTitle>{doc.name}</SheetTitle>
-              <SheetDescription>Review the crawled content and the FAQs generated from this source.</SheetDescription>
+              <SheetDescription>
+                {saved === undefined
+                  ? "Review the crawled content and the FAQs generated from this source."
+                  : "Review the reference text saved from the Playground and the FAQs generated from it."}
+              </SheetDescription>
             </SheetHeader>
             <div className="grid grid-cols-2 gap-3 border-b p-4 text-sm">
               <div className="col-span-2 grid gap-1">
@@ -63,30 +146,42 @@ function DocumentSheet({ doc, onClose }: { doc: CaptainDocument | null; onClose:
             </div>
             <Tabs defaultValue="content" className="flex-1 overflow-y-auto p-4">
               <TabsList>
-                <TabsTrigger value="content">{doc.source === "pdf" ? "PDF details" : "Crawled content"}</TabsTrigger>
+                <TabsTrigger value="content">
+                  {saved !== undefined && "Reference text"}
+                  {saved === undefined && (doc.source === "pdf" ? "PDF details" : "Crawled content")}
+                </TabsTrigger>
                 <TabsTrigger value="faqs">Related FAQs</TabsTrigger>
               </TabsList>
               <TabsContent value="content" className="grid gap-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-xs">4,182 characters extracted</span>
-                  <div className="flex gap-1">
+                  <span className="text-muted-foreground text-xs">
+                    {saved === undefined
+                      ? "4,182 characters extracted"
+                      : `${saved.length.toLocaleString("en-US")} characters saved`}
+                  </span>
+                  <div ref={actionsRef} className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={() => setRaw((r) => !r)}>
                       {raw ? "View preview" : "View raw"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toast.success("Crawled content copied to clipboard")}
-                    >
+                    <Button variant="outline" size="sm" onClick={copy}>
                       <Copy /> Copy
                     </Button>
                   </div>
                 </div>
-                {raw ? (
-                  <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed">
-                    {`# ${doc.name}\n\nChoose the speed that suits your home. All plans include unlimited data, a free Wi-Fi 6 router and free installation for new customers in Doha, Al Rayyan, Al Wakrah and Lusail.\n\n- Home 100 Mbps: QAR 250 per month\n- Home 500 Mbps: QAR 360 per month\n- Home 1 Gbps: QAR 499 per month, includes TV Starter pack\n\nPrices include VAT where applicable. A 24-month commitment applies to all plans.`}
+                {raw && (
+                  <pre
+                    ref={rawRef}
+                    className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed"
+                  >
+                    {saved ?? sampleRaw(doc.name)}
                   </pre>
-                ) : (
+                )}
+                {!raw && saved !== undefined && (
+                  <div className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
+                    {saved}
+                  </div>
+                )}
+                {!raw && saved === undefined && (
                   <div className="grid gap-3 rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
                     <h3 className="font-semibold">{doc.name}</h3>
                     <p>
@@ -149,7 +244,7 @@ const statusBadgeTone: Record<DocStatus, Tone> = {
 };
 
 export function DocumentsList() {
-  const [items, setItems] = React.useState(documents);
+  const [items, setItems] = useCaptainState("documents");
   const [query, setQuery] = React.useState("");
   const [source, setSource] = React.useState("all");
   const [status, setStatus] = React.useState("any");
@@ -157,7 +252,7 @@ export function DocumentsList() {
   const [selected, setSelected] = React.useState<number[]>([]);
   const [adding, setAdding] = React.useState(false);
   const [deleting, setDeleting] = React.useState<CaptainDocument | "bulk" | null>(null);
-  const [viewing, setViewing] = React.useState<CaptainDocument | null>(null);
+  const [viewing, setViewing] = React.useState<StoredDocument | null>(null);
   const [limitBanner, setLimitBanner] = React.useState(true);
 
   const rows = items
@@ -208,18 +303,14 @@ export function DocumentsList() {
           <CardTitle className="text-xl leading-none">All documents</CardTitle>
           <CardDescription>{items.length} knowledge sources for Noor.</CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                <Search className="size-3.5" />
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
-                type="search"
-                placeholder="Search..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </InputGroup>
+            <ExpandingSearch
+              name="documents"
+              label="Search documents"
+              placeholder="Search..."
+              className="w-full md:w-64"
+              value={query}
+              onChange={setQuery}
+            />
           </CardAction>
         </CardHeader>
 
@@ -336,28 +427,56 @@ export function DocumentsList() {
               </TableBody>
             </Table>
           ) : (
-            <Empty className="border-t">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <FileText />
-                </EmptyMedia>
-                <EmptyTitle>No documents match these filters</EmptyTitle>
-                <EmptyDescription>Try changing the source, status, or search term.</EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setQuery("");
-                    setSource("all");
-                    setStatus("any");
-                  }}
-                >
-                  Clear filters
-                </Button>
-              </EmptyContent>
-            </Empty>
+            <>
+              {items.length === 0 && (
+                <Empty className="border-t">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <FileText />
+                    </EmptyMedia>
+                    <EmptyTitle>No documents available</EmptyTitle>
+                    <EmptyDescription>
+                      Documents are used by your assistant to generate FAQs. You can import documents to provide context
+                      for your assistant.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button size="sm" onClick={() => setAdding(true)}>
+                      <Plus /> Create a new document
+                    </Button>
+                    <p className="max-w-md text-muted-foreground text-xs">
+                      <span className="font-medium text-foreground">Captain Document: </span>A document in Captain
+                      serves as a knowledge resource for the assistant. By connecting your help center or guides,
+                      Captain can analyze the content and provide accurate responses for customer inquiries.
+                    </p>
+                  </EmptyContent>
+                </Empty>
+              )}
+              {items.length > 0 && (
+                <Empty className="border-t">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <FileText />
+                    </EmptyMedia>
+                    <EmptyTitle>No documents match these filters</EmptyTitle>
+                    <EmptyDescription>Try changing the source, status, or search term.</EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setQuery("");
+                        setSource("all");
+                        setStatus("any");
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

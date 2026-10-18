@@ -1,6 +1,6 @@
 "use client";
 // Chatwoot PortalSwitcher (components-next/HelpCenter/PortalSwitcher) inside the Studio page heading, plus the
-// portal sections (Chatwoot's Help Center sidebar entries) as Studio line tabs with counts.
+// current portal section and its count beside it (Chatwoot HelpCenterLayout breadcrumbLabel).
 import * as React from "react";
 
 import Link from "next/link";
@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { articleLocale, hc, useActivePortal, useHelpCenter } from "./hc-store";
 import { CreatePortalDialog } from "./help-center-dialogs";
@@ -105,7 +104,7 @@ export function PortalTitle() {
   const portal = useActivePortal();
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <h1 className="truncate text-3xl tracking-tight">{portal?.name ?? "Help Center"}</h1>
+      <h1 className="break-words text-3xl tracking-tight sm:truncate">{portal?.name ?? "Help Center"}</h1>
       <PortalSwitcher>
         <Button variant="ghost" size="icon-sm" aria-label="Switch portal">
           <ChevronDown />
@@ -117,8 +116,11 @@ export function PortalTitle() {
 
 export type HelpCenterSection = "articles" | "categories" | "locales" | "settings";
 
-/** Studio page header for the Help Center: big portal title (with the portal switcher), description, main button,
- * then the portal sections as line tabs with counts. */
+/** Studio page header for the Help Center: big portal title (with the portal switcher), the current section and its
+ * count, description, main button.
+ * T-148: the sections were also line tabs here, repeating the section bar (Articles / Categories / Locales / Help
+ * Center Settings). Chatwoot HelpCenterLayout has no section tabs: the portal name, then the page's breadcrumb label.
+ * So the tabs are gone and the current section's name and count stay beside the title as text. */
 export function HelpCenterHeader({
   section,
   description,
@@ -129,46 +131,36 @@ export function HelpCenterHeader({
   actions?: React.ReactNode;
 }) {
   const { articles, categories, locales } = useHelpCenter();
-  const sections: { value: HelpCenterSection; label: string; href: string; count?: number }[] = [
-    {
-      value: "articles",
-      label: "Articles",
-      href: "/dashboard/help-center",
-      count: articles.filter((a) => articleLocale(a) === "en").length,
-    },
-    { value: "categories", label: "Categories", href: "/dashboard/help-center/categories", count: categories.length },
-    { value: "locales", label: "Locales", href: "/dashboard/help-center/locales", count: locales.length },
-    { value: "settings", label: "Settings", href: "/dashboard/help-center/settings" },
-  ];
+  const sections: Record<HelpCenterSection, { label: string; count?: number }> = {
+    articles: { label: "Articles", count: articles.filter((a) => articleLocale(a) === "en").length },
+    categories: { label: "Categories", count: categories.length },
+    locales: { label: "Locales", count: locales.length },
+    settings: { label: "Help Center Settings" },
+  };
+  const current = sections[section];
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <PortalTitle />
+          <div data-hc-heading className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <PortalTitle />
+            <div className="flex shrink-0 items-center gap-3">
+              <span aria-hidden className="h-5 w-0.5 rounded-2xl bg-border" />
+              <span className="flex items-center gap-1.5 font-medium text-lg">
+                {current.label}
+                {current.count !== undefined ? (
+                  <Badge variant="secondary" className="tabular-nums">
+                    {current.count}
+                  </Badge>
+                ) : null}
+              </span>
+            </div>
+          </div>
           <p className="text-muted-foreground text-sm">{description}</p>
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      <Tabs value={section}>
-        <TabsList
-          variant="line"
-          className="w-full justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none"
-        >
-          {sections.map((item) => (
-            <TabsTrigger key={item.value} value={item.value} asChild>
-              <Link href={item.href}>
-                {item.label}
-                {item.count !== undefined ? (
-                  <Badge variant="secondary" className="ms-1 tabular-nums">
-                    {item.count}
-                  </Badge>
-                ) : null}
-              </Link>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
     </div>
   );
 }

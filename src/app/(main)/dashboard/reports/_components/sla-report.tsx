@@ -7,6 +7,8 @@ import { cn } from "cn";
 import { format, subDays, subMinutes } from "date-fns";
 import { AlarmClockOff, MessagesSquare, Target } from "lucide-react";
 
+import { useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,15 +16,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CeUnavailableNotice } from "@/lib/chatwoot/settings-adapter";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
 import { getInitials } from "@/lib/utils";
-
-import { useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
-import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 
 import { agents, inboxes, labels, type SlaMetric, type SlaRow, slaPolicies, slaRows, slaSummary, teams } from "./data";
 import { FilterBar, type FilterGroup, type FilterValues } from "./filter-bar";
+import { reportFilename } from "./report-export";
 import { ReportDatePicker, ReportPeriodProvider, TODAY, usePeriod } from "./report-period";
-import { DownloadButton, KpiCards, ReportHeader } from "./report-ui";
+import { DownloadButton, KpiCards, periodMeta, ReportHeader } from "./report-ui";
 import { TablePager, usePager } from "./table-pager";
 
 // SLAFilter.vue: SLA Policy, Inbox, Agent, Team, Label (placeholders from SLA_REPORTS.DROPDOWN.INPUT_PLACEHOLDER).
@@ -44,6 +46,12 @@ const eventSections: { metric: SlaMetric; label: string }[] = [
 // When each missed target was missed (sample): yesterday afternoon, a few minutes apart per row.
 function missedAt(row: SlaRow, index: number) {
   return format(subMinutes(subDays(TODAY, 1), -(15 * 60 + row.conversation * 7 + index * 41)), "MMM d, yyyy, h:mm a");
+}
+
+// The badge the table shows for a row (Missed / Active / Hit).
+function slaStatus(row: SlaRow) {
+  if (row.missed.length) return "Missed";
+  return row.active ? "Active" : "Hit";
 }
 
 // SLAViewDetails.vue: a link button that opens the SLA Misses card next to it.
@@ -73,6 +81,8 @@ function ViewDetails({ row }: { row: SlaRow }) {
 function SlaBody() {
   const period = usePeriod();
   const [filters, setFilters] = React.useState<FilterValues>({});
+  useLinkedAdapterStatus((s) => s.active);
+  const isLinked = linkedSession();
   // Conversation labels come from the inbox (the same labels the conversation list shows).
   const { tags, byConv } = useChatTags();
   const labelsOf = (conversation: number) =>
@@ -80,15 +90,17 @@ function SlaBody() {
 
   // The SLA conversations are the inbox's open ones (this week), so a period before Oct 6 has none.
   const inPeriod = period.to >= subDays(TODAY, 6);
-  const rows = slaRows.filter((r) => {
-    if (!inPeriod) return false;
-    if (filters.policy && r.policy !== filters.policy) return false;
-    if (filters.agent && r.agent !== filters.agent) return false;
-    if (filters.inbox && r.inbox !== filters.inbox) return false;
-    if (filters.team && r.team !== filters.team) return false;
-    if (filters.label && !labelsOf(r.conversation).some((tag) => tag.label === filters.label)) return false;
-    return true;
-  });
+  const rows = isLinked
+    ? []
+    : slaRows.filter((r) => {
+        if (!inPeriod) return false;
+        if (filters.policy && r.policy !== filters.policy) return false;
+        if (filters.agent && r.agent !== filters.agent) return false;
+        if (filters.inbox && r.inbox !== filters.inbox) return false;
+        if (filters.team && r.team !== filters.team) return false;
+        if (filters.label && !labelsOf(r.conversation).some((tag) => tag.label === filters.label)) return false;
+        return true;
+      });
   const summary = slaSummary(rows);
   const pager = usePager(rows, 10);
 
@@ -98,8 +110,49 @@ function SlaBody() {
         title="SLA Reports"
         description="Conversations that met or missed their first response, next response and resolution targets."
       >
-        <DownloadButton label="Download SLA reports" />
+        <DownloadButton
+          label="Download SLA reports"
+          file={(p) => ({
+            filename: reportFilename("SLA Reports", p.from, p.to),
+            meta: periodMeta("SLA Reports", p, [
+              ...filterGroups.flatMap((g) => (filters[g.key] ? [[g.label, filters[g.key]] as [string, string]] : [])),
+              ["Hit Rate", summary.hitRate],
+              ["Number of Misses", String(summary.misses)],
+              ["Number of Conversations", String(summary.conversations)],
+            ]),
+            header: [
+              "Conversation",
+              "Contact",
+              "Subject",
+              "Labels",
+              "Policy",
+              "Status",
+              "Missed",
+              "Agent",
+              "Inbox",
+              "Team",
+            ],
+            rows: rows.map((r) => [
+              `#${r.conversation}`,
+              r.contact,
+              r.subject,
+              labelsOf(r.conversation)
+                .map((tag) => tag.label)
+                .join("; "),
+              r.policy,
+              slaStatus(r),
+              r.missed.join("; "),
+              r.agent ?? "",
+              r.inbox,
+              r.team ?? "",
+            ]),
+          })}
+        />
       </ReportHeader>
+      <CeUnavailableNotice
+        area="applied_slas"
+        title="SLA reports (/applied_slas) are unavailable in Chatwoot Community Edition (501)"
+      />
       <div className="flex flex-wrap items-center gap-2">
         <ReportDatePicker />
         <FilterBar groups={filterGroups} values={filters} onChange={setFilters} joiner="with" />
@@ -171,10 +224,7 @@ function SlaBody() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span>{r.policy}</span>
                         {r.missed.length ? (
-                          <Badge
-                            variant="outline"
-                            className="border-destructive/20 bg-destructive/10 text-destructive"
-                          >
+                          <Badge variant="outline" className="border-destructive/20 bg-destructive/10 text-destructive">
                             Missed
                           </Badge>
                         ) : r.active ? (

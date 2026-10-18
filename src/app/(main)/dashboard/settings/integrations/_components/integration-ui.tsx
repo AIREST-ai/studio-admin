@@ -3,11 +3,7 @@
 // coloured status badges). Chatwoot sources: Integration.vue, IntegrationItem.vue, NewHook.vue.
 import * as React from "react";
 
-import Link from "next/link";
-
 import { cn } from "cn";
-import { ChevronLeft } from "lucide-react";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -36,15 +32,16 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { SettingsBreadcrumb } from "../../_components/settings-breadcrumb";
 import { type HookApp, hookInboxes, type Integration, integrations } from "./data";
 
-export function BackToIntegrations() {
+// م137 round 2 (judge M137): the integration pages show the same path above the title as the other Settings detail
+// pages (Integrations > Slack), not a back link.
+export function BackToIntegrations({ current }: { current: string }) {
   return (
-    <Button variant="ghost" size="sm" className="w-fit px-1.5 text-muted-foreground" asChild>
-      <Link href="/dashboard/settings/integrations">
-        <ChevronLeft /> Integrations
-      </Link>
-    </Button>
+    <SettingsBreadcrumb
+      items={[{ label: "Integrations", href: "/dashboard/settings/integrations" }, { label: current }]}
+    />
   );
 }
 
@@ -111,7 +108,8 @@ export function HookDialog({
   item: Integration;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: (values: Record<string, string>) => void;
+  /** F-6A: saves the hook and says so itself; resolves true when saved, so the dialog closes only then. */
+  onCreated: (values: Record<string, string>) => Promise<boolean>;
 }) {
   const [values, setValues] = React.useState<Record<string, string>>({});
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -130,7 +128,7 @@ export function HookDialog({
     setErrors((prev) => ({ ...prev, [name]: "" }));
   }
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     const next: Record<string, string> = {};
     for (const field of app.fields) {
@@ -140,15 +138,9 @@ export function HookDialog({
     setErrors(next);
     if (Object.keys(next).length) return;
     setSaving(true);
-    window.setTimeout(
-      () => {
-        setSaving(false);
-        onCreated(values);
-        onOpenChange(false);
-        toast.success("Integration hook added successfully");
-      },
-      app.id === "openai" ? 900 : 300,
-    );
+    const saved = await onCreated(values);
+    setSaving(false);
+    if (saved) onOpenChange(false);
   }
 
   return (
@@ -220,6 +212,10 @@ export function HookDialog({
               </div>
             );
           })}
+          <p className="text-muted-foreground text-xs" data-preview-note>
+            Preview — simulated: nothing is sent to {item.name}, and keys or passwords are not kept (only their last 4
+            characters are shown).
+          </p>
           {app.hookType === "inbox" ? (
             <div className="grid gap-2">
               <Label htmlFor="hook-inbox">
@@ -251,7 +247,7 @@ export function HookDialog({
               </Button>
             </DialogClose>
             <Button type="submit" disabled={saving}>
-              {saving ? (app.id === "openai" ? "Validating with OpenAI..." : "Creating...") : "Create"}
+              {saving ? "Saving..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

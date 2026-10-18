@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { CampaignsList } from "./_components/campaigns-list";
-
-export const metadata: Metadata = {
-  title: "Live chat campaigns",
-  description: "Proactive messages shown to visitors on your website.",
-};
-
+// T-148: Chatwoot campaigns.routes.js sends the empty campaigns path to Live chat campaigns (via "ongoing"), as
+// ongoing/page.tsx does here, so the page opens with its section bar. ?empty (the empty-state preview) is kept.
 export default async function Page({ searchParams }: { searchParams: Promise<{ empty?: string }> }) {
   const { empty } = await searchParams;
-  return <CampaignsList tab="live_chat" empty={empty !== undefined} />;
+  redirect(empty !== undefined ? "/dashboard/campaigns/live-chat?empty" : "/dashboard/campaigns/live-chat");
 }

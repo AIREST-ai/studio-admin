@@ -164,16 +164,19 @@ function StudioAssigneeTabs() {
 
   return (
     <Tabs value={tab} onValueChange={(value) => cw.setAssigneeTab(value as AssigneeTab)}>
+      {/* T-282 round 2 (judge, out of scope but fixed here): at 1024 the list column is 267px and the badge of the
+          last tab was cut at its edge, so the tabs take the conversation list's own spacing and plain count
+          (conversation-list.tsx: gap-0.5, px-1.5, muted number), the same bar on both pages. */}
       <TabsList
         variant="line"
-        className="w-full justify-start gap-1 border-b px-2 *:data-[slot=tabs-trigger]:flex-none"
+        className="w-full justify-start gap-0.5 border-b px-2 *:data-[slot=tabs-trigger]:flex-none"
       >
         {assigneeTabs.map((item) => (
-          <TabsTrigger key={item.value} value={item.value} className="px-2">
+          <TabsTrigger key={item.value} value={item.value} className="gap-1 px-1.5">
             {item.label}
-            <Badge variant="secondary" className="ms-1 h-4.5 px-1.5 text-[10px] tabular-nums">
+            <span className="text-muted-foreground text-xs tabular-nums">
               {box.filter((mail) => inAssigneeTab(mail, item.value, meta)).length}
-            </Badge>
+            </span>
           </TabsTrigger>
         ))}
       </TabsList>

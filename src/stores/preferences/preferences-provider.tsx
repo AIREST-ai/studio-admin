@@ -46,9 +46,11 @@ export function PreferencesStoreProvider({
   const [store] = useState<StoreApi<PreferencesState>>(() => createPreferencesStore(initialValues));
 
   useEffect(() => {
+    const domPrefs = readDomPreferences();
+    const resolvedThemeMode = applyThemeMode(domPrefs.theme_mode);
     store.setState({
-      values: readDomPreferences(),
-      resolvedThemeMode: document.documentElement.classList.contains("dark") ? "dark" : "light",
+      values: domPrefs,
+      resolvedThemeMode,
       isSynced: true,
     });
   }, [store]);

@@ -10,12 +10,13 @@ import { ArrowLeft, Check, CircleAlert, Loader2, Mail } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useAccountName } from "../../account/_components/general-settings-client";
 import type { Channel, ChannelKey } from "./data";
 
 export interface CreatedInbox {
@@ -23,12 +24,18 @@ export interface CreatedInbox {
   name: string;
   provider?: "twilio" | "bandwidth" | "whatsapp_cloud" | "embedded" | "google" | "microsoft" | "other";
   phone?: string;
+  /** F161: what the inbox list shows under the name (website domain); phone or name when missing. */
+  identifier?: string;
+  /** F-6A: the API channel's Webhook URL as typed, kept on the new inbox (its settings showed a fixed address). */
+  webhookUrl?: string;
+  /** V-7: transient channel creation parameters sent once to POST /inboxes and wiped immediately. */
+  channelParams?: Record<string, unknown>;
 }
 
 const PHONE = /^\+[1-9]\d{1,14}$/;
-const PHONE_ERROR =
-  "Please provide a valid phone number that starts with a `+` sign and does not contain any spaces.";
+const PHONE_ERROR = "Please provide a valid phone number that starts with a `+` sign and does not contain any spaces.";
 const URL_RE = /^https?:\/\/\S+\.\S+/;
+const TELEGRAM_TOKEN = /^\d{3,15}:[A-Za-z0-9_-]{20,}$/;
 
 interface FieldSpec {
   id: string;
@@ -97,7 +104,11 @@ function SpecFields({
                 onChange={(event) => onChange(spec.id, event.target.value)}
               />
             )}
-            {error ? <FieldError>{error}</FieldError> : spec.help ? <FieldDescription>{spec.help}</FieldDescription> : null}
+            {error ? (
+              <FieldError>{error}</FieldError>
+            ) : spec.help ? (
+              <FieldDescription>{spec.help}</FieldDescription>
+            ) : null}
           </Field>
         );
       })}
@@ -166,8 +177,10 @@ function WebsiteForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }
   ];
   const form = useSpecForm(fields);
   const [color, setColor] = React.useState(widgetColors[0]);
+  const [welcomeTitle, setWelcomeTitle] = React.useState("");
   const [greeting, setGreeting] = React.useState(false);
   const [greetingMessage, setGreetingMessage] = React.useState("");
+  const [tagline, setTagline] = React.useState("");
   const greetingError = form.submitted && greeting && !greetingMessage.trim();
   return (
     <form
@@ -177,7 +190,19 @@ function WebsiteForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }
         event.preventDefault();
         const ok = form.validate();
         if (ok && !(greeting && !greetingMessage.trim()))
-          onCreate({ channel: "website", name: form.values.name.trim() });
+          onCreate({
+            channel: "website",
+            name: form.values.name.trim(),
+            identifier: form.values.domain.trim(),
+            channelParams: {
+              websiteUrl: form.values.domain.trim(),
+              widgetColor: color,
+              welcomeTitle,
+              welcomeTagline: tagline,
+              greetingEnabled: greeting,
+              greetingMessage,
+            },
+          });
       }}
     >
       <FormHeading
@@ -216,14 +241,23 @@ function WebsiteForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }
         </Field>
         <Field>
           <FieldLabel htmlFor="welcome-title">Welcome Heading</FieldLabel>
-          <Input id="welcome-title" placeholder="Hi there !" />
+          <Input
+            id="welcome-title"
+            placeholder="Hi there !"
+            value={welcomeTitle}
+            onChange={(event) => setWelcomeTitle(event.target.value)}
+          />
         </Field>
         <Field>
           <FieldLabel htmlFor="welcome-tagline">Welcome Tagline</FieldLabel>
           <Textarea
             id="welcome-tagline"
+            maxLength={255}
+            value={tagline}
+            onChange={(event) => setTagline(event.target.value)}
             placeholder="We make it simple to connect with us. Ask us anything, or share your feedback."
           />
+          <span className="text-end text-muted-foreground text-xs tabular-nums">{tagline.length} / 255</span>
         </Field>
         <Field>
           <FieldLabel htmlFor="greeting">Enable channel greeting</FieldLabel>
@@ -320,6 +354,7 @@ function ConnectPanel({
 const facebookPages = ["Weblabs Studio", "Weblabs Careers", "Weblabs Arabic"];
 
 function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (created: CreatedInbox) => void }) {
+  const accountName = useAccountName(); // F-9: the name saved in General Settings
   const [connected, setConnected] = React.useState(false);
   const [page, setPage] = React.useState("");
   const [name, setName] = React.useState("");
@@ -330,7 +365,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
       <ConnectPanel
         icon={<Icon className="size-7 text-muted-foreground" />}
         title="Continue with Facebook"
-        help="PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by Weblabs Studio."
+        help={`PS: By signing in, we only get access to your Page's messages. Your private messages can never be accessed by ${accountName}.`}
         button="Continue with Facebook"
         onConnected={() => setConnected(true)}
       />
@@ -350,7 +385,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
     >
       <FormHeading
         title="Inbox Details"
-        description="From the dropdown below, select the Facebook Page you want to connect to Weblabs Studio. You can also give a custom name to your inbox for better identification."
+        description={`From the dropdown below, select the Facebook Page you want to connect to ${accountName}. You can also give a custom name to your inbox for better identification.`}
       />
       <FieldGroup className="gap-4">
         <Field data-invalid={pageError || undefined}>
@@ -428,13 +463,7 @@ function cloudFields(): FieldSpec[] {
   ];
 }
 
-function CloudWhatsappForm({
-  onCreate,
-  calling,
-}: {
-  onCreate: (created: CreatedInbox) => void;
-  calling?: boolean;
-}) {
+function CloudWhatsappForm({ onCreate, calling }: { onCreate: (created: CreatedInbox) => void; calling?: boolean }) {
   return (
     <SimpleChannelForm
       title={calling ? "WhatsApp Call" : "WhatsApp Channel"}
@@ -456,17 +485,11 @@ function CloudWhatsappForm({
   );
 }
 
-function TwilioForm({
-  medium,
-  onCreate,
-}: {
-  medium: "sms" | "whatsapp";
-  onCreate: (created: CreatedInbox) => void;
-}) {
+function TwilioForm({ medium, onCreate }: { medium: "sms" | "whatsapp"; onCreate: (created: CreatedInbox) => void }) {
   const [useService, setUseService] = React.useState(false);
   const [useApiKey, setUseApiKey] = React.useState(false);
   const all: Record<string, FieldSpec> = {
-    name: { id: "name", label: "Inbox Name", placeholder: "Please enter a inbox name" },
+    name: { id: "name", label: "Inbox Name", placeholder: "Please enter an inbox name" },
     service: {
       id: "service",
       label: "Messaging Service SID",
@@ -524,7 +547,7 @@ function TwilioForm({
       </Field>
       <SpecFields fields={[all.name]} values={form.values} onChange={form.onChange} submitted={form.submitted} />
       <label className="flex items-center gap-3 text-sm">
-        <Switch checked={useService} onCheckedChange={setUseService} />
+        <Checkbox checked={useService} onCheckedChange={(v) => setUseService(v === true)} />
         Use a Twilio Messaging Service
       </label>
       <SpecFields
@@ -534,7 +557,7 @@ function TwilioForm({
         submitted={form.submitted}
       />
       <label className="flex items-center gap-3 text-sm">
-        <Switch checked={useApiKey} onCheckedChange={setUseApiKey} />
+        <Checkbox checked={useApiKey} onCheckedChange={(v) => setUseApiKey(v === true)} />
         Use API Key Authentication
       </label>
       <SpecFields
@@ -584,7 +607,11 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
           onClick={() => {
             setState("auth");
             setTimeout(() => setState("processing"), 800);
-            setTimeout(() => onCreate({ channel: "whatsapp", name: "WhatsApp Sales", provider: "embedded", phone: "+97444001133" }), 1700);
+            setTimeout(
+              () =>
+                onCreate({ channel: "whatsapp", name: "WhatsApp Sales", provider: "embedded", phone: "+97444001133" }),
+              1700,
+            );
           }}
         >
           {state !== "idle" ? <Loader2 className="animate-spin" /> : null}
@@ -652,7 +679,6 @@ function WhatsappForm({ onCreate }: { onCreate: (created: CreatedInbox) => void 
         description="Choose your WhatsApp provider. You can connect directly through Meta which requires no setup, or connect through Twilio using your account credentials."
         options={[
           { value: "embedded", title: "WhatsApp Cloud", description: "Quick setup through Meta" },
-          { value: "manual", title: "WhatsApp Cloud", description: "Manual setup with Cloud API credentials" },
           { value: "twilio", title: "Twilio", description: "Connect via Twilio credentials" },
         ]}
         onPick={setProvider}
@@ -662,7 +688,20 @@ function WhatsappForm({ onCreate }: { onCreate: (created: CreatedInbox) => void 
   return (
     <div>
       <BackLink onClick={() => setProvider("")}>Select your API provider</BackLink>
-      {provider === "embedded" ? <EmbeddedSignup onCreate={onCreate} /> : null}
+      {provider === "embedded" ? (
+        <>
+          <EmbeddedSignup onCreate={onCreate} />
+          {/* Chatwoot Whatsapp.vue: manual setup is a link under the embedded signup, not a third card. */}
+          <p className="mt-6 max-w-2xl border-t pt-6 text-muted-foreground text-sm">
+            If your number is already connected to the WhatsApp Business Platform (API), or if you’re a tech provider
+            onboarding your own number, please use the{" "}
+            <button type="button" className="text-primary underline" onClick={() => setProvider("manual")}>
+              manual setup flow
+            </button>{" "}
+            flow
+          </p>
+        </>
+      ) : null}
       {provider === "manual" ? <CloudWhatsappForm onCreate={onCreate} /> : null}
       {provider === "twilio" ? <TwilioForm medium="whatsapp" onCreate={onCreate} /> : null}
     </div>
@@ -697,7 +736,7 @@ function SmsForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }) {
           key="bandwidth"
           title="Bandwidth"
           fields={[
-            { id: "name", label: "Inbox Name", placeholder: "Please enter a inbox name" },
+            { id: "name", label: "Inbox Name", placeholder: "Please enter an inbox name" },
             {
               id: "phone",
               label: "Phone number",
@@ -708,7 +747,12 @@ function SmsForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }) {
             { id: "account", label: "Account ID", placeholder: "Please enter your Bandwidth Account ID" },
             { id: "app", label: "Application ID", placeholder: "Please enter your Bandwidth Application ID" },
             { id: "key", label: "API Key", placeholder: "Please enter your Bandwidth API Key" },
-            { id: "secret", label: "API Secret", placeholder: "Please enter your Bandwidth API Secret", type: "password" },
+            {
+              id: "secret",
+              label: "API Secret",
+              placeholder: "Please enter your Bandwidth API Secret",
+              type: "password",
+            },
           ]}
           submit="Create Bandwidth Channel"
           onCreate={onCreate}
@@ -777,8 +821,18 @@ function EmailForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }) 
         title="Select your email provider"
         description="Select an email provider from the list below. If you don't see your email provider in the list, you can select the other provider option and provide the IMAP and SMTP Credentials."
         options={[
-          { value: "microsoft", title: "Microsoft", description: "Connect with Microsoft", icon: <Mail className="size-5 text-sky-600" /> },
-          { value: "google", title: "Google", description: "Connect with Google", icon: <Mail className="size-5 text-rose-600" /> },
+          {
+            value: "microsoft",
+            title: "Microsoft",
+            description: "Connect with Microsoft",
+            icon: <Mail className="size-5 text-sky-600" />,
+          },
+          {
+            value: "google",
+            title: "Google",
+            description: "Connect with Google",
+            icon: <Mail className="size-5 text-rose-600" />,
+          },
           {
             value: "other",
             title: "Other Providers",
@@ -810,7 +864,13 @@ function EmailForm({ onCreate }: { onCreate: (created: CreatedInbox) => void }) 
           ]}
           submit="Create Email Channel"
           onCreate={onCreate}
-          toCreated={(v) => ({ channel: "email", name: v.name.trim(), provider: "other" })}
+          toCreated={(v) => ({
+            channel: "email",
+            name: v.name.trim(),
+            provider: "other",
+            identifier: v.email.trim(),
+            channelParams: { email: v.email.trim() },
+          })}
         />
       ) : (
         <OAuthEmail provider={provider} onCreate={onCreate} />
@@ -855,7 +915,12 @@ export function ChannelForm({ channel, onCreate }: { channel: Channel; onCreate:
           ]}
           submit="Create API Channel"
           onCreate={onCreate}
-          toCreated={(v) => ({ channel: "api", name: v.name.trim() })}
+          toCreated={(v) => ({
+            channel: "api",
+            name: v.name.trim(),
+            webhookUrl: v.webhook?.trim() || undefined,
+            channelParams: { webhookUrl: v.webhook?.trim() || "" },
+          })}
         />
       );
     case "telegram":
@@ -869,14 +934,31 @@ export function ChannelForm({ channel, onCreate }: { channel: Channel; onCreate:
               label: "Bot Token",
               placeholder: "Bot Token",
               help: "Configure the bot token you have obtained from Telegram BotFather.",
-              pattern: /^\d+:[\w-]{20,}$/,
-              patternError: "Please enter a valid bot token (eg: 123456789:AAH...)",
+              // F-6A (sim2 problem 14: any text was taken as a token): the form of a bot token, as Telegram documents
+              // it (https://core.telegram.org/bots/api#authorizing-your-bot: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11").
+              pattern: TELEGRAM_TOKEN,
+              patternError: "This is not a Telegram bot token. It looks like 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
             },
           ]}
           submit="Create Telegram Channel"
           onCreate={onCreate}
-          toCreated={() => ({ channel: "telegram", name: "Weblabs Telegram Bot" })}
-        />
+          // Chatwoot names the inbox from the bot's name (Telegram getMe). The preview sends nothing to Telegram, so
+          // the name comes from the bot number in the token, and the token itself is not kept.
+          toCreated={(v) => {
+            const botNumber = v.token.trim().split(":")[0];
+            return {
+              channel: "telegram",
+              name: `Telegram bot ${botNumber}`,
+              identifier: `Bot ${botNumber}`,
+              channelParams: { botToken: v.token.trim() },
+            };
+          }}
+        >
+          <p className="rounded-lg border bg-muted/40 p-3 text-muted-foreground text-sm" data-preview-note>
+            Preview — simulated: the token is checked for its form only. It is not sent to Telegram and not kept, so the
+            bot's name is not read and no message arrives until the inbox is connected through the engine.
+          </p>
+        </SimpleChannelForm>
       );
     case "line":
       return (
@@ -891,7 +973,15 @@ export function ChannelForm({ channel, onCreate }: { channel: Channel; onCreate:
           ]}
           submit="Create LINE Channel"
           onCreate={onCreate}
-          toCreated={(v) => ({ channel: "line", name: v.name.trim() })}
+          toCreated={(v) => ({
+            channel: "line",
+            name: v.name.trim(),
+            channelParams: {
+              lineChannelId: v.lineId.trim(),
+              lineChannelSecret: v.secret.trim(),
+              lineChannelToken: v.token.trim(),
+            },
+          })}
         />
       );
     case "instagram":
@@ -988,9 +1078,13 @@ export function FakeQr({ seed, className }: { seed: string; className?: string }
     }
   }
   return (
-    <svg viewBox={`-2 -2 ${size + 4} ${size + 4}`} className={cn("rounded-lg bg-white fill-black", className)} role="img" aria-label="QR code">
+    <svg
+      viewBox={`-2 -2 ${size + 4} ${size + 4}`}
+      className={cn("rounded-lg bg-white fill-black", className)}
+      role="img"
+      aria-label="QR code"
+    >
       {cells}
     </svg>
   );
 }
-

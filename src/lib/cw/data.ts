@@ -341,44 +341,10 @@ export interface Team {
   autoAssign: boolean;
 }
 
-export const teams: Team[] = [
-  {
-    id: 1,
-    slug: "sales",
-    name: "Sales",
-    description: "New business, upgrades and demos",
-    icon: "💼",
-    members: [1, 2, 4, 6, 7, 14],
-    autoAssign: true,
-  },
-  {
-    id: 2,
-    slug: "support",
-    name: "Support",
-    description: "General product questions",
-    icon: "🎧",
-    members: [1, 3, 4, 9, 11, 13],
-    autoAssign: true,
-  },
-  {
-    id: 3,
-    slug: "billing",
-    name: "Billing",
-    description: "Invoices, refunds and plans",
-    icon: "💳",
-    members: [1, 2, 3, 8, 12, 15],
-    autoAssign: false,
-  },
-  {
-    id: 4,
-    slug: "technical",
-    name: "Technical",
-    description: "Bugs, outages and integrations",
-    icon: "🛠️",
-    members: [1, 4, 5, 10, 16, 17],
-    autoAssign: true,
-  },
-];
+// T-74: the preview starts with no teams; the admin creates them in Settings > Teams. Teams an admin already saved
+// come from the preview server (./store.ts), not from here. The sample conversations still name the old team ids
+// (sales, support, billing, technical), which now match no team until one with that id is created.
+export const teams: Team[] = [];
 
 export interface Label {
   id: string;
@@ -388,8 +354,9 @@ export interface Label {
   showOnSidebar: boolean;
 }
 
-// The five English labels of Contacts and Conversations, Fahad's five Arabic labels from Studio before F159
-// (chat-tags-store.ts at dd8f5a9), then three labels hidden from the sidebar used by automation / workflow.
+// Fahad's five Arabic labels from Studio before F159 (chat-tags-store.ts at dd8f5a9), after the five English sample
+// labels that saved rules, macros, CSAT and capacity policies still use. T-262 removed auto-closed, feedback and spam;
+// T-271 put partner back because the capacity policy «Full-time agents» uses it.
 export const labels: Label[] = [
   {
     id: "vip",
@@ -431,21 +398,6 @@ export const labels: Label[] = [
   { id: "seller", title: "بائع", description: "", color: "#a855f7", showOnSidebar: true },
   { id: "follow-up", title: "متابعة", description: "", color: "#d97706", showOnSidebar: true },
   { id: "maintenance", title: "صيانة", description: "", color: "#e11d48", showOnSidebar: true },
-  {
-    id: "auto-closed",
-    title: "auto-closed",
-    description: "Added by the auto-resolve workflow",
-    color: "#64748b",
-    showOnSidebar: false,
-  },
-  {
-    id: "feedback",
-    title: "feedback",
-    description: "Customer shared a suggestion or complaint",
-    color: "#84cc16",
-    showOnSidebar: false,
-  },
-  { id: "spam", title: "spam", description: "", color: "#f43f5e", showOnSidebar: false },
 ];
 
 export interface CannedResponse {

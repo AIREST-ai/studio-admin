@@ -44,14 +44,14 @@ import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
-  agents,
   baseConversations,
   buildThread,
   helpArticles,
-  inboxes,
   inboxOf,
   isPersonOnline,
   lastPreview,
+  useLiveAgents,
+  useLiveInboxes,
 } from "./cw-data";
 import { useCwStore } from "./cw-store";
 import { AgentAvatar, ChannelIcon, PersonAvatar, StatusPill } from "./cw-ui";
@@ -130,6 +130,7 @@ function Section({
 }
 
 function SenderFilter({ value, onChange }: { value: string | null; onChange: (value: string | null) => void }) {
+  const agents = useLiveAgents();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -164,6 +165,7 @@ function SenderFilter({ value, onChange }: { value: string | null; onChange: (va
 }
 
 function InboxFilter({ value, onChange }: { value: string | null; onChange: (value: string | null) => void }) {
+  const inboxes = useLiveInboxes();
   const inbox = inboxes.find((item) => item.id === value);
   return (
     <DropdownMenu>

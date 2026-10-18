@@ -6,20 +6,40 @@ import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
 import { differenceInDays } from "date-fns";
-import { ArrowDownUp, Search, Tag, Users } from "lucide-react";
+import { ArrowDownUp, Users } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInitials } from "@/lib/utils";
-
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { ChannelIcon } from "@/app/(main)/dashboard/chat/_components/cw-ui";
 import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ensureLinkedEntitySummaryLoaded, useLinkedReportsStore } from "@/lib/chatwoot/settings-adapter";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
+import { useCwShared } from "@/lib/cw/store";
+import { getInitials } from "@/lib/utils";
 
-import { type EntityKind, entities, entityMeta, entityMetrics, entityTrends, type SummaryRow } from "./data";
+import {
+  type EntityKind,
+  entities,
+  entityMeta,
+  entityMetrics,
+  entitySeed,
+  entityTrends,
+  type SummaryRow,
+} from "./data";
+import { reportFilename } from "./report-export";
 import { type PeriodState, ReportPeriodProvider, usePeriod } from "./report-period";
-import { DownloadButton, MetricChartsGrid, MetricKpis, ReportFilters, ReportHeader } from "./report-ui";
+import {
+  businessHoursMeta,
+  DownloadButton,
+  MetricChartsGrid,
+  MetricKpis,
+  metricsReport,
+  periodMeta,
+  ReportFilters,
+  ReportHeader,
+} from "./report-ui";
 
 // F159: the same channel icons as the conversation list (channel type -> inbox channel id).
 const inboxChannel: Record<string, string> = {
@@ -90,7 +110,7 @@ function scaleRow(row: SummaryRow, period: PeriodState): SummaryRow {
   const days = differenceInDays(period.to, period.from) + 1;
   const hours = period.businessHours ? 0.72 : 1;
   const k = (days / 7) * hours;
-  const wobble = 1 + (((period.salt + Number(row.id) * 13) % 21) - 10) / 100;
+  const wobble = 1 + (((period.salt + entitySeed(row.id) * 13) % 21) - 10) / 100;
   return {
     ...row,
     conversations: Math.max(0, Math.round(row.conversations * k)),
@@ -114,34 +134,132 @@ function EntitySummaryBody({ kind }: { kind: EntityKind }) {
   const period = usePeriod();
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState<SortKey>("conversations");
+  useLinkedAdapterStatus((s) => s.active);
+  const reportVersion = useLinkedReportsStore((s) => s.lastUpdatedAt);
+  const shared = useCwShared();
+  const isLinked = linkedSession();
 
+  React.useEffect(() => {
+    if (!linkedSession()) return;
+    void ensureLinkedEntitySummaryLoaded(kind, period);
+  }, [kind, period, isLinked]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reportVersion triggers recomputation when linked entity summaries arrive
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (isLinked) {
+      const since = String(Math.floor(period.from.getTime() / 1000));
+      const until = String(Math.floor(period.to.getTime() / 1000) + 86399);
+      const summaryKey = `${kind}:${since}:${until}:${period.businessHours}`;
+      const summaryMap = useLinkedReportsStore.getState().entityRowsByKey[summaryKey] ?? {};
+      const baseEntities: SummaryRow[] =
+        kind === "agents"
+          ? shared.agents.map((a) => ({
+              id: String(a.id),
+              name: a.name,
+              subtitle: a.email,
+              conversations: 0,
+              avgFirstResponse: "0m 00s",
+              avgResolution: "0m 00s",
+              avgReply: "0m 00s",
+              resolutionCount: 0,
+            }))
+          : kind === "inboxes"
+            ? shared.inboxes.map((i) => ({
+                id: String(i.id),
+                name: i.name,
+                subtitle: i.channelType,
+                conversations: 0,
+                avgFirstResponse: "0m 00s",
+                avgResolution: "0m 00s",
+                avgReply: "0m 00s",
+                resolutionCount: 0,
+              }))
+            : kind === "teams"
+              ? shared.teams.map((t) => ({
+                  id: String(t.id),
+                  name: t.name,
+                  subtitle: t.description,
+                  conversations: 0,
+                  avgFirstResponse: "0m 00s",
+                  avgResolution: "0m 00s",
+                  avgReply: "0m 00s",
+                  resolutionCount: 0,
+                }))
+              : shared.labels.map((l) => ({
+                  id: l.title,
+                  name: l.title,
+                  subtitle: l.description,
+                  color: l.color,
+                  conversations: 0,
+                  avgFirstResponse: "0m 00s",
+                  avgResolution: "0m 00s",
+                  avgReply: "0m 00s",
+                  resolutionCount: 0,
+                }));
+      const merged = baseEntities
+        .map((r) => {
+          const hit = summaryMap[r.id];
+          if (!hit) return r;
+          return {
+            ...r,
+            conversations: hit.conversations,
+            resolutionCount: hit.resolutionCount,
+            avgFirstResponse: hit.avgFirstResponse,
+            avgResolution: hit.avgResolution,
+            avgReply: hit.avgReply,
+          };
+        })
+        .filter((r) => !q || r.name.toLowerCase().includes(q));
+      return [...merged].sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b[sort] - a[sort]));
+    }
     const list = entities[kind].filter((r) => !q || r.name.toLowerCase().includes(q)).map((r) => scaleRow(r, period));
     return [...list].sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b[sort] - a[sort]));
-  }, [kind, query, sort, period]);
+  }, [kind, query, sort, period, isLinked, shared, reportVersion]);
 
   return (
     <div className="@container/main flex flex-col gap-4 md:gap-6">
       <ReportHeader title={meta.header} description={meta.description}>
-        <DownloadButton label={meta.download} />
+        <DownloadButton
+          label={meta.download}
+          file={(p) => ({
+            filename: reportFilename(meta.header, p.from, p.to),
+            meta: periodMeta(meta.header, p, [
+              businessHoursMeta(p),
+              ...(query.trim() ? ([["Search", query.trim()]] as [string, string][]) : []),
+            ]),
+            header: [
+              meta.column,
+              "No. of conversations",
+              "Avg. First Response Time",
+              "Avg. Resolution Time",
+              "Avg. Customer Waiting Time",
+              "Resolution Count",
+            ],
+            rows: rows.map((r) => [
+              r.name,
+              r.conversations,
+              r.avgFirstResponse,
+              r.avgResolution,
+              r.avgReply,
+              r.resolutionCount,
+            ]),
+          })}
+        />
       </ReportHeader>
       <ReportFilters showGroupBy={false} showBusinessHours />
       <Card className="py-0">
         <CardContent className="px-0">
           <div className="flex items-center gap-2 border-b px-4 py-3">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                {kind === "labels" ? <Tag className="size-3.5" /> : <Search className="size-3.5" />}
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
-                type="search"
-                placeholder={meta.search}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </InputGroup>
+            {/* F-13 (Fahad 125.4): a lens only; a click opens the box, closing it brings back the lens. */}
+            <ExpandingSearch
+              name="report-entities"
+              label={meta.search}
+              placeholder={meta.search}
+              className="w-full md:w-64"
+              value={query}
+              onChange={setQuery}
+            />
             <span className="ml-auto text-muted-foreground text-xs">
               {rows.length} {rows.length === 1 ? meta.column.toLowerCase() : `${meta.column.toLowerCase()}s`}
             </span>
@@ -259,12 +377,20 @@ function EntityDetailBody({ kind, row }: { kind: EntityKind; row: SummaryRow }) 
     }
     return m;
   });
-  const seed = Number(row.id) + kind.length * 10;
+  const seed = entitySeed(row.id) + kind.length * 10;
 
   return (
     <div className="@container/main flex flex-col gap-4 md:gap-6">
       <ReportHeader title={row.name} description={meta.header} backHref={`/dashboard/reports/${kind}`}>
-        <DownloadButton label={meta.download} />
+        <DownloadButton
+          label={meta.download}
+          file={(p) =>
+            metricsReport(`${row.name} - ${meta.header}`, metrics, seed, p, [
+              [meta.select.replace(/^Select /, ""), row.name],
+              businessHoursMeta(p),
+            ])
+          }
+        />
       </ReportHeader>
       <ReportFilters
         entityLabel={meta.select}
@@ -277,6 +403,10 @@ function EntityDetailBody({ kind, row }: { kind: EntityKind; row: SummaryRow }) 
         metrics={metrics}
         seed={seed}
         keys={["conversations", "firstResponse", "resolutionTime", "resolutionCount"]}
+        scope={{
+          type: kind === "agents" ? "agent" : kind === "inboxes" ? "inbox" : kind === "teams" ? "team" : "label",
+          id: row.id,
+        }}
       />
       <MetricChartsGrid metrics={metrics} seed={seed} scope={{ kind, row }} />
     </div>

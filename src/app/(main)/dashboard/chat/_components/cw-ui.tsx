@@ -7,16 +7,16 @@ import { cn } from "cn";
 import {
   Bot,
   Check,
-  CircleAlert,
+  ChevronDown,
+  ChevronsUp,
+  ChevronUp,
   Clock,
+  Equal,
   type LucideIcon,
   type LucideProps,
   Mail,
   MessageCircle,
   Phone,
-  SignalHigh,
-  SignalLow,
-  SignalMedium,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -28,9 +28,17 @@ import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/utils";
 
-import { agents, type ConversationMeta, type CwStatus, type Priority, priorities, teams } from "./cw-data";
+import {
+  type ConversationMeta,
+  type CwStatus,
+  type Priority,
+  priorities,
+  useLiveAgents,
+  useLiveTeams,
+} from "./cw-data";
 
 const brandIcons = { whatsapp: siWhatsapp, instagram: siInstagram, facebook: siFacebook } as const;
 
@@ -73,28 +81,45 @@ export function channelNavIcon(channel: string): LucideIcon {
 
 const priorityTone: Record<Priority, string> = {
   none: "text-muted-foreground",
-  low: "text-sky-600 dark:text-sky-400",
-  medium: "text-amber-600 dark:text-amber-400",
-  high: "text-orange-600 dark:text-orange-400",
-  urgent: "text-destructive",
+  low: "text-muted-foreground!",
+  medium: "text-amber-600! dark:text-amber-400!",
+  high: "text-orange-600! dark:text-orange-400!",
+  urgent: "text-destructive!",
+};
+
+const priorityMark: Record<Exclude<Priority, "none">, LucideIcon> = {
+  urgent: ChevronsUp,
+  high: ChevronUp,
+  medium: Equal,
+  low: ChevronDown,
 };
 
 export function PriorityIcon({ priority, className }: { priority: Priority; className?: string }) {
   if (priority === "none") return null;
-  const Icon =
-    priority === "urgent"
-      ? CircleAlert
-      : priority === "high"
-        ? SignalHigh
-        : priority === "medium"
-          ? SignalMedium
-          : SignalLow;
   const label = priorities.find((p) => p.value === priority)?.label;
+  // Item 102: not the signal bars, which read as phone signal. T-285 (Fahad 124.6): the flags that replaced them read
+  // as alarming, so the priority uses the standard priority arrows of Jira (Highest ⇈, High ↑, Medium =, Low ↓):
+  // the direction says the level and the colour backs it up. The colour is marked important, and the path inherits
+  // it, so a highlighted menu row (whose **: rule paints every descendant white) does not turn the mark white.
+  const Mark = priorityMark[priority];
   return (
-    <span title={`Priority: ${label}`} className={cn("inline-flex", priorityTone[priority], className)}>
-      <Icon className="size-3.5" aria-hidden="true" />
-      <span className="sr-only">Priority {label}</span>
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span data-priority={priority} className={cn("inline-flex", priorityTone[priority], className)}>
+          <Mark
+            className={cn("size-4 **:text-inherit!", priorityTone[priority])}
+            strokeWidth={2.5}
+            aria-hidden="true"
+          />
+          <span className="sr-only">{label} priority</span>
+        </span>
+      </TooltipTrigger>
+      {/* F-13 (Fahad 124.1, «مربع الشرح الأبيض أكبر من اللازم»): the white box (a tooltip is white in the dark theme)
+          held a title and a sentence set side by side as narrow columns, over the card it explains. Chatwoot's priority
+          mark says only the level (CardPriorityIcon.vue, tooltipContent: https://github.com/chatwoot/chatwoot/blob/develop/app/javascript/dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue),
+          and NN/g: "lengthy content is no longer a 'tip', so keep it brief" (https://www.nngroup.com/articles/tooltip-guidelines/). */}
+      <TooltipContent>{label} priority</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -132,42 +157,81 @@ export function StatusPill({ status, className }: { status: CwStatus; className?
   );
 }
 
+// T-99: plain words instead of Chatwoot's FRT / NRT / RT codes; the hover names the code and the target the badge
+// is counted from (cw-data.ts slaFor, which makes FRT and NRT only; T-134: the target is the Settings > SLA policy's). T-118 row 2: "Reply due in" for both, as "Next
+// reply due in" pushed Labels to a third header row at 1024; first or next is said on hover.
+const slaWords = {
+  FRT: {
+    name: "First response time",
+    due: "Reply due in",
+    missed: "Reply overdue by",
+  },
+  NRT: {
+    name: "Next response time",
+    due: "Reply due in",
+    missed: "Reply overdue by",
+  },
+  RT: {
+    name: "Resolution time",
+    due: "Resolution due in",
+    missed: "Resolution overdue by",
+  },
+} as const;
+
 export function SlaBadge({ sla, className }: { sla: ConversationMeta["sla"]; className?: string }) {
   if (!sla) return null;
   const missed = sla.state === "missed";
+  const words = slaWords[sla.kind];
+  const hours = sla.target / 60;
+  const target = sla.target % 60 === 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : `${sla.target} minutes`;
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "gap-1 border px-1.5 py-0 font-medium text-[10px]",
-        missed
-          ? "border-destructive/20 bg-destructive/10 text-destructive"
-          : "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-        className,
-      )}
-    >
-      <Clock className="size-3" />
-      {sla.kind} {missed ? "missed" : "due"} {sla.time}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          // T-99: keep the badge's own data-slot (the tooltip trigger would replace it).
+          data-slot="badge"
+          className={cn(
+            "gap-1 border px-1.5 py-0 font-medium text-[10px]",
+            missed
+              ? "border-destructive/20 bg-destructive/10 text-destructive"
+              : "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+            className,
+          )}
+        >
+          <Clock className="size-3" />
+          {missed ? words.missed : words.due} {sla.time}
+        </Badge>
+      </TooltipTrigger>
+      {/* F-13 (Fahad 124.1): one short line, the code and the policy's target (see PriorityIcon); the badge itself
+          already says what is due. Chatwoot's SLA label has no hover box at all (SLACardLabel.vue:
+          https://github.com/chatwoot/chatwoot/blob/develop/app/javascript/dashboard/components-next/Conversation/Sla/SLACardLabel.vue). */}
+      <TooltipContent>
+        {words.name} ({sla.kind}){sla.kind !== "RT" ? ` · ${sla.policy} SLA: ${target}` : ""}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
-// A contact or teammate: coloured initials, with the green dot when online.
+// A contact: coloured initials. T-268: green dot only when online is true (a Website widget heartbeat, see
+// isPersonOnline); null or false shows nothing, as Chatwoot's CardAvatar shows no dot for offline contacts.
 export function PersonAvatar({
   name,
   size = "default",
-  online = false,
+  online,
   className,
 }: {
   name: string;
   size?: "sm" | "default" | "lg";
-  online?: boolean;
+  online?: boolean | null;
   className?: string;
 }) {
   return (
     <Avatar size={size} className={cn("shrink-0 font-medium", personToneClass(name), className)}>
       <AvatarFallback className="text-xs">{getInitials(name)}</AvatarFallback>
-      {online && <AvatarBadge className="bg-green-600 dark:bg-green-800" />}
+      {online === true ? (
+        <AvatarBadge data-presence="online" aria-label="Online" className={availabilityDot.online} />
+      ) : null}
     </Avatar>
   );
 }
@@ -204,7 +268,7 @@ export function AgentAvatar({
   showStatus?: boolean;
   className?: string;
 }) {
-  const agent = agents.find((a) => a.id === id);
+  const agent = useLiveAgents().find((a) => a.id === id);
   const label = agent?.name ?? name ?? "";
   return (
     <Avatar size={size} className={cn("shrink-0 font-medium", label && personToneClass(label), className)}>
@@ -254,6 +318,7 @@ export function AgentPicker({
   trigger: ReactNode;
   align?: "start" | "end";
 }) {
+  const agents = useLiveAgents();
   return (
     <PickerShell trigger={trigger} placeholder="Search" align={align}>
       <CommandGroup heading="Select Agent">
@@ -285,6 +350,7 @@ export function TeamPicker({
   trigger: ReactNode;
   align?: "start" | "end";
 }) {
+  const teams = useLiveTeams();
   return (
     <PickerShell trigger={trigger} placeholder="Search" align={align}>
       <CommandGroup heading="Assigned Team">

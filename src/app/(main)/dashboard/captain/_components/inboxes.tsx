@@ -11,15 +11,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@/component
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { type ConnectedInbox, connectedInboxes } from "./data";
+import type { ConnectedInbox } from "./data";
 import { ConfirmDialog, InboxDialog } from "./dialogs";
 import { CaptainShell, RowMenuTrigger, type Tone, ToneBadge } from "./shared";
+import { useCaptainState } from "./store";
 
 const icons = { Website: Globe, WhatsApp: MessageCircle, Email: Mail } as const;
 const channelTone: Record<string, Tone> = { Website: "sky", WhatsApp: "green", Email: "violet" };
 
 export function InboxesList() {
-  const [items, setItems] = React.useState(connectedInboxes);
+  const [items, setItems] = useCaptainState("connectedInboxes");
   const [connecting, setConnecting] = React.useState(false);
   const [disconnecting, setDisconnecting] = React.useState<ConnectedInbox | null>(null);
 

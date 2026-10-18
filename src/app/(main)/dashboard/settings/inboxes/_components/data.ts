@@ -107,6 +107,15 @@ export function channelFor(key: ChannelKey): Channel {
   return channels.find((c) => c.key === key) ?? channels[0];
 }
 
+/**
+ * F-1: the `channelType` an inbox added in Settings gets. The Contacts bar and filter group inboxes by it, so it is the
+ * one the sample inboxes of this channel already use ("API", not the form's title "API Channel"), and an inbox added
+ * for a channel the samples have none of falls back to the channel's name.
+ */
+export function channelTypeFor(key: ChannelKey): string {
+  return sharedInboxes.find((inbox) => inbox.channel === key)?.channelType ?? channelFor(key).name;
+}
+
 // F161: the eight inboxes and the agent roster are the shared ones (Users & Roles, Conversations, Reports).
 export const inboxes: Inbox[] = sharedInboxes;
 

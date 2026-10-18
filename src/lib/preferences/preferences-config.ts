@@ -76,7 +76,9 @@ export const PREFERENCE_REGISTRY = {
 
   content_layout: definePreference({
     values: CONTENT_LAYOUT_VALUES,
-    defaultValue: "centered",
+    // T-245 (item 97): the page fills the width by default, as in Chatwoot. "Centered" stays in Preferences, and a
+    // choice saved there (the content_layout cookie) still wins over this default.
+    defaultValue: "full-width",
     persistence: "client-cookie",
     attribute: "data-content-layout",
   }),

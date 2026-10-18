@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { ConversationsWorkspace } from "./_components/conversations-workspace";
 
 export const metadata: Metadata = {
-  title: "Conversations",
+  // T-53: the conversations area is the Inbox.
+  title: "Inbox",
   robots: {
     index: false,
     follow: true,

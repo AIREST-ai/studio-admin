@@ -4,8 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 
 import { cn } from "cn";
-import { MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { MessageSquare, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,9 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
-import { agents, channelFor, type Inbox, inboxes as initialInboxes } from "./data";
+import { channelFor, type Inbox, inboxChannelName } from "./data";
+import { toastInboxSaved } from "./inbox-extras";
+import { inboxesStore, useAgentRoster, useInboxes, whenSaved } from "./inboxes-store";
 import { AgentAvatar, ConfirmDeleteDialog } from "./settings-ui";
 
 // Tabs from Chatwoot's per-inbox "Enable auto assignment" setting.
@@ -31,17 +32,18 @@ const inboxViews: Record<InboxView, { label: string; match: (inbox: Inbox) => bo
 };
 
 export function InboxesList() {
+  const agents = useAgentRoster(); // F-6B: an inbox's agents count an invited agent too
   const [query, setQuery] = React.useState("");
   const [view, setView] = React.useState<InboxView>("all");
   const [toDelete, setToDelete] = React.useState<Inbox | null>(null);
-  const [inboxes, setInboxes] = React.useState(initialInboxes);
+  const inboxes = useInboxes();
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     return inboxes.filter(
       (inbox) =>
         inboxViews[view].match(inbox) &&
-        (!q || [inbox.name, channelFor(inbox.channel).name, inbox.identifier].some((v) => v.toLowerCase().includes(q))),
+        (!q || [inbox.name, inboxChannelName(inbox), inbox.identifier].some((v) => v.toLowerCase().includes(q))),
     );
   }, [query, view, inboxes]);
 
@@ -72,14 +74,19 @@ export function InboxesList() {
         cardDescription="Each inbox, its channel and the agents who answer it."
       >
         {rows.length ? (
-          <Table className="**:data-[slot='table-cell']:px-6 **:data-[slot='table-head']:px-6">
+          // F-9: cells keep 1.5rem sides from 1280 px up and 1rem below, so at 1024 the whole table fits its card
+          // and needs no sideways scroll.
+          <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4 xl:**:data-[slot='table-cell']:px-6 xl:**:data-[slot='table-head']:px-6">
             <TableHeader>
               <TableRow>
                 <TableHead className="py-3 font-normal">Inbox</TableHead>
                 <TableHead className="py-3 font-normal">Channel</TableHead>
                 <TableHead className="py-3 font-normal">Agents</TableHead>
-                <TableHead className="py-3 font-normal">Auto assignment</TableHead>
-                <TableHead className="w-16 py-3 text-right font-normal">Actions</TableHead>
+                {/* F-9: the long header may take two lines, so the table fits the 1024 card. */}
+                <TableHead className="w-28 whitespace-normal py-3 font-normal leading-tight">Auto assignment</TableHead>
+                <TableHead className="sticky right-0 w-16 bg-card py-3 text-right font-normal shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -89,7 +96,9 @@ export function InboxesList() {
                 const members = agents.filter((agent) => inbox.agents.includes(agent.id));
                 return (
                   <TableRow key={inbox.id} className="border-border/60">
-                    <TableCell className="py-3.5">
+                    {/* F-9 (sim3 step 6.0: "Support…", "WhatsA…" cut at 1024): the name column keeps 12rem and the name
+                        wraps instead of being cut; the full name is still in its title. */}
+                    <TableCell className="min-w-48 py-3.5">
                       <Link
                         href={`/dashboard/settings/inboxes/${inbox.id}`}
                         className="flex min-w-0 items-center gap-3"
@@ -98,8 +107,10 @@ export function InboxesList() {
                           <Icon className="size-4 text-muted-foreground" />
                         </div>
                         <div className="grid min-w-0 gap-0.5">
-                          <span className="truncate font-medium">{inbox.name}</span>
-                          <bdi dir="auto" className="truncate text-muted-foreground text-xs">
+                          <span className="break-words font-medium" title={inbox.name}>
+                            {inbox.name}
+                          </span>
+                          <bdi dir="auto" title={inbox.identifier} className="truncate text-muted-foreground text-xs">
                             {inbox.identifier}
                           </bdi>
                         </div>
@@ -108,19 +119,31 @@ export function InboxesList() {
                     <TableCell className="py-3.5">
                       <Badge variant="outline" className="gap-1.5 px-2 py-1 font-normal">
                         <Icon className="size-3" />
-                        {channel.name}
+                        {inboxChannelName(inbox)}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3.5">
                       <div className="flex items-center gap-2">
-                        <div className="flex -space-x-1.5">
-                          {members.map((m) => (
+                        {/* F-9: at most three faces and a "+N" chip (as the Agents table's Inboxes column), so a
+                            busy inbox no longer takes the room of the inbox names; every name is in the title. */}
+                        <div className="flex -space-x-1.5" title={members.map((m) => m.name).join(", ")}>
+                          {members.slice(0, 3).map((m) => (
                             <AgentAvatar key={m.id} id={m.id} name={m.name} className="size-7 ring-2 ring-card" />
                           ))}
+                          {members.length > 3 ? (
+                            <span className="z-[1] grid size-7 place-items-center rounded-full bg-muted font-medium text-[10px] text-muted-foreground ring-2 ring-card tabular-nums">
+                              +{members.length - 3}
+                            </span>
+                          ) : null}
                         </div>
-                        <span className="text-muted-foreground text-xs tabular-nums">
-                          {members.length} {members.length === 1 ? "agent" : "agents"}
-                        </span>
+                        {/* F-9: the count once, beside three faces only when there is no "+N" chip */}
+                        {members.length <= 3 ? (
+                          <span className="text-muted-foreground text-xs tabular-nums">
+                            {members.length} {members.length === 1 ? "agent" : "agents"}
+                          </span>
+                        ) : (
+                          <span className="sr-only">{members.length} agents</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="py-3.5">
@@ -142,17 +165,22 @@ export function InboxesList() {
                         {inbox.autoAssign ? "On" : "Off"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3.5 text-right">
+                    <TableCell className="sticky right-0 bg-card py-3.5 text-right shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon-sm" aria-label="Inbox actions">
                             <MoreHorizontal />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem asChild>
                             <Link href={`/dashboard/settings/inboxes/${inbox.id}`}>
                               <Settings /> Settings
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={inbox.slug ? `/dashboard/chat/channels/${inbox.slug}` : "/dashboard/chat"}>
+                              <MessageSquare /> View conversations
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -168,22 +196,26 @@ export function InboxesList() {
             </TableBody>
           </Table>
         ) : (
-          <NoResults>No inboxes found matching your search</NoResults>
+          <NoResults>
+            {inboxes.length
+              ? "No inboxes found matching your search"
+              : "There are no inboxes attached to this account."}
+          </NoResults>
         )}
       </SettingsShell>
 
       <ConfirmDeleteDialog
         open={toDelete !== null}
         onOpenChange={(open) => !open && setToDelete(null)}
-        title="Confirm Deletion"
-        message={`Are you sure to delete ${toDelete?.name ?? ""}?`}
+        title="Delete inbox"
+        message="This will permanently delete the inbox."
         confirmValue={toDelete?.name ?? ""}
-        placeholder={`Please type ${toDelete?.name ?? ""} to confirm`}
-        confirmText={`Yes, Delete ${toDelete?.name ?? ""}`}
-        rejectText={`No, Keep ${toDelete?.name ?? ""}`}
         onConfirm={() => {
-          if (toDelete) setInboxes((list) => list.filter((i) => i.id !== toDelete.id));
-          toast.success("Inbox deleted successfully");
+          if (!toDelete) return;
+          // F-6A: "deleted" only after the preview server has the change, with the line that says where.
+          const saving = whenSaved();
+          inboxesStore.remove(toDelete.id);
+          void toastInboxSaved(saving, "Inbox deleted successfully");
         }}
       />
     </>

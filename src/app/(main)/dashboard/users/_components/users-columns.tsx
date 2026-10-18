@@ -2,11 +2,14 @@
 // F159: Studio Users columns carrying Chatwoot v4.18 Agents fields (settings/agents/Index.vue):
 // avatar with availability dot, name, email, role label (custom role hover card), Verified / Verification Pending,
 // and Edit / Delete in the row "…" menu with Chatwoot's visibility rules.
+// F161: Studio-before menu items View profile, Manage team and Resend invite are back (removed without a decision).
+// Resend invite shows a toast only (no mail is sent on the mock) and is enabled only for unverified agents.
+// F-10b: it is also recorded in the activity log (resend-invite.ts), so it raises a Sign-ups notification.
 import type { ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { cn } from "cn";
 import { parse } from "date-fns";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MailPlus, MoreHorizontal, Pencil, Trash2, UserRound, UsersRound } from "lucide-react";
 
 import { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +38,7 @@ import {
   type UserStatus,
   userStatus,
 } from "./data";
+import { recordInviteResend } from "./resend-invite";
 
 export function findRole(user: UserRow, roles: Role[]) {
   const wanted = roleKeyOf(user);
@@ -96,7 +100,7 @@ function RoleCell({ user, roles }: { user: UserRow; roles: Role[] }) {
   return (
     <div className="grid gap-0.5">
       <RoleLabel user={user} roles={roles} />
-      <span className="text-muted-foreground text-xs">{user.team}</span>
+      <span className="text-muted-foreground text-xs">{user.teams.length ? user.teams.join(", ") : "No team"}</span>
     </div>
   );
 }
@@ -154,20 +158,25 @@ function InboxesCell({ inboxes }: { inboxes: string[] }) {
   );
 }
 
+export type AgentMenuHandlers = {
+  onEdit: (user: UserRow) => void;
+  onDelete: (user: UserRow) => void;
+  onView?: (user: UserRow) => void;
+  onManageTeam?: (user: UserRow) => void;
+  onResendInvite?: (user: UserRow) => void;
+};
+
 export function AgentActionsMenu({
   user,
   agents,
   onEdit,
   onDelete,
-}: {
-  user: UserRow;
-  agents: UserRow[];
-  onEdit: (user: UserRow) => void;
-  onDelete: (user: UserRow) => void;
-}) {
+  onView,
+  onManageTeam,
+  onResendInvite,
+}: { user: UserRow; agents: UserRow[] } & AgentMenuHandlers) {
   const edit = canEdit(user);
   const del = canDelete(user, agents);
-  if (!edit && !del) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -181,12 +190,34 @@ export function AgentActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {onView ? (
+          <DropdownMenuItem onSelect={() => onView(user)}>
+            <UserRound /> View profile
+          </DropdownMenuItem>
+        ) : null}
         {edit ? (
           <DropdownMenuItem onSelect={() => onEdit(user)}>
             <Pencil /> Edit
           </DropdownMenuItem>
         ) : null}
-        {edit && del ? <DropdownMenuSeparator /> : null}
+        {onManageTeam ? (
+          <DropdownMenuItem onSelect={() => onManageTeam(user)}>
+            <UsersRound /> Manage team
+          </DropdownMenuItem>
+        ) : null}
+        {onResendInvite ? (
+          <DropdownMenuItem
+            disabled={user.confirmed}
+            onSelect={() => {
+              // F-10b: the resend is also an event of the activity log, hence a Sign-ups notification.
+              void recordInviteResend(user);
+              onResendInvite(user);
+            }}
+          >
+            <MailPlus /> Resend invite
+          </DropdownMenuItem>
+        ) : null}
+        {del ? <DropdownMenuSeparator /> : null}
         {del ? (
           <DropdownMenuItem variant="destructive" onSelect={() => onDelete(user)}>
             <Trash2 /> Delete
@@ -200,14 +231,11 @@ export function AgentActionsMenu({
 export function makeUsersColumns({
   roles,
   agents,
-  onEdit,
-  onDelete,
+  ...handlers
 }: {
   roles: Role[];
   agents: UserRow[];
-  onEdit: (user: UserRow) => void;
-  onDelete: (user: UserRow) => void;
-}): ColumnDef<DataTableFeatures, UserRow>[] {
+} & AgentMenuHandlers): ColumnDef<DataTableFeatures, UserRow>[] {
   return [
     {
       id: "select",
@@ -281,10 +309,12 @@ export function makeUsersColumns({
       cell: ({ row }) => <RoleCell user={row.original} roles={roles} />,
     },
     {
-      accessorKey: "team",
+      id: "team",
+      accessorFn: (row) => row.teams,
       header: "Team",
-      filterFn: "equalsString",
-      cell: ({ row }) => <div className="text-sm">{row.original.team}</div>,
+      filterFn: "arrIncludes",
+      enableSorting: false,
+      cell: ({ row }) => <div className="text-sm">{row.original.teams.join(", ")}</div>,
     },
     {
       id: "availability",
@@ -311,14 +341,23 @@ export function makeUsersColumns({
       id: "joinedDate",
       accessorFn: (row) => parse(row.joinedDate, "dd MMM yyyy, h:mm a", new Date()).getTime(),
       header: "Joined date",
-      cell: ({ row }) => <div className="text-foreground text-sm">{row.original.joinedDate}</div>,
+      // F-9: the date and the time on two lines ("12 Oct 2026" over "8:15 AM"), so the table fits the 1440 card.
+      cell: ({ row }) => {
+        const [date, time] = row.original.joinedDate.split(", ");
+        return (
+          <div className="grid gap-0.5 whitespace-nowrap">
+            <span className="text-foreground text-sm">{date}</span>
+            {time ? <span className="text-muted-foreground text-xs">{time}</span> : null}
+          </div>
+        );
+      },
     },
     {
       id: "actions",
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
         <div className="text-right">
-          <AgentActionsMenu user={row.original} agents={agents} onEdit={onEdit} onDelete={onDelete} />
+          <AgentActionsMenu user={row.original} agents={agents} {...handlers} />
         </div>
       ),
       enableHiding: false,

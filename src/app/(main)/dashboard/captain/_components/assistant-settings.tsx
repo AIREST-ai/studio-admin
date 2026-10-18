@@ -5,6 +5,7 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
 import {
@@ -14,7 +15,6 @@ import {
   MessageSquareQuote,
   Pencil,
   Plus,
-  Search,
   ShieldCheck,
   Trash2,
   TriangleAlert,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -42,9 +42,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
-import { exampleGuardrails, exampleGuidelines, guardrails, guidelines } from "./data";
+import { exampleGuardrails, exampleGuidelines } from "./data";
 import { ConfirmDialog } from "./dialogs";
 import { CaptainShell, RowMenuTrigger, useCurrentAssistant } from "./shared";
+import { setCaptainList, useCaptainState } from "./store";
 
 export type SettingsSection = "basic" | "system" | "audience" | "schedule" | "guardrails" | "guidelines";
 
@@ -118,10 +119,11 @@ function ChoiceCards({
   );
 }
 
+// Rules live in the shared Captain store, so what the Playground adds permanently is listed here and the other way round.
 function RuleList({
   title,
   description,
-  initial,
+  listKey,
   examples,
   examplesTitle,
   placeholder,
@@ -131,7 +133,7 @@ function RuleList({
 }: {
   title: string;
   description: string;
-  initial: string[];
+  listKey: "guardrails" | "guidelines";
   examples: string[];
   examplesTitle: string;
   placeholder: string;
@@ -139,7 +141,7 @@ function RuleList({
   addTitle: string;
   successNoun: string;
 }) {
-  const [items, setItems] = React.useState(initial);
+  const [items, setItems] = useCaptainState(listKey);
   const [suggested, setSuggested] = React.useState(examples);
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<string[]>([]);
@@ -169,9 +171,14 @@ function RuleList({
             <span className="inline-flex items-center gap-2 font-medium text-sm">
               <Lightbulb className="size-4 text-amber-500" /> {examplesTitle}
             </span>
-            <Button variant="ghost" size="sm" onClick={() => add(suggested)}>
-              Add all
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={() => add(suggested)}>
+                Add all
+              </Button>
+              <Button variant="ghost" size="icon-sm" aria-label="Close examples" onClick={() => setSuggested([])}>
+                <X />
+              </Button>
+            </div>
           </div>
           {suggested.map((e) => (
             <div key={e} className="flex items-center gap-3 rounded-lg border bg-background p-3 text-sm">
@@ -209,12 +216,16 @@ function RuleList({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <InputGroup className="h-8 md:w-72">
-          <InputGroupAddon align="inline-start">
-            <Search className="size-3.5" />
-          </InputGroupAddon>
-          <InputGroupInput placeholder="Search..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        </InputGroup>
+        {/* F-13 round 2 (Fahad 125.4): a lens only; a click opens the box, closing it brings back the lens. */}
+        <ExpandingSearch
+          name={listKey}
+          label={`Search ${title.toLowerCase()}`}
+          placeholder="Search..."
+          size="default"
+          className="w-full md:w-72"
+          value={query}
+          onChange={setQuery}
+        />
         <div className="flex items-center gap-2">
           {selected.length > 0 ? (
             <>
@@ -312,7 +323,7 @@ function RuleList({
                   </div>
                 </div>
               ) : (
-                <span className="flex-1 leading-relaxed">{r}</span>
+                <span className="flex-1 whitespace-pre-line leading-relaxed">{r}</span>
               )}
               <DropdownMenu>
                 <RowMenuTrigger label={`Open actions for ${r}`} />
@@ -578,6 +589,7 @@ function AudienceSection() {
 
 export function AssistantSettings({ section = "basic" }: { section?: SettingsSection }) {
   const assistant = useCurrentAssistant();
+  const router = useRouter();
   const [mode, setMode] = React.useState("evaluated");
   const [schedule, setSchedule] = React.useState("always");
   const [sendOnResolve, setSendOnResolve] = React.useState(true);
@@ -856,7 +868,7 @@ export function AssistantSettings({ section = "basic" }: { section?: SettingsSec
         <RuleList
           title="Guardrails"
           description="Keeps things on track—only the kinds of questions you want your assistant to answer, nothing off-limits or off-topic."
-          initial={guardrails}
+          listKey="guardrails"
           examples={exampleGuardrails}
           examplesTitle="Example guardrails"
           placeholder="Type in another guardrail..."
@@ -870,7 +882,7 @@ export function AssistantSettings({ section = "basic" }: { section?: SettingsSec
         <RuleList
           title="Response Guidelines"
           description="The vibe and structure of your assistant’s replies—clear and friendly? Short and snappy? Detailed and formal?"
-          initial={guidelines}
+          listKey="guidelines"
           examples={exampleGuidelines}
           examplesTitle="Example response guidelines"
           placeholder="Type in another response guideline..."
@@ -885,7 +897,11 @@ export function AssistantSettings({ section = "basic" }: { section?: SettingsSec
         onOpenChange={setDeleting}
         title="Are you sure to delete the assistant?"
         description="This action is permanent. Deleting this assistant will remove it from all connected inboxes and permanently erase all generated knowledge."
-        success="Assistant deleted successfully"
+        success="The assistant has been successfully deleted"
+        onConfirm={() => {
+          setCaptainList("assistants", (list) => list.filter((a) => a.id !== assistant.id));
+          router.push("/dashboard/captain/assistants");
+        }}
       />
     </CaptainShell>
   );

@@ -7,12 +7,12 @@ import { useRouter } from "next/navigation";
 
 import { ArrowDown, Check, Paperclip, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { create } from "zustand";
 
 import { toggleTag, useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
 import { useChat } from "@/app/(main)/chat/_components/use-chat";
 import { DeleteContactDialog } from "@/app/(main)/dashboard/contacts/_components/contact-dialogs";
-import { countries as contactCountries } from "@/app/(main)/dashboard/contacts/_components/data";
+import { useContactsStore } from "@/app/(main)/dashboard/contacts/_components/contacts-store";
+import { CountrySelect } from "@/app/(main)/dashboard/contacts/_components/country-select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,105 +43,46 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { useCustomerPath } from "@/lib/cw/customer-path";
+import { useVisibleMacros } from "@/lib/cw/macro-visibility";
+import { SIMULATED, usePreviewSimSettled } from "@/lib/cw/preview-sim";
+import { SimBadge } from "@/lib/cw/preview-sim-ui";
+import { useSectionShown } from "@/lib/owner/site-sections-context";
 
+import { CommandBarDialog } from "./cw-command-bar";
 import {
   agentName,
-  agents,
   baseConversations,
   contactIdOf,
+  conversationAttributeDefs,
   type FilterAttribute,
   type FilterOperator,
   type FilterRow,
   filterAttributes,
   filterOperators,
   helpArticles,
-  inboxes,
-  macros,
   priorities,
+  requiredOnResolve,
   statusFilterItems,
   teamName,
-  teams,
-  whatsappTemplates,
+  useLiveAgents,
+  useLiveInboxes,
+  useLiveTeams,
+  useLiveWhatsappTemplates,
 } from "./cw-data";
-import { CommandBarDialog, type CommandPage } from "./cw-command-bar";
-import { cw, useContactOf, useCwStore } from "./cw-store";
+import { closeDialog, macroTeam, openDialog, runMacro, useDialogStore } from "./cw-dialog-store";
+import { contactKeyOf, cw, useContactOf, useCwStore } from "./cw-store";
+import { type AttributeDef, previewOnly } from "./panel-attributes";
+import {
+  simCreateConversation,
+  simDeleteContact,
+  simMergeContacts,
+  simSendTranscript,
+  useMergedAwayKeys,
+} from "./sim-actions";
+import { changeStatus, deleteMessage } from "./sim-thread-persist";
 
-export type DialogState =
-  | { type: "delete-conversation"; ids: number[] }
-  | { type: "transcript"; id: number }
-  | { type: "snooze"; ids: number[] }
-  | { type: "bulk-agent"; ids: number[]; agentId: number | null }
-  | { type: "bulk-team"; ids: number[]; teamId: string | null }
-  | { type: "new-conversation"; contact?: string; inbox?: string }
-  | { type: "translate"; text: string }
-  | { type: "add-canned"; text: string }
-  | { type: "macro-preview"; macroId: number; convId: number }
-  | { type: "delete-message"; messageId: string }
-  | { type: "edit-contact"; convId: number }
-  | { type: "merge-contact"; convId: number }
-  | { type: "delete-contact"; convId: number }
-  | { type: "filter"; folderId?: string }
-  | { type: "save-folder" }
-  | { type: "delete-folder"; folderId: string }
-  | { type: "whatsapp-templates"; onInsert: (text: string) => void }
-  | { type: "articles"; onInsert: (text: string) => void }
-  | { type: "shortcuts" }
-  // F159 panel: Chatwoot command bar (⌘ K); `page` opens it straight on Snooze, Assign agent/team, Priority,
-  // Add/Remove label or Execute macro, which is how those dialogs open from other places.
-  | { type: "command"; convId?: number; page?: CommandPage }
-  | { type: "contact-note"; convId: number };
-
-const useDialogStore = create<{ dialog: DialogState | null }>(() => ({ dialog: null }));
-
-export function openDialog(dialog: DialogState) {
-  useDialogStore.setState({ dialog });
-}
-
-function closeDialog() {
-  useDialogStore.setState({ dialog: null });
-}
-
-// Macros from Settings > Macros, run on one conversation (mock: applied to local state).
-export function runMacro(macroId: number, convId: number) {
-  const macro = macros.find((m) => m.id === macroId);
-  if (!macro) return;
-  for (const action of macro.actions) {
-    switch (action.action) {
-      case "Assign a Team": {
-        const team = teams.find((t) => t.name.toLowerCase() === action.value.toLowerCase()) ?? teams[0];
-        cw.assignTeam([convId], team.id);
-        break;
-      }
-      case "Remove Assigned Agent":
-        cw.assignAgent([convId], null);
-        break;
-      case "Remove Assigned Team":
-        cw.assignTeam([convId], null);
-        break;
-      case "Send a Message":
-        cw.send(convId, { kind: "outgoing", text: action.value });
-        break;
-      case "Add a Private Note":
-        cw.send(convId, { kind: "note", text: action.value });
-        break;
-      case "Resolve Conversation":
-        cw.setStatus([convId], "resolved");
-        break;
-      case "Snooze Conversation":
-        cw.setStatus([convId], "snoozed", "Snoozed until next week");
-        break;
-      case "Change Priority":
-        cw.setPriority([convId], priorities.find((p) => p.label === action.value)?.value ?? "high");
-        break;
-      case "Mute Conversation":
-        cw.toggleMute(convId);
-        break;
-      default:
-        break;
-    }
-  }
-  toast.success("Macro executed successfully");
-}
+export { closeDialog, type DialogState, openDialog, runMacro, useDialogStore } from "./cw-dialog-store";
 
 export function CwDialogs() {
   const dialog = useDialogStore((s) => s.dialog);
@@ -174,7 +115,14 @@ export function CwDialogs() {
     case "bulk-team":
       return <BulkTeamConfirm ids={dialog.ids} teamId={dialog.teamId} onOpenChange={onOpenChange} />;
     case "new-conversation":
-      return <NewConversationDialog contact={dialog.contact} inbox={dialog.inbox} onOpenChange={onOpenChange} />;
+      return (
+        <NewConversationDialog
+          contact={dialog.contact}
+          inbox={dialog.inbox}
+          contactId={dialog.contactId}
+          onOpenChange={onOpenChange}
+        />
+      );
     case "translate":
       return <TranslateDialog text={dialog.text} onOpenChange={onOpenChange} />;
     case "add-canned":
@@ -182,19 +130,15 @@ export function CwDialogs() {
     case "macro-preview":
       return <MacroPreviewDialog macroId={dialog.macroId} convId={dialog.convId} onOpenChange={onOpenChange} />;
     case "delete-message":
-      return <DeleteMessageDialog messageId={dialog.messageId} onOpenChange={onOpenChange} />;
+      return <DeleteMessageDialog convId={dialog.convId} messageId={dialog.messageId} onOpenChange={onOpenChange} />;
     case "edit-contact":
       return <EditContactDialog convId={dialog.convId} onOpenChange={onOpenChange} />;
     case "merge-contact":
       return <MergeContactDialog convId={dialog.convId} onOpenChange={onOpenChange} />;
     case "delete-contact":
-      return (
-        <DeleteContactDialog
-          open
-          onOpenChange={onOpenChange}
-          onConfirm={() => toast.success("Contact deleted successfully")}
-        />
-      );
+      // M129-A (Fahad 129.2): the contact and its conversations really leave the preview's data (sim-actions.ts);
+      // the toast says it is simulated and that nothing was deleted in Chatwoot.
+      return <DeleteContactDialog open onOpenChange={onOpenChange} onConfirm={() => simDeleteContact(dialog.convId)} />;
     case "filter":
       return <FilterDialog folderId={dialog.folderId} onOpenChange={onOpenChange} />;
     case "save-folder":
@@ -211,6 +155,8 @@ export function CwDialogs() {
       return <CommandBarDialog convId={dialog.convId} initialPage={dialog.page} onOpenChange={onOpenChange} />;
     case "contact-note":
       return <ContactNoteDialog convId={dialog.convId} onOpenChange={onOpenChange} />;
+    case "resolve-attributes":
+      return <ResolveAttributesDialog convId={dialog.convId} missing={dialog.missing} onOpenChange={onOpenChange} />;
     default:
       return null;
   }
@@ -300,12 +246,13 @@ function DeleteConversationDialog({ ids, onOpenChange }: Open & { ids: number[] 
 function TranscriptDialog({ id, onOpenChange }: Open & { id: number }) {
   const conversation = baseConversations.find((c) => c.id === id);
   const assigneeId = useCwStore((s) => s.meta[id]?.assigneeId);
-  const assignee = agents.find((a) => a.id === assigneeId);
+  const assignee = useLiveAgents().find((a) => a.id === assigneeId);
   const customerEmail = conversation?.contact.email;
   const [target, setTarget] = useState(customerEmail ? "contact" : assignee ? "agent" : "other");
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
-  const emailError = target === "other" && !EMAIL_PATTERN.test(email.trim()) ? "Please enter a valid email address" : null;
+  const emailError =
+    target === "other" && !EMAIL_PATTERN.test(email.trim()) ? "Please enter a valid email address" : null;
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -321,10 +268,30 @@ function TranscriptDialog({ id, onOpenChange }: Open & { id: number }) {
             event.preventDefault();
             setTouched(true);
             if (emailError) return;
-            toast.success("The chat transcript was sent successfully");
+            // F-2 (Fahad 99 and 129.2): nothing is emailed from the preview. The request is recorded in the thread and
+            // kept by the preview; the toast comes only once the preview server has kept it.
+            const address = target === "contact" ? customerEmail : target === "agent" ? assignee?.email : email.trim();
+            if (!address) return;
+            const { saved } = simSendTranscript({
+              convId: id,
+              target: target as "contact" | "agent" | "other",
+              email: address,
+            });
+            void saved.then((kept) => {
+              if (kept)
+                toast.success("Transcript recorded in the preview", {
+                  description: `${SIMULATED}: nothing was emailed to ${address}. The request stays in this conversation after a reload.`,
+                });
+            });
             onOpenChange(false);
           }}
         >
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 border-dashed bg-amber-500/5 p-2 text-muted-foreground text-xs">
+            <SimBadge />
+            <span data-slot="transcript-sim-note">
+              No email is sent from the preview. The request is recorded in this conversation only.
+            </span>
+          </div>
           <RadioGroup value={target} onValueChange={setTarget} className="gap-3">
             <Label className="flex items-start gap-2 font-normal">
               <RadioGroupItem value="contact" disabled={!customerEmail} className="mt-0.5" />
@@ -383,7 +350,12 @@ function CustomSnoozeDialog({ ids, onOpenChange }: Open & { ids: number[] }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const when = date
-    ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), ...(time.split(":").map(Number) as [number, number]))
+    ? new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        ...(time.split(":").map(Number) as [number, number]),
+      )
     : undefined;
   const inPast = when ? when.getTime() <= Date.now() : false;
   return (
@@ -415,14 +387,8 @@ function CustomSnoozeDialog({ ids, onOpenChange }: Open & { ids: number[] }) {
             disabled={!when || inPast}
             onClick={() => {
               if (!when) return;
-              const label = when.toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              });
-              cw.setStatus(ids, "snoozed", `Snoozed until ${label}`);
-              toast.success("Conversation status changed");
+              // F-5A: kept in the preview with this time; the toast comes once it is saved.
+              void changeStatus(ids, "snoozed", { snooze: when });
               onOpenChange(false);
             }}
           >
@@ -499,10 +465,29 @@ function BulkTeamConfirm({ ids, teamId, onOpenChange }: Open & { ids: number[]; 
 // Chatwoot components-next/NewConversation (ComposeNewConversationForm.vue): To (contact search), Via (inbox), email
 // options (Subject, Cc, Bcc) for the email inbox, WhatsApp template picker for the WhatsApp inbox, the message editor,
 // attachments, then Discard / Send (⌘ + ↵).
-function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: Open & { contact?: string; inbox?: string }) {
+// F-1 (Fahad 99 and 129.2): Chatwoot sends the message to the customer here. This preview has no channel behind it, so
+// Send makes the conversation and its message in the preview's own inbox (sim-actions.ts simCreateConversation), the
+// preview keeps them across reloads, and the dialog, the toast and the thread all say "Preview — simulated" and that
+// no real customer is contacted. It used to toast a success that claimed the message was on its way and keep nothing.
+function NewConversationDialog({
+  contact,
+  inbox: initialInbox,
+  contactId,
+  onOpenChange,
+}: Open & { contact?: string; inbox?: string; contactId?: number }) {
+  // F-3: opened from a Contacts page ("Send message"): that person, who may have no conversation yet.
+  const person = useContactsStore((s) =>
+    contactId === undefined ? undefined : s.list.find((c) => c.id === contactId),
+  );
+  const [, setChat] = useChat();
+  const inboxes = useLiveInboxes();
+  // F-3: the approved templates of Settings > Templates as they are now (not the starting sample).
+  const whatsappTemplates = useLiveWhatsappTemplates();
   const [to, setTo] = useState(contact ?? "");
   const [query, setQuery] = useState("");
-  const [inbox, setInbox] = useState(initialInbox && inboxes.some((i) => i.id === initialInbox) ? initialInbox : "email");
+  const [inbox, setInbox] = useState(
+    initialInbox && inboxes.some((i) => i.id === initialInbox) ? initialInbox : "email",
+  );
   const [subject, setSubject] = useState("");
   const [cc, setCc] = useState("");
   const [bcc, setBcc] = useState("");
@@ -511,7 +496,7 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
   const [template, setTemplate] = useState<string | null>(null);
   const [files, setFiles] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
-  const contacts = [...new Map(baseConversations.map((c) => [c.contact.email, c.contact])).values()];
+  const contacts = [...new Map(baseConversations.map((c) => [contactKeyOf(c), c.contact])).values()];
   const matches =
     query.trim().length >= 2
       ? contacts.filter((c) => `${c.name} ${c.email} ${c.phone}`.toLowerCase().includes(query.trim().toLowerCase()))
@@ -531,10 +516,48 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
     bcc: isEmail && showBcc && badEmails(bcc) ? "Please enter a valid email address" : null,
   };
   const valid = !errors.to && !errors.message && !errors.cc && !errors.bcc;
+  // The numbers of the conversations the preview kept are known once its record is read, so a new one waits for that.
+  const recordRead = usePreviewSimSettled();
   const send = () => {
     setSubmitted(true);
-    if (!valid) return;
-    toast.success("The message was sent successfully!", { action: { label: "View", onClick: () => undefined } });
+    if (!valid || !recordRead) return;
+    // F-3: to the person of the Contacts page it was opened from (their own details, even with no conversation yet),
+    // else to the person of a conversation, as before.
+    const own = person && to === person.name ? person : undefined;
+    const from = own ? undefined : baseConversations.find((c) => c.contact.name === to);
+    if (!from && !own) return;
+    const body = isWhatsapp ? (whatsappTemplates.find((t) => t.name === template)?.body ?? "") : message;
+    const location = own ? [own.city, own.country].filter(Boolean).join(", ") : "";
+    const { id, saved } = simCreateConversation({
+      from,
+      person: own
+        ? {
+            contactId: own.id,
+            contact: { name: own.name, email: own.email, phone: own.phone, company: own.company, location },
+          }
+        : undefined,
+      channel: inbox,
+      subject: isEmail ? subject : "",
+      text: body,
+      files: isWhatsapp ? [] : files,
+    });
+    // Chatwoot opens the new conversation; it is assigned to you and open, so Mine / Open list it.
+    const open = () => {
+      const { statusFilter } = useCwStore.getState();
+      if (statusFilter !== "all" && statusFilter !== "open") cw.setStatusFilter("open");
+      cw.setAssigneeTab("me");
+      cw.focus(id);
+      setChat({ selected: id });
+    };
+    open();
+    // Said only once the preview has really kept it (when it could not, recordSim has shown its own error).
+    void saved.then((kept) => {
+      if (kept)
+        toast.success("Conversation created in the preview", {
+          description: `${SIMULATED}: it stays here after a reload. No real customer was contacted.`,
+          action: { label: "View", onClick: open },
+        });
+    });
     onOpenChange(false);
   };
 
@@ -553,6 +576,12 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
           <DialogTitle>New conversation</DialogTitle>
           <DialogDescription>Start a new conversation by sending a new message.</DialogDescription>
         </DialogHeader>
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 border-dashed bg-amber-500/5 p-2 text-muted-foreground text-xs">
+          <SimBadge />
+          <span data-slot="new-conversation-sim-note">
+            No real customer is contacted. The conversation and its message are made in this preview only.
+          </span>
+        </div>
         <div className="grid gap-3">
           <div className="grid grid-cols-[4.5rem_1fr] items-start gap-x-2 gap-y-3">
             <Label className="pt-2 text-muted-foreground">To:</Label>
@@ -577,7 +606,7 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
                     <div className="absolute inset-x-0 top-9 z-10 max-h-48 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
                       {matches.map((c) => (
                         <button
-                          key={c.email}
+                          key={`${c.name}|${c.email}|${c.phone}`}
                           type="button"
                           className="flex w-full flex-col rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
                           onClick={() => {
@@ -587,7 +616,7 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
                         >
                           <span>{c.name}</span>
                           <span className="text-muted-foreground text-xs">
-                            {c.email} · {c.phone}
+                            {[c.email, c.phone].filter(Boolean).join(" · ")}
                           </span>
                         </button>
                       ))}
@@ -657,7 +686,7 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
                 <div className="grid gap-1 p-1">
                   {whatsappTemplates.map((t) => (
                     <button
-                      key={t.name}
+                      key={`${t.name}:${t.language}`}
                       type="button"
                       onClick={() => setTemplate(t.name)}
                       className={`rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted ${template === t.name ? "bg-muted" : ""}`}
@@ -702,7 +731,9 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
                 </label>
               </Button>
               {files.length === 0 && (
-                <span className="text-muted-foreground text-xs">Drag and drop files here or choose files to attach</span>
+                <span className="text-muted-foreground text-xs">
+                  Drag and drop files here or choose files to attach
+                </span>
               )}
               {files.map((name) => (
                 <Badge key={name} variant="secondary" className="gap-1">
@@ -723,7 +754,9 @@ function NewConversationDialog({ contact, inbox: initialInbox, onOpenChange }: O
           <DialogClose asChild>
             <Button variant="outline">Discard</Button>
           </DialogClose>
-          <Button onClick={send}>Send (⌘ + ↵)</Button>
+          <Button onClick={send} disabled={!recordRead}>
+            Send (⌘ + ↵)
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -806,7 +839,12 @@ function AddCannedDialog({ text, onOpenChange }: Open & { text: string }) {
 }
 
 function MacroPreviewDialog({ macroId, convId, onOpenChange }: Open & { macroId: number; convId: number }) {
-  const macro = macros.find((m) => m.id === macroId);
+  // F-8: the macro as Settings > Macros saved it (the one runMacro runs), not the sample copy.
+  // F-24: only one the person the page is viewed as may see (a private macro is its creator's).
+  const saved = useVisibleMacros();
+  const teams = useLiveTeams(); // a missing team is marked below
+  // F-19: no fall-back to the sample copy: a macro deleted in Settings is gone here too.
+  const macro = saved.find((m) => m.id === macroId);
   if (!macro) return null;
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -823,6 +861,12 @@ function MacroPreviewDialog({ macroId, convId, onOpenChange }: Open & { macroId:
               <div className="w-full rounded-md border px-3 py-2">
                 <div className="font-medium">{action.action}</div>
                 {action.value && <div className="text-muted-foreground text-xs">{action.value}</div>}
+                {/* F-8 (sim3 8.14e): a team that does not exist is named, and the action is skipped when run. */}
+                {action.action === "Assign a Team" && macroTeam(action.value, teams).kind === "missing" && (
+                  <div className="mt-1 text-destructive text-xs" data-macro-missing-team="">
+                    {`Team “${action.value.trim()}” does not exist. This action will be skipped.`}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -847,7 +891,10 @@ function MacroPreviewDialog({ macroId, convId, onOpenChange }: Open & { macroId:
   );
 }
 
-function DeleteMessageDialog({ messageId, onOpenChange }: Open & { messageId: string }) {
+// F-8 (sim3: "Message deleted successfully" with no request, and the message came back after a reload): the delete is
+// kept in the preview (sim-thread-persist.ts deleteMessage) and the message stays in the thread as "This message was
+// deleted", as Chatwoot does (messages_controller.rb#destroy). The toast comes only after the preview kept it.
+function DeleteMessageDialog({ convId, messageId, onOpenChange }: Open & { convId: number; messageId: string }) {
   return (
     <AlertDialog open onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -860,8 +907,7 @@ function DeleteMessageDialog({ messageId, onOpenChange }: Open & { messageId: st
           <AlertDialogAction
             variant="destructive"
             onClick={() => {
-              cw.deleteMessage(messageId);
-              toast.success("Message deleted successfully");
+              void deleteMessage(convId, messageId);
             }}
           >
             Delete
@@ -888,10 +934,7 @@ function EditContactDialog({ convId, onOpenChange }: Open & { convId: number }) 
   return <EditContactForm conversation={conversation} onOpenChange={onOpenChange} />;
 }
 
-function EditContactForm({
-  conversation,
-  onOpenChange,
-}: Open & { conversation: (typeof baseConversations)[number] }) {
+function EditContactForm({ conversation, onOpenChange }: Open & { conversation: (typeof baseConversations)[number] }) {
   const contact = useContactOf(conversation);
   const [form, setForm] = useState({
     name: contact.name,
@@ -900,7 +943,8 @@ function EditContactForm({
     phone: contact.phone.replace(/\s/g, ""),
     company: contact.company,
     country: contact.location.split(",").at(-1)?.trim() ?? "",
-    city: contact.location.split(",")[0]?.trim() ?? "",
+    // T-285 (125.7): a location with no city ("Qatar") has no city part; never repeat the country as a city.
+    city: contact.location.includes(",") ? (contact.location.split(",")[0]?.trim() ?? "") : "",
     facebook: "",
     twitter: "",
     linkedin: "",
@@ -910,7 +954,8 @@ function EditContactForm({
   const errors = {
     name: form.name.trim() ? null : "Please enter a valid name",
     email: !form.email || EMAIL_PATTERN.test(form.email) ? null : "Please enter a valid email address.",
-    phone: !form.phone || PHONE_PATTERN.test(form.phone) ? null : "Phone number should be either empty or of E.164 format",
+    phone:
+      !form.phone || PHONE_PATTERN.test(form.phone) ? null : "Phone number should be either empty or of E.164 format",
   };
   const valid = !errors.name && !errors.email && !errors.phone;
   const field = (name: keyof typeof form) => ({
@@ -933,14 +978,14 @@ function EditContactForm({
             setSubmitted(true);
             if (!valid) return;
             const location = [form.city.trim(), form.country.trim()].filter(Boolean).join(", ");
-            cw.editContact(conversation.contact.email, {
+            cw.editContact(contactKeyOf(conversation), {
               name: form.name.trim(),
               email: form.email.trim(),
               phone: form.phone.trim(),
               company: form.company.trim(),
               location,
             });
-            toast.success("Contact saved successfully");
+            previewOnly("Contact changed");
             onOpenChange(false);
           }}
         >
@@ -948,7 +993,11 @@ function EditContactForm({
             <div className="grid gap-3 p-0.5">
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-contact-name">Full Name</Label>
-                <Input placeholder="Enter the full name of the contact" aria-invalid={submitted && !!errors.name} {...field("name")} />
+                <Input
+                  placeholder="Enter the full name of the contact"
+                  aria-invalid={submitted && !!errors.name}
+                  {...field("name")}
+                />
                 {submitted && <FieldError message={errors.name} />}
               </div>
               <div className="grid gap-1.5">
@@ -989,15 +1038,14 @@ function EditContactForm({
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-contact-country">Country Name</Label>
-                  <NativeSelect className="w-full" {...field("country")}>
-                    <option value="">Select Country</option>
-                    {[...new Set([...contactCountries, form.country].filter(Boolean))].map((country) => (
-                      <option key={country} value={country}>
-                        {country}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  {/* T-285 (Fahad 125.9): every country with a search inside, the same picker and size as the
+                      Contacts page form (country-select.tsx). */}
+                  <Label>Country Name</Label>
+                  <CountrySelect
+                    value={form.country}
+                    placeholder="Select Country"
+                    onChange={(country) => setForm((prev) => ({ ...prev, country }))}
+                  />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="edit-contact-city">City Name</Label>
@@ -1035,12 +1083,20 @@ function MergeContactDialog({ convId, onOpenChange }: Open & { convId: number })
   const [parent, setParent] = useState<string>("");
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const deleted = useCwStore((s) => s.deleted);
+  const edits = useCwStore((s) => s.contactEdits);
+  const mergedAway = useMergedAwayKeys();
   if (!conversation) return null;
-  const contact = conversation.contact;
-  const people = new Map<string, { name: string; email: string; id: number }>();
+  const own = contactKeyOf(conversation);
+  const contact = { ...conversation.contact, ...edits[own] };
+  // M129-A: one row per person (contactKeyOf: a contact may have no email); contacts deleted or merged away in the
+  // preview are no longer offered.
+  const people = new Map<string, { key: string; name: string; email: string; id: number }>();
   for (const c of baseConversations) {
-    if (c.contact.email === contact.email || people.has(c.contact.email)) continue;
-    people.set(c.contact.email, { name: c.contact.name, email: c.contact.email, id: contactIdOf(c.id) ?? c.id });
+    const key = contactKeyOf(c);
+    if (key === own || people.has(key) || deleted.includes(c.id) || mergedAway.includes(key)) continue;
+    const shown = { ...c.contact, ...edits[key] };
+    people.set(key, { key, name: shown.name, email: shown.email, id: contactIdOf(c.id) ?? c.id });
   }
   const matches = [...people.values()].filter((person) =>
     `${person.name} ${person.email}`.toLowerCase().includes(query.trim().toLowerCase()),
@@ -1056,6 +1112,7 @@ function MergeContactDialog({ convId, onOpenChange }: Open & { convId: number })
             Merge contacts to combine two profiles into one, including all attributes and conversations. In case of
             conflict, the Primary contact’s attributes will take precedence.
           </DialogDescription>
+          <SimBadge />
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1.5">
@@ -1089,15 +1146,15 @@ function MergeContactDialog({ convId, onOpenChange }: Open & { convId: number })
                 {matches.length === 0 && <p className="p-2 text-muted-foreground text-xs">No results found</p>}
                 {matches.map((person) => (
                   <button
-                    key={person.email}
+                    key={person.key}
                     type="button"
-                    onClick={() => setParent(person.email)}
-                    className={`flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted ${parent === person.email ? "bg-muted" : ""}`}
+                    onClick={() => setParent(person.key)}
+                    className={`flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted ${parent === person.key ? "bg-muted" : ""}`}
                   >
                     <span className="truncate">
                       {person.name} <span className="text-muted-foreground text-xs">(ID: {person.id})</span>
                     </span>
-                    {parent === person.email && <Check className="size-3.5 shrink-0" />}
+                    {parent === person.key && <Check className="size-3.5 shrink-0" />}
                   </button>
                 ))}
               </div>
@@ -1124,7 +1181,8 @@ function MergeContactDialog({ convId, onOpenChange }: Open & { convId: number })
             onClick={() => {
               setSubmitted(true);
               if (!chosen) return;
-              toast.success("Contact merged successfully");
+              // M129-A (Fahad 129.2): the merge really happens in the preview's data (sim-actions.ts simMergeContacts).
+              simMergeContacts(convId, parent);
               onOpenChange(false);
             }}
           >
@@ -1155,6 +1213,7 @@ function ContactNoteDialog({ convId, onOpenChange }: Open & { convId: number }) 
           onKeyDown={(event) => {
             if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && text.trim()) {
               cw.addNote(convId, text.trim());
+              previewOnly("Note added");
               onOpenChange(false);
             }
           }}
@@ -1167,7 +1226,7 @@ function ContactNoteDialog({ convId, onOpenChange }: Open & { convId: number }) 
             disabled={!text.trim()}
             onClick={() => {
               cw.addNote(convId, text.trim());
-              toast.success("Note added successfully");
+              previewOnly("Note added");
               onOpenChange(false);
             }}
           >
@@ -1179,7 +1238,141 @@ function ContactNoteDialog({ convId, onOpenChange }: Open & { convId: number }) 
   );
 }
 
-const enumAttributes: FilterAttribute[] = ["status", "assignee_id", "inbox_id", "team_id", "priority", "labels"];
+// F161: Chatwoot ConversationResolveAttributesModal.vue (settings.json CONVERSATION_WORKFLOW.REQUIRED_ATTRIBUTES.MODAL):
+// one field per missing required attribute; "Resolve conversation" stays disabled until every field has a value,
+// then saves the values on the conversation and resolves it.
+const resolvePlaceholders: Record<string, string> = {
+  Text: "Write a note...",
+  Number: "Enter a number",
+  Link: "Add a link",
+  Date: "Pick a date",
+  List: "Select an option",
+};
+
+function ResolveAttributesDialog({ convId, missing, onOpenChange }: Open & { convId: number; missing: string[] }) {
+  const current = useCwStore((s) => s.conversationAttrs[convId]);
+  const fields: AttributeDef[] = missing
+    .map((key) => conversationAttributeDefs.find((def) => def.key === key))
+    .filter((def): def is (typeof conversationAttributeDefs)[number] => def !== undefined);
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(fields.map((def) => [def.key, current?.[def.key] ?? ""])),
+  );
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const errorOf = (key: string, type: string): string => {
+    const value = (values[key] ?? "").trim();
+    if (type === "Checkbox") return "";
+    if (value === "") return "Valid value is required";
+    if (type === "Link" && !/^https?:\/\/\S+\.\S+/.test(value)) return "Invalid URL";
+    const rule = requiredOnResolve.find((attr) => attr.key === key);
+    if (rule?.regex && !rule.regex.test(value)) return rule.cue ?? "Invalid Input";
+    return "";
+  };
+  const complete = fields.every((def) => (values[def.key] ?? "").trim() !== "");
+  const set = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
+  const submit = () => {
+    setTouched(Object.fromEntries(fields.map((def) => [def.key, true])));
+    if (fields.some((def) => errorOf(def.key, def.type))) return;
+    for (const def of fields) cw.setConversationAttr(convId, def.key, values[def.key].trim());
+    // F-5A: kept in the preview; the toast comes once it is saved.
+    void changeStatus([convId], "resolved");
+    onOpenChange(false);
+  };
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Resolve conversation</DialogTitle>
+          <DialogDescription>
+            Please fill in the following custom attributes before resolving this conversation
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          {fields.map((def) => {
+            const error = touched[def.key] ? errorOf(def.key, def.type) : "";
+            const id = `resolve-attr-${def.key}`;
+            const blur = () => setTouched((prev) => ({ ...prev, [def.key]: true }));
+            return (
+              <div key={def.key} className="flex flex-col gap-2">
+                <Label htmlFor={id}>{def.label}</Label>
+                {def.type === "Text" && (
+                  <Textarea
+                    id={id}
+                    placeholder={resolvePlaceholders.Text}
+                    value={values[def.key]}
+                    onChange={(event) => set(def.key, event.target.value)}
+                    onBlur={blur}
+                  />
+                )}
+                {(def.type === "Number" || def.type === "Link" || def.type === "Date") && (
+                  <Input
+                    id={id}
+                    type={def.type === "Number" ? "number" : def.type === "Link" ? "url" : "date"}
+                    placeholder={resolvePlaceholders[def.type]}
+                    value={values[def.key]}
+                    onChange={(event) => set(def.key, event.target.value)}
+                    onBlur={blur}
+                  />
+                )}
+                {def.type === "List" && def.options && (
+                  <NativeSelect
+                    id={id}
+                    className="w-full"
+                    value={values[def.key]}
+                    onChange={(event) => set(def.key, event.target.value)}
+                    onBlur={blur}
+                  >
+                    <option value="">{resolvePlaceholders.List}</option>
+                    {def.options.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+                {def.type === "Checkbox" && (
+                  <RadioGroup
+                    id={id}
+                    className="flex gap-4"
+                    value={values[def.key]}
+                    onValueChange={(v) => set(def.key, v)}
+                  >
+                    {[
+                      ["true", "Yes"],
+                      ["false", "No"],
+                    ].map(([value, label]) => (
+                      <Label key={value} className="flex items-center gap-2 font-normal">
+                        <RadioGroupItem value={value} /> {label}
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                )}
+                {error && <p className="text-destructive text-xs">{error}</p>}
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button disabled={!complete} onClick={submit}>
+            Resolve conversation
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const enumAttributes: FilterAttribute[] = [
+  "status",
+  "assignee_id",
+  "inbox_id",
+  "team_id",
+  "priority",
+  "labels",
+  "customer_path",
+];
 const dateAttributes: FilterAttribute[] = ["created_at", "last_activity_at"];
 
 function operatorsFor(attribute: FilterAttribute): FilterOperator[] {
@@ -1190,6 +1383,10 @@ function operatorsFor(attribute: FilterAttribute): FilterOperator[] {
 
 function ValueField({ row, onChange }: { row: FilterRow; onChange: (value: string) => void }) {
   const { tags } = useChatTags();
+  const agents = useLiveAgents();
+  const inboxes = useLiveInboxes();
+  const teams = useLiveTeams();
+  const stages = useCustomerPath((s) => s.stages);
   if (row.operator === "is_present" || row.operator === "is_not_present") return <div />;
   const options: { value: string; label: string }[] | null =
     row.attribute === "status"
@@ -1204,7 +1401,9 @@ function ValueField({ row, onChange }: { row: FilterRow; onChange: (value: strin
               ? priorities.filter((p) => p.value !== "none").map((p) => ({ value: p.value, label: p.label }))
               : row.attribute === "labels"
                 ? tags.map((t) => ({ value: t.id, label: t.label }))
-                : null;
+                : row.attribute === "customer_path"
+                  ? stages.map((s) => ({ value: s.id, label: s.name }))
+                  : null;
   if (options) {
     return (
       <NativeSelect size="sm" className="w-full" value={row.value} onChange={(event) => onChange(event.target.value)}>
@@ -1222,7 +1421,7 @@ function ValueField({ row, onChange }: { row: FilterRow; onChange: (value: strin
   return (
     <Input
       className="h-7"
-      type={dateAttributes.includes(row.attribute) ? "date" : "text"}
+      type={row.operator === "days_before" ? "number" : dateAttributes.includes(row.attribute) ? "date" : "text"}
       placeholder="Enter value"
       value={row.value}
       onChange={(event) => onChange(event.target.value)}
@@ -1230,12 +1429,39 @@ function ValueField({ row, onChange }: { row: FilterRow; onChange: (value: strin
   );
 }
 
-function FilterDialog({ folderId, onOpenChange }: Open & { folderId?: string }) {
+const filterDialogCopy = {
+  filter: {
+    title: "Filter conversations",
+    description: "Add your filters below and hit 'Apply filters' to cut through the chat clutter.",
+    submit: "Apply filters",
+  },
+  edit: { title: "Edit Folder", description: "Add or remove filters and update your folder.", submit: "Update folder" },
+  create: {
+    title: "Create folder",
+    description: "Name the folder and add the filters its conversations must match.",
+    submit: "Create folder",
+  },
+};
+
+// T-75: `create` makes it the "Create folder" dialog of the Inbox bar (section-subnav.tsx): a name and the folder's
+// conditions, the same rows as editing a folder; the new folder opens once saved.
+export function FilterDialog({
+  folderId,
+  create = false,
+  onOpenChange,
+}: Open & { folderId?: string; create?: boolean }) {
+  const router = useRouter();
   const applied = useCwStore((s) => s.applied);
   const folder = useCwStore((s) => s.folders.find((f) => f.id === folderId));
+  const named = Boolean(folder) || create;
+  let mode: keyof typeof filterDialogCopy = "filter";
+  if (create) mode = "create";
+  else if (folder) mode = "edit";
+  const copy = filterDialogCopy[mode];
   const [name, setName] = useState(folder?.name ?? "");
   const [rows, setRows] = useState<FilterRow[]>(
-    folder?.filters ?? applied ?? [{ attribute: "status", operator: "equal_to", value: "open", join: "and" }],
+    folder?.filters ??
+      (create ? null : applied) ?? [{ attribute: "status", operator: "equal_to", value: "open", join: "and" }],
   );
   const [error, setError] = useState("");
   const update = (index: number, patch: Partial<FilterRow>) =>
@@ -1248,6 +1474,21 @@ function FilterDialog({ folderId, onOpenChange }: Open & { folderId?: string }) 
     );
     if (missing) {
       setError("Value is required.");
+      return;
+    }
+    if (create) {
+      if (!name.trim()) {
+        setError("Folder name is required.");
+        return;
+      }
+      if (rows.length === 0) {
+        setError("Oops, looks like we can't save nothing! Please add at least one filter to save it.");
+        return;
+      }
+      const created = cw.addFolder(name, rows);
+      toast.success("Folder created successfully.");
+      onOpenChange(false);
+      router.push(`/dashboard/chat/folders/${created.id}`);
       return;
     }
     if (folder) {
@@ -1267,21 +1508,25 @@ function FilterDialog({ folderId, onOpenChange }: Open & { folderId?: string }) 
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{folder ? "Edit Folder" : "Filter conversations"}</DialogTitle>
-          <DialogDescription>
-            {folder
-              ? "Add or remove filters and update your folder."
-              : "Add your filters below and hit 'Apply filters' to cut through the chat clutter."}
-          </DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
-        {folder && (
+        {named && (
           <div className="grid gap-1.5">
             <Label htmlFor="folder-name">Folder Name</Label>
-            <Input id="folder-name" value={name} onChange={(event) => setName(event.target.value)} />
+            <Input
+              id="folder-name"
+              value={name}
+              placeholder={create ? "Example: VIP customers" : undefined}
+              onChange={(event) => {
+                setName(event.target.value);
+                setError("");
+              }}
+            />
           </div>
         )}
         <div className="grid gap-2">
-          {folder && <Label>Folder Query</Label>}
+          {named && <Label>Folder Query</Label>}
           {rows.map((row, index) => (
             <div key={`${index}-${row.attribute}`} className="grid gap-2">
               {index > 0 && (
@@ -1321,7 +1566,12 @@ function FilterDialog({ folderId, onOpenChange }: Open & { folderId?: string }) 
                   size="sm"
                   className="w-full"
                   value={row.operator}
-                  onChange={(event) => update(index, { operator: event.target.value as FilterOperator })}
+                  onChange={(event) => {
+                    const operator = event.target.value as FilterOperator;
+                    // A date and a number of days are different values, so switching between them clears it.
+                    const clear = (operator === "days_before") !== (row.operator === "days_before");
+                    update(index, clear ? { operator, value: "" } : { operator });
+                  }}
                 >
                   {operatorsFor(row.attribute).map((op) => (
                     <option key={op} value={op}>
@@ -1354,7 +1604,7 @@ function FilterDialog({ folderId, onOpenChange }: Open & { folderId?: string }) 
           {error && <p className="text-destructive text-xs">{error}</p>}
         </div>
         <DialogFooter className="sm:justify-between">
-          {!folder ? (
+          {!named ? (
             <Button
               variant="ghost"
               onClick={() => {
@@ -1371,7 +1621,7 @@ function FilterDialog({ folderId, onOpenChange }: Open & { folderId?: string }) 
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={submit}>{folder ? "Update folder" : "Apply filters"}</Button>
+            <Button onClick={submit}>{copy.submit}</Button>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -1496,7 +1746,8 @@ function SearchList({
 
 function WhatsappTemplatesDialog({ onInsert, onOpenChange }: Open & { onInsert: (text: string) => void }) {
   const [query, setQuery] = useState("");
-  const list = whatsappTemplates.filter((t) => t.name.includes(query.toLowerCase()));
+  // F-3: the approved templates of Settings > Templates as they are now (not the starting sample).
+  const list = useLiveWhatsappTemplates().filter((t) => t.name.includes(query.toLowerCase()));
   return (
     <SearchList
       title="Whatsapp Templates"
@@ -1508,7 +1759,7 @@ function WhatsappTemplatesDialog({ onInsert, onOpenChange }: Open & { onInsert: 
     >
       {list.map((template) => (
         <button
-          key={template.name}
+          key={`${template.name}:${template.language}`}
           type="button"
           className="rounded-md border p-3 text-left hover:bg-muted/60"
           onClick={() => {
@@ -1531,6 +1782,12 @@ function WhatsappTemplatesDialog({ onInsert, onOpenChange }: Open & { onInsert: 
 
 function ArticleSearchDialog({ onInsert, onOpenChange }: Open & { onInsert: (text: string) => void }) {
   const [query, setQuery] = useState("");
+  // Q4: like Chatwoot's ArticleSearchPopover (ReplyBox.vue v-if "showArticleSearchPopover && connectedPortalSlug"),
+  // the search closes when the Help Center section is hidden while it is open.
+  const helpCenterShown = useSectionShown("help-center");
+  useEffect(() => {
+    if (!helpCenterShown) onOpenChange(false);
+  }, [helpCenterShown, onOpenChange]);
   const list = helpArticles.filter((a) => a.title.toLowerCase().includes(query.toLowerCase()));
   return (
     <SearchList

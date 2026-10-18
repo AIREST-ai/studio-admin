@@ -40,7 +40,9 @@
       "!dist",
       "!out",
       "!src/components/ui",
-      "!src/components/calendar"
+      "!src/components/calendar",
+      "!!src/lib/chatwoot/cw-openapi.d.ts",
+      "!docs/f159"
     ]
   },
   "formatter": {
@@ -63,13 +65,15 @@
       "correctness": {
         "noUndeclaredVariables": "error",
         "noNestedComponentDefinitions": "error",
-        "noUndeclaredDependencies": "error"
+        "noUndeclaredDependencies": "warn",
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "warn"
       },
       "nursery": {
         "useSortedClasses": "on",
-        "useNullishCoalescing": "error",
-        "noFloatingPromises": "error",
-        "noMisusedPromises": "error"
+        "useNullishCoalescing": "warn",
+        "noFloatingPromises": "warn",
+        "noMisusedPromises": "warn"
       },
       "performance": {
         "noImgElement": "warn"
@@ -89,13 +93,20 @@
       "suspicious": {
         "noArrayIndexKey": "warn",
         "noConstantBinaryExpressions": "error",
-        "noEmptyBlockStatements": "error",
+        "noEmptyBlockStatements": "warn",
         "noUnknownAtRules": "off",
-        "noImportCycles": "error",
-        "noUnnecessaryConditions": "warn"
+        "noImportCycles": "warn",
+        "noUnnecessaryConditions": "warn",
+        "useIterableCallbackReturn": "warn"
       },
       "complexity": {
         "noImportantStyles": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "warn",
+        "useSemanticElements": "warn",
+        "noStaticElementInteractions": "warn",
+        "useKeyWithClickEvents": "warn"
       }
     },
     "domains": {

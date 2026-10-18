@@ -3,21 +3,20 @@
 // Chatwoot ChatList + ChatListHeader + ConversationCard + conversationBulkActions, in the Studio look.
 import { type ComponentType, type ReactNode, useEffect, useRef, useState } from "react";
 
-import { useRouter } from "next/navigation";
-
 import { cn } from "cn";
 import {
   AlarmClock,
   ArrowDownUp,
   Check,
   CheckCheck,
+  ChevronDown,
   ChevronLeft,
+  ChevronsUp,
   CircleCheck,
   CircleDot,
   Copy,
   ExternalLink,
   FileText,
-  Flag,
   Image as ImageIcon,
   ListFilter,
   Mail,
@@ -39,14 +38,19 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ChatChannelPicker } from "@/app/(main)/chat/_components/chat-channel-picker";
 import { ChatChannelStrip, TagChannelTitle } from "@/app/(main)/chat/_components/chat-channel-strip";
 import { TagChips } from "@/app/(main)/chat/_components/chat-tags";
-import { toggleTag, useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
+import { setTagFilter, toggleTag, useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
+import { brown } from "@/app/(main)/chat/_components/chat-thread-extras";
 import { useChat } from "@/app/(main)/chat/_components/use-chat";
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
+import { openInboxMessageSearch } from "@/app/(main)/dashboard/_components/sidebar/inbox-message-search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -65,6 +69,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -72,7 +78,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -82,26 +87,29 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 import {
   agentName,
-  agents,
   assigneeTabs,
   type Conversation,
   type CwStatus,
   filterAttributes,
   filterOperators,
-  inboxes,
   inboxOf,
   isPersonOnline,
   lastPreview,
   priorities,
+  type StatusFilter,
   snoozeOptions,
   sortItems,
   statusFilterItems,
-  teams,
+  useLiveAgents,
+  useLiveInboxes,
+  useLiveTeams,
 } from "./cw-data";
+import { resolveConversation } from "./cw-dialog-store";
 import { bulkLabels, openDialog } from "./cw-dialogs";
 import { useConversationList, type ViewSpec, valueLabel, viewTitle } from "./cw-filter";
 import { cw, useCwStore } from "./cw-store";
 import { ChannelIcon, PersonAvatar, PriorityIcon, SlaBadge, StatusPill } from "./cw-ui";
+import { changeStatus, type SnoozeKind } from "./sim-thread-persist";
 
 // One menu definition rendered both as the card "…" dropdown (Studio pattern) and the right-click menu (Chatwoot).
 type Kit = {
@@ -157,9 +165,9 @@ function byPriorityMenuOrder(a: { value: string; rank: number }, b: { value: str
   return b.rank - a.rank;
 }
 
-function setStatusWithToast(ids: number[], status: CwStatus, snoozedUntil?: string) {
-  cw.setStatus(ids, status, snoozedUntil ?? null);
-  toast.success("Conversation status changed");
+// F-5A: kept in the preview (sim-thread-persist.ts); the toast says it is simulated once it is saved.
+function setStatusWithToast(ids: number[], status: CwStatus, snooze?: SnoozeKind) {
+  void changeStatus(ids, status, { snooze });
 }
 
 // Chatwoot card menu "Assign label": a "Search labels" box above the label list.
@@ -214,6 +222,8 @@ function LabelMenuItems({ kit: K, conversationId }: { kit: Kit; conversationId: 
 function CardMenu({ kit: K, conversation }: { kit: Kit; conversation: Conversation }) {
   const meta = useCwStore((s) => s.meta[conversation.id]);
   const unread = useCwStore((s) => s.unread[conversation.id] ?? 0);
+  const agents = useLiveAgents();
+  const teams = useLiveTeams();
   const id = conversation.id;
   const url = `/dashboard/chat?conversation=${id}`;
 
@@ -234,7 +244,7 @@ function CardMenu({ kit: K, conversation }: { kit: Kit; conversation: Conversati
         </K.Item>
       )}
       {meta.status !== "resolved" && (
-        <K.Item onSelect={() => setStatusWithToast([id], "resolved")}>
+        <K.Item onSelect={() => resolveConversation(id)}>
           <CircleCheck /> Mark as resolved
         </K.Item>
       )}
@@ -250,7 +260,7 @@ function CardMenu({ kit: K, conversation }: { kit: Kit; conversation: Conversati
           </K.SubTrigger>
           <K.SubContent>
             {snoozeOptions.map((option) => (
-              <K.Item key={option.value} onSelect={() => setStatusWithToast([id], "snoozed", option.display)}>
+              <K.Item key={option.value} onSelect={() => setStatusWithToast([id], "snoozed", option.value)}>
                 {snoozeMenuLabels[option.value]}
               </K.Item>
             ))}
@@ -260,7 +270,7 @@ function CardMenu({ kit: K, conversation }: { kit: Kit; conversation: Conversati
       <K.Separator />
       <K.Sub>
         <K.SubTrigger>
-          <Flag /> Priority
+          <ChevronsUp /> Priority
         </K.SubTrigger>
         <K.SubContent className="w-44">
           {[...priorities]
@@ -361,12 +371,14 @@ function ConversationCard({
 }) {
   const meta = useCwStore((s) => s.meta[conversation.id]);
   const sent = useCwStore((s) => s.sent[conversation.id]);
+  // F-8: a deleted last message shows as "This message was deleted" on the card
+  const deletedMessages = useCwStore((s) => s.deletedMessages);
   const unread = useCwStore((s) => s.unread[conversation.id] ?? 0);
   const checked = useCwStore((s) => s.selection.includes(conversation.id));
   const selecting = useCwStore((s) => s.selection.length > 0);
   const inbox = inboxOf(conversation);
   const assignee = agentName(meta.assigneeId);
-  const preview = lastPreview(conversation, meta, sent);
+  const preview = lastPreview(conversation, meta, sent, deletedMessages);
   const PreviewIcon = preview.icon ? previewIcons[preview.icon] : null;
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -388,8 +400,10 @@ function ConversationCard({
           aria-current={active ? "true" : undefined}
           tabIndex={0}
           data-active={active}
+          // T-75: "conv-card", not "card": ui/card.tsx names the panel around the whole list group/card too, so
+          // hovering anywhere in the list hid every card's avatar (Fahad: the icons disappear under the mouse).
           className={cn(
-            "group/card relative w-full rounded-lg px-2.5 py-2.5 text-left ring-inset transition-colors",
+            "group/conv-card relative w-full rounded-lg px-2.5 py-2.5 text-left ring-inset transition-colors",
             active ? "bg-muted ring-1 ring-primary/40" : "hover:bg-muted/60",
             checked && "bg-primary/5 ring-1 ring-primary/30",
           )}
@@ -406,12 +420,12 @@ function ConversationCard({
                 className={cn(
                   "transition-opacity",
                   (selecting || checked) && "opacity-0",
-                  "group-hover/card:opacity-0",
+                  "group-hover/conv-card:opacity-0",
                 )}
               />
               <div
                 className={cn(
-                  "absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/card:opacity-100",
+                  "absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/conv-card:opacity-100",
                   (selecting || checked) && "opacity-100",
                 )}
               >
@@ -454,6 +468,10 @@ function ConversationCard({
                 </span>
                 {meta.status !== "open" && <StatusPill status={meta.status} className="h-4.5 px-1.5 text-[10px]" />}
               </div>
+              {/* Studio /chat: the subject line under the name, on every channel. */}
+              {!condensed && conversation.subject && (
+                <div className="truncate font-medium text-foreground/90 text-xs leading-4">{conversation.subject}</div>
+              )}
               {!condensed && (
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="flex w-0 flex-1 items-center gap-1 text-muted-foreground text-xs leading-5">
@@ -489,7 +507,7 @@ function ConversationCard({
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`Open actions for conversation ${conversation.id}`}
-                className="absolute end-2 bottom-2 bg-background/80 opacity-0 shadow-xs group-hover/card:opacity-100 data-[state=open]:opacity-100"
+                className="absolute end-2 bottom-2 bg-background/80 opacity-0 shadow-xs group-hover/conv-card:opacity-100 data-[state=open]:opacity-100"
                 onClick={(event) => event.stopPropagation()}
               >
                 <MoreHorizontal />
@@ -519,6 +537,8 @@ function IconAction({ label, children }: { label: string; children: ReactNode })
 
 function BulkActionsBar({ visibleIds }: { visibleIds: number[] }) {
   const selection = useCwStore((s) => s.selection);
+  const agents = useLiveAgents();
+  const teams = useLiveTeams();
   const { tags, byConv } = useChatTags();
   const [labelMode, setLabelMode] = useState<"assign" | "remove">("assign");
   const [picked, setPicked] = useState<string[]>([]);
@@ -531,10 +551,10 @@ function BulkActionsBar({ visibleIds }: { visibleIds: number[] }) {
   // Chatwoot BulkUpdateActions: an action is hidden when every selected conversation already has that status.
   const allAre = (status: CwStatus) => selection.length > 0 && selection.every((id) => meta[id]?.status === status);
 
-  const update = (status: CwStatus, snoozedUntil?: string) => {
-    cw.setStatus(selection, status, snoozedUntil ?? null);
+  const update = (status: CwStatus, snooze?: SnoozeKind) => {
+    // F-5A: each conversation's change is kept in the preview; the toast comes once they are saved.
+    void changeStatus(selection, status, { snooze, title: "Conversation status updated successfully." });
     cw.setSelection([]);
-    toast.success("Conversation status updated successfully.");
   };
 
   return (
@@ -579,7 +599,7 @@ function BulkActionsBar({ visibleIds }: { visibleIds: number[] }) {
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {snoozeOptions.map((option) => (
-                      <DropdownMenuItem key={option.value} onSelect={() => update("snoozed", option.display)}>
+                      <DropdownMenuItem key={option.value} onSelect={() => update("snoozed", option.value)}>
                         {option.label}
                       </DropdownMenuItem>
                     ))}
@@ -751,6 +771,88 @@ function BasicFilter({ showStatus }: { showStatus: boolean }) {
   );
 }
 
+// T-90: the status of the conversations, picked from a menu at the end of the Mine / Unassigned / All row (Fahad: one
+// row, not a second row of tabs). T-130: Chatwoot's four statuses and All, in its order (chatlist.json
+// CHAT_STATUS_FILTER_ITEMS, the same list as the sort menu's Status), so a pending conversation can be reached here.
+
+/** T-90: the status menu of the filter row. Its counts are the selected Mine / Unassigned / All tab's conversations. */
+function StatusMenu({ counts, tabLabel }: { counts: Record<StatusFilter, number>; tabLabel: string }) {
+  const statusFilter = useCwStore((s) => s.statusFilter);
+  const items = statusFilterItems;
+  const label = items.find((item) => item.value === statusFilter)?.label ?? statusFilter;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Status: ${label}`}
+          className="h-7 shrink-0 gap-0.5 px-1.5 font-normal text-muted-foreground text-xs"
+        >
+          {label}
+          <ChevronDown className="size-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">Status · {tabLabel}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={statusFilter}
+          onValueChange={(value) => cw.setStatusFilter(value as StatusFilter)}
+        >
+          {items.map((item) => (
+            <DropdownMenuRadioItem key={item.value} value={item.value}>
+              {item.label}
+              <span className="ms-auto text-muted-foreground text-xs tabular-nums">{counts[item.value]}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const groupOrder: Conversation["group"][] = ["Today", "Yesterday"];
+
+// Studio's groups follow the last activity, so they show while the list is sorted by it; other sorts stay flat.
+function groupRows(
+  rows: Conversation[],
+  sortBy: string,
+): { group: Conversation["group"] | null; rows: Conversation[] }[] {
+  if (sortBy !== "last_activity_at_desc" && sortBy !== "last_activity_at_asc") return [{ group: null, rows }];
+  const order = sortBy === "last_activity_at_asc" ? [...groupOrder].reverse() : groupOrder;
+  return order
+    .map((group) => ({ group, rows: rows.filter((c) => c.group === group) }))
+    .filter((entry) => entry.rows.length > 0);
+}
+
+/** Studio /chat: shown over a label page's list, the label and a button that clears it. */
+function TagFilterBar() {
+  const { tags, filter } = useChatTags();
+  const tag = tags.find((item) => item.id === filter);
+  if (!tag) return null;
+  return (
+    <div
+      data-slot="tag-filter-bar"
+      className={cn("mx-2 flex items-center gap-2 rounded-md border px-2 py-1 text-xs", brown.box)}
+    >
+      <span className="text-muted-foreground">Filtered by tag</span>
+      <span dir="auto" className="flex items-center gap-1 font-medium">
+        <span aria-hidden="true" className="size-2 rounded-full" style={{ backgroundColor: tag.color }} />
+        {tag.label}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        className="ms-auto"
+        aria-label="Clear tag filter"
+        onClick={() => setTagFilter(null)}
+      >
+        <X />
+      </Button>
+    </div>
+  );
+}
+
 export function ConversationList({
   view,
   onOpen,
@@ -760,14 +862,16 @@ export function ConversationList({
   onOpen: (conversation: Conversation) => void;
   className?: string;
 }) {
-  const router = useRouter();
   const [chat, setChat] = useChat();
   const [condensed, setCondensed] = useState(false);
   const list = useConversationList(view);
+  const inboxes = useLiveInboxes();
   const folders = useCwStore((s) => s.folders);
   const applied = useCwStore((s) => s.applied);
-  const assigneeTab = useCwStore((s) => s.assigneeTab);
-  const statusFilter = useCwStore((s) => s.statusFilter);
+  // F-5A "View as": the tab shown and the tabs offered are the viewed person's (cw-filter.ts, Chatwoot
+  // ASSIGNEE_TYPE_TAB_PERMISSIONS).
+  const assigneeTab = list.assigneeTab;
+  const sortBy = useCwStore((s) => s.sortBy);
   const search = useCwStore((s) => s.search);
   const selectionCount = useCwStore((s) => s.selection.length);
   const isFolder = view.kind === "folder";
@@ -779,7 +883,12 @@ export function ConversationList({
   // under "Mine"), switch to All instead of showing an empty list.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-check only when the view changes
   useEffect(() => {
-    if (!list.hasAppliedFiltersOrFolder && list.counts[assigneeTab] === 0 && list.counts.all > 0)
+    if (
+      !list.hasAppliedFiltersOrFolder &&
+      list.counts[assigneeTab] === 0 &&
+      list.counts.all > 0 &&
+      list.tabs.includes("all")
+    )
       cw.setAssigneeTab("all");
   }, [viewKey]);
 
@@ -837,11 +946,12 @@ export function ConversationList({
                 {title}
               </h2>
             )}
-            <Badge variant="secondary" className="shrink-0 text-[10px]">
-              {list.hasAppliedFiltersOrFolder
-                ? list.counts.all
-                : statusFilterItems.find((s) => s.value === statusFilter)?.label}
-            </Badge>
+            {/* T-90: the status shows once, in the filter row's menu; this badge keeps a folder's or filter's count. */}
+            {list.hasAppliedFiltersOrFolder && (
+              <Badge variant="secondary" className="shrink-0 text-[10px]">
+                {list.counts.all}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-0.5">
             {applied && !isFolder && (
@@ -892,6 +1002,7 @@ export function ConversationList({
                 </Button>
               </IconAction>
             )}
+            {view.kind !== "inbox" && <ChatChannelPicker />}
             <BasicFilter showStatus={!list.hasAppliedFiltersOrFolder} />
             <IconAction label="Switch the layout">
               <Button
@@ -906,47 +1017,33 @@ export function ConversationList({
           </div>
         </div>
 
+        {/* T-285 (Fahad 125.4): a lens only; a click opens the box, and closing it brings back the lens alone. */}
         <div className="px-2">
-          <InputGroup className="h-8">
-            <InputGroupAddon>
-              <Search className="size-3.5" />
-            </InputGroupAddon>
-            <InputGroupInput
-              className="h-8 text-sm"
-              placeholder="Search for People, Chats, Saved Replies .."
-              value={search}
-              onChange={(event) => cw.setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                // Enter opens Chatwoot's full search screen (contacts, conversations, messages, articles).
-                if (event.key === "Enter" && search.trim()) {
-                  router.push(`/dashboard/chat/search?q=${encodeURIComponent(search.trim())}`);
-                }
-              }}
-            />
-            <InputGroupAddon align="inline-end">
-              {search && (
-                <Button variant="ghost" size="icon-xs" aria-label="Clear search" onClick={() => cw.setSearch("")}>
-                  <X />
-                </Button>
-              )}
+          <ExpandingSearch
+            name="conversations"
+            size="default"
+            label="Search conversations"
+            placeholder="Search for People, Chats, Saved Replies .."
+            className="w-full"
+            value={search}
+            onChange={(value) => cw.setSearch(value)}
+            onKeyDown={(event) => {
+              // T-259 (item 30): Enter opens the Inbox bar's message search with this text, not the full page.
+              if (event.key === "Enter" && search.trim()) openInboxMessageSearch(search.trim());
+            }}
+            end={
               <IconAction label="Open search">
                 <Button
                   variant="ghost"
                   size="icon-xs"
                   aria-label="Open search"
-                  onClick={() =>
-                    router.push(
-                      search.trim()
-                        ? `/dashboard/chat/search?q=${encodeURIComponent(search.trim())}`
-                        : "/dashboard/chat/search",
-                    )
-                  }
+                  onClick={() => openInboxMessageSearch(search.trim())}
                 >
                   <TextSearch />
                 </Button>
               </IconAction>
-            </InputGroupAddon>
-          </InputGroup>
+            }
+          />
         </div>
 
         {chips.length > 0 && (
@@ -964,26 +1061,41 @@ export function ConversationList({
           </div>
         )}
 
-        {/* Chatwoot ChatList.vue:924 hides the assignee tabs while a folder or filter is active. */}
+        {/* Chatwoot ChatList.vue:924 hides the assignee tabs while a folder or filter is active.
+            T-90: one row for both filters, which narrow the list together: who (Mine / Unassigned / All) and the status
+            menu (same status as the sort menu). A tab's count = its conversations in the picked status; a status's count
+            = its conversations in the picked tab. Both follow the list search. */}
         {!list.hasAppliedFiltersOrFolder && (
-          <Tabs value={assigneeTab} onValueChange={(value) => cw.setAssigneeTab(value as typeof assigneeTab)}>
-            <TabsList
-              variant="line"
-              className="w-full justify-start gap-1 border-b px-2 *:data-[slot=tabs-trigger]:flex-none"
+          <div data-slot="inbox-filter-row" className="flex items-center gap-1 border-b px-1.5">
+            <Tabs
+              value={assigneeTab}
+              onValueChange={(value) => cw.setAssigneeTab(value as typeof assigneeTab)}
+              className="min-w-0 flex-1"
             >
-              {assigneeTabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} className="px-2">
-                  {tab.label}
-                  <Badge variant="secondary" className="ms-1 h-4.5 px-1.5 text-[10px] tabular-nums">
-                    {list.counts[tab.value]}
-                  </Badge>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+              <TabsList
+                variant="line"
+                aria-label="Assignee"
+                className="w-full justify-start gap-0.5 *:data-[slot=tabs-trigger]:flex-none"
+              >
+                {assigneeTabs
+                  .filter((tab) => list.tabs.includes(tab.value))
+                  .map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className="gap-1 px-1.5">
+                      {tab.label}
+                      <span className="text-muted-foreground text-xs tabular-nums">{list.counts[tab.value]}</span>
+                    </TabsTrigger>
+                  ))}
+              </TabsList>
+            </Tabs>
+            <StatusMenu
+              counts={list.statusCounts}
+              tabLabel={assigneeTabs.find((tab) => tab.value === assigneeTab)?.label ?? ""}
+            />
+          </div>
         )}
 
-        {/* No "Filtered by tag" bar here: on a label page the page title is the label (the bar stays on /chat). */}
+        {/* Studio /chat: "Filtered by tag" bar on a label page; its X clears the label and goes back to All. */}
+        {view.kind === "label" && <TagFilterBar />}
 
         {selectionCount > 0 && <BulkActionsBar visibleIds={list.rows.map((c) => c.id)} />}
 
@@ -997,19 +1109,32 @@ export function ConversationList({
                 There are no active conversations in this group.
               </p>
             ) : (
-              list.rows.map((conversation) => (
-                <ConversationCard
-                  key={conversation.id}
-                  conversation={conversation}
-                  active={chat.selected === conversation.id}
-                  condensed={condensed}
-                  onOpen={() => {
-                    setChat({ selected: conversation.id });
-                    cw.markRead(conversation.id);
-                    onOpen(conversation);
-                  }}
-                />
-              ))
+              groupRows(list.rows, sortBy).map(({ group, rows }) => {
+                const cards = rows.map((conversation) => (
+                  <ConversationCard
+                    key={conversation.id}
+                    conversation={conversation}
+                    active={chat.selected === conversation.id}
+                    condensed={condensed}
+                    onOpen={() => {
+                      setChat({ selected: conversation.id });
+                      cw.markRead(conversation.id);
+                      onOpen(conversation);
+                    }}
+                  />
+                ));
+                if (!group) return cards;
+                // Studio /chat: Today / Yesterday groups that fold open and closed (T-130: no Pinned group).
+                return (
+                  <Collapsible key={group} defaultOpen>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between gap-1 px-1 py-2 font-medium text-muted-foreground text-xs hover:text-foreground [&[data-state=open]>svg]:rotate-180">
+                      {group}
+                      <ChevronDown className="size-3 transition-transform" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="flex flex-col gap-1">{cards}</CollapsibleContent>
+                  </Collapsible>
+                );
+              })
             )}
             {list.rows.length > 0 && (
               <p className="py-3 text-center text-muted-foreground text-xs">All conversations loaded 🎉</p>

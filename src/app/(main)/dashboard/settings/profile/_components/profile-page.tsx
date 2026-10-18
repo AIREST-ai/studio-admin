@@ -6,37 +6,83 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { cn } from "cn";
-import { Copy, Eye, EyeOff, Laptop, Play, RotateCcw, ShieldCheck, ShieldOff, Smartphone, Upload } from "lucide-react";
+import { Copy, Eye, EyeOff, Info, Laptop, Play, RotateCcw, ShieldCheck, ShieldOff, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { setSignedInProfile } from "@/lib/cw/signed-in-profile";
 
+import { copyText } from "../../_components/copy-text";
+import { SettingsCard } from "../../_components/settings-card";
+import {
+  type ProfileSettings,
+  SAVED_IN_PREVIEW,
+  saveProfile,
+  useSettingsPreview,
+} from "../../_components/settings-preview-client";
 import { CountTabs, PageHeader } from "../../labels/_shared/settings-shell";
+import { ApiCard, PREVIEW_TOKEN_LABEL, WebhooksCard } from "./api-access";
 
+// F-6A (sim2 problem 8; Fahad 99 and 129.2): every part of this page said "updated successfully" and kept nothing.
+// Now each one is saved in this preview (api/settings-preview, section "profile") and comes back after a reload and
+// in another browser, and its message says it was saved in the preview, not in Chatwoot. What cannot be real here
+// says so: the password (the preview has no accounts), sessions (only this browser, read from it, no invented
+// devices) and the access token (made by the preview, no API takes it). Two-factor is a real TOTP setup
+// (mfa-settings.tsx).
+type SavedProfile = Partial<ProfileSettings>;
+
+// The page's copy of the saved profile follows every save, so a tab opened again shows what was just saved.
+const savedListeners = new Set<(profile: ProfileSettings) => void>();
+
+/** Saves a part of the profile and says so only after the preview server has it; a failure says why. */
+async function keep(part: Partial<Omit<ProfileSettings, "savedAt">>, done: string, note = SAVED_IN_PREVIEW) {
+  try {
+    const saved = await saveProfile(part);
+    for (const listener of savedListeners) listener(saved);
+    // F-9: the header picture menu and the sidebar's person button show the saved name and picture at once.
+    setSignedInProfile({ name: saved.name, email: saved.email, avatar: saved.avatar });
+    toast.success(done, { description: note });
+    return saved;
+  } catch (error) {
+    toast.error("Not saved", { description: (error as Error).message });
+    return null;
+  }
+}
+
+/** The picked image as a 128 px square PNG data: URL, small enough to keep with the saved profile. */
+async function avatarDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const size = 128;
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  canvas
+    .getContext("2d")
+    ?.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+  bitmap.close();
+  return canvas.toDataURL("image/png");
+}
+
+// م137 round 2 (Fahad 137, judge M137): each section is a card with its title and line on top and its fields below,
+// the same card as every other Settings page (SettingsCard), as Chatwoot's profile/Index.vue stacks its SectionLayout
+// parts; it was a title column beside the fields inside one card. A section's Save stays at the end of its form.
 function Section({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
-    <>
-      <div className="grid gap-6 py-8 first:pt-0 lg:grid-cols-[280px_1fr] lg:gap-10">
-        <div className="grid h-fit gap-1.5">
-          <h2 className="font-medium text-base">{title}</h2>
-          {note && <p className="text-muted-foreground text-sm leading-relaxed">{note}</p>}
-        </div>
-        <div className="min-w-0">{children}</div>
-      </div>
-      <Separator className="last:hidden" />
-    </>
+    <SettingsCard title={title} description={note}>
+      {children}
+    </SettingsCard>
   );
 }
 
@@ -65,11 +111,32 @@ const notificationTypes = [
   { key: "sla_missed_resolution", label: "A conversation misses resolution SLA", email: true, push: false },
 ];
 
-const seedSessions = [
-  { id: 1, device: "Chrome on macOS", icon: Laptop, place: "Doha, Qatar", last: "Active now", current: true },
-  { id: 2, device: "Mobile app on iPhone", icon: Smartphone, place: "Doha, Qatar", last: "2 hours ago", current: false },
-  { id: 3, device: "Edge on Windows", icon: Laptop, place: "Dubai, United Arab Emirates", last: "Oct 8, 2026", current: false },
-];
+/** "Chrome on macOS" from this browser's own user agent: the one session that really exists here. */
+function thisBrowser(): string {
+  if (typeof navigator === "undefined") return "This browser";
+  const ua = navigator.userAgent;
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /Firefox\//.test(ua)
+      ? "Firefox"
+      : /Chrome\//.test(ua) || /HeadlessChrome/.test(ua)
+        ? "Chrome"
+        : /Safari\//.test(ua)
+          ? "Safari"
+          : "Browser";
+  const system = /Mac OS X/.test(ua)
+    ? "macOS"
+    : /Windows/.test(ua)
+      ? "Windows"
+      : /Android/.test(ua)
+        ? "Android"
+        : /iPhone|iPad/.test(ua)
+          ? "iOS"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : "";
+  return system ? `${browser} on ${system}` : browser;
+}
 
 const fontSizes = ["Smaller", "Small", "Default", "Large", "Larger", "Extra Large"];
 const tones = ["ding", "bell", "chime", "magic", "ping"];
@@ -81,20 +148,16 @@ function makeToken() {
   return out;
 }
 
-function copy(text: string, message = "Copied to clipboard") {
-  void navigator.clipboard?.writeText(text).catch(() => undefined);
-  toast.success(message);
-}
-
-function ProfileTab() {
+function ProfileTab({ saved }: { saved: SavedProfile }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
-  const [avatar, setAvatar] = React.useState<string | null>(null);
-  const [name, setName] = React.useState("Arham Khan");
-  const [displayName, setDisplayName] = React.useState("Arham");
-  const [email, setEmail] = React.useState("arham.khan@weblabs.studio");
+  const [avatar, setAvatar] = React.useState<string | null>(saved.avatar ?? null);
+  const [name, setName] = React.useState(saved.name ?? "Arham Khan");
+  const [displayName, setDisplayName] = React.useState(saved.displayName ?? "Arham");
+  const [email, setEmail] = React.useState(saved.email ?? "arham.khan@weblabs.studio");
   const [errors, setErrors] = React.useState<{ name?: string; displayName?: string; email?: string }>({});
+  const [saving, setSaving] = React.useState(false);
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     const next: typeof errors = {};
     if (name.trim().length < 1) next.name = "Please enter a valid full name";
@@ -102,7 +165,12 @@ function ProfileTab() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = "Please enter a valid email address";
     setErrors(next);
     if (Object.keys(next).length) return;
-    toast.success("Your profile has been updated successfully");
+    setSaving(true);
+    await keep(
+      { name: name.trim(), displayName: displayName.trim(), email: email.trim() },
+      "Your profile has been updated successfully",
+    );
+    setSaving(false);
   }
 
   return (
@@ -112,7 +180,12 @@ function ProfileTab() {
           <Avatar className="size-16">
             {avatar ? <AvatarImage src={avatar} alt="Profile picture" /> : null}
             <AvatarFallback className="bg-sky-100 font-medium text-lg text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
-              AK
+              {name
+                .split(/\s+/)
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="grid gap-1.5">
@@ -125,11 +198,15 @@ function ProfileTab() {
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    setAvatar(URL.createObjectURL(file));
-                    toast.success("Your profile has been updated successfully");
-                  }
                   e.target.value = "";
+                  if (!file) return;
+                  avatarDataUrl(file).then(
+                    async (picture) => {
+                      if (await keep({ avatar: picture }, "Your profile has been updated successfully"))
+                        setAvatar(picture);
+                    },
+                    () => toast.error("This image could not be read. Try a PNG or JPEG."),
+                  );
                 }}
               />
               <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
@@ -141,9 +218,8 @@ function ProfileTab() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => {
-                    setAvatar(null);
-                    toast.success("Avatar has been deleted successfully");
+                  onClick={async () => {
+                    if (await keep({ avatar: null }, "Avatar has been deleted successfully")) setAvatar(null);
                   }}
                 >
                   Delete Avatar
@@ -186,21 +262,25 @@ function ProfileTab() {
           />
           <FieldError>{errors.email}</FieldError>
         </div>
-        <Button type="submit" className="w-fit">
-          Update Profile
+        <Button type="submit" className="w-fit" disabled={saving}>
+          {saving ? "Saving…" : "Update Profile"}
         </Button>
       </form>
     </Section>
   );
 }
 
-function PreferencesTab() {
-  const [fontSize, setFontSize] = React.useState("Default");
-  const [language, setLanguage] = React.useState("default");
+// The preview keeps these choices; it does not yet resize its text or translate its interface (Fahad 124.8: English
+// first), and the line under the message says so instead of implying it did.
+const NOT_APPLIED_YET = `${SAVED_IN_PREVIEW} The preview does not apply it to its pages yet.`;
+
+function PreferencesTab({ saved }: { saved: SavedProfile }) {
+  const [fontSize, setFontSize] = React.useState<string>(saved.fontSize ?? "Default");
+  const [language, setLanguage] = React.useState<string>(saved.language ?? "default");
   const [signature, setSignature] = React.useState(
-    "Best regards,\nArham Khan\nCustomer Support · Weblabs Studio\n+974 4400 1122",
+    saved.signature ?? "Best regards,\nArham Khan\nCustomer Support · Weblabs Studio\n+974 4400 1122",
   );
-  const [hotkey, setHotkey] = React.useState("enter");
+  const [hotkey, setHotkey] = React.useState<string>(saved.hotkey ?? "enter");
   const [signatureError, setSignatureError] = React.useState("");
 
   return (
@@ -218,9 +298,12 @@ function PreferencesTab() {
               id="font-size"
               className="w-64"
               value={fontSize}
-              onChange={(e) => {
-                setFontSize(e.target.value);
-                toast.success("Font size updated successfully");
+              onChange={async (e) => {
+                const previous = fontSize;
+                const next = e.target.value as NonNullable<ProfileSettings["fontSize"]>;
+                setFontSize(next);
+                if (!(await keep({ fontSize: next }, "Font size updated successfully", NOT_APPLIED_YET)))
+                  setFontSize(previous);
               }}
             >
               {fontSizes.map((s) => (
@@ -239,9 +322,12 @@ function PreferencesTab() {
               id="language"
               className="w-64"
               value={language}
-              onChange={(e) => {
-                setLanguage(e.target.value);
-                toast.success("Language updated successfully");
+              onChange={async (e) => {
+                const previous = language;
+                const next = e.target.value as NonNullable<ProfileSettings["language"]>;
+                setLanguage(next);
+                if (!(await keep({ language: next }, "Language updated successfully", NOT_APPLIED_YET)))
+                  setLanguage(previous);
               }}
             >
               <option value="default">Use account default</option>
@@ -275,12 +361,12 @@ function PreferencesTab() {
           {signatureError ? <p className="text-destructive text-xs">{signatureError}</p> : null}
           <Button
             className="w-fit"
-            onClick={() => {
+            onClick={async () => {
               if (!signature.trim()) {
                 setSignatureError("Message Signature cannot be empty");
                 return;
               }
-              toast.success("Your profile has been updated successfully");
+              await keep({ signature }, "Your profile has been updated successfully");
             }}
           >
             Save message signature
@@ -294,9 +380,11 @@ function PreferencesTab() {
       >
         <RadioGroup
           value={hotkey}
-          onValueChange={(v) => {
+          onValueChange={async (v) => {
+            const previous = hotkey;
             setHotkey(v);
-            toast.success("Your profile has been updated successfully");
+            if (!(await keep({ hotkey: v as "enter" | "cmd_enter" }, "Your profile has been updated successfully")))
+              setHotkey(previous);
           }}
           className="grid max-w-2xl gap-3 sm:grid-cols-2"
         >
@@ -332,12 +420,20 @@ function PreferencesTab() {
   );
 }
 
-function SecurityTab({ mfaEnabled }: { mfaEnabled: boolean }) {
+function SecurityTab() {
   const [current, setCurrent] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
   const [errors, setErrors] = React.useState<{ current?: string; password?: string; confirm?: string }>({});
-  const [sessions, setSessions] = React.useState(seedSessions);
+  const [browser, setBrowser] = React.useState("This browser");
+  const [mfaEnabled, setMfaEnabled] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    setBrowser(thisBrowser());
+    fetch("/api/settings-preview/mfa", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((state: { enabled: boolean }) => setMfaEnabled(state.enabled))
+      .catch(() => setMfaEnabled(false));
+  }, []);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -350,12 +446,23 @@ function SecurityTab({ mfaEnabled }: { mfaEnabled: boolean }) {
     setCurrent("");
     setPassword("");
     setConfirm("");
-    toast.success("Your password has been changed successfully");
+    // The preview has no accounts, so there is no password to change; nothing typed is kept or sent.
+    toast.info("Password not changed: this preview has no accounts", {
+      description:
+        "There is no password to change here, so nothing was changed. What you typed was cleared and was not kept or sent.",
+    });
   }
 
   return (
     <>
       <Section title="Password" note="Updating your password would reset your logins in multiple devices.">
+        <p
+          className="mb-4 flex max-w-xl items-start gap-2 rounded-lg border bg-muted/40 p-3 text-muted-foreground text-sm"
+          data-preview-note
+        >
+          <Info className="mt-0.5 size-4 shrink-0" />
+          Preview: there are no accounts or passwords in this preview, so a password cannot be changed here.
+        </p>
         <form className="grid max-w-xl gap-4" onSubmit={submit} noValidate>
           <div className="grid gap-2">
             <Label htmlFor="pw-current">Current password</Label>
@@ -422,7 +529,7 @@ function SecurityTab({ mfaEnabled }: { mfaEnabled: boolean }) {
                       : "border-border bg-muted/50 text-muted-foreground",
                   )}
                 >
-                  {mfaEnabled ? "Enabled" : "Disabled"}
+                  {mfaEnabled === null ? "Loading…" : mfaEnabled ? "Enabled" : "Disabled"}
                 </Badge>
               </span>
               <span className="text-muted-foreground text-xs">
@@ -438,53 +545,45 @@ function SecurityTab({ mfaEnabled }: { mfaEnabled: boolean }) {
 
       <Section title="Active Sessions" note="These are the devices currently logged in to your account.">
         <div className="grid max-w-2xl divide-y rounded-lg border">
-          {sessions.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 p-3">
-              <div className="flex size-9 items-center justify-center rounded-md bg-muted">
-                <s.icon className="size-4" />
-              </div>
-              <div className="grid flex-1 gap-0.5">
-                <span className="flex items-center gap-2 font-medium text-sm">
-                  {s.device}
-                  {s.current && (
-                    <Badge
-                      variant="outline"
-                      className="border-emerald-500/20 bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
-                    >
-                      Current session
-                    </Badge>
-                  )}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {s.place} · Last active {s.last}
-                </span>
-              </div>
-              {!s.current && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => {
-                    setSessions((prev) => prev.filter((x) => x.id !== s.id));
-                    toast.success("Session revoked successfully");
-                  }}
-                >
-                  Revoke
-                </Button>
-              )}
+          <div className="flex items-center gap-3 p-3" data-session-row>
+            <div className="flex size-9 items-center justify-center rounded-md bg-muted">
+              <Laptop className="size-4" />
             </div>
-          ))}
+            <div className="grid flex-1 gap-0.5">
+              <span className="flex items-center gap-2 font-medium text-sm">
+                {browser}
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500/20 bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
+                >
+                  Current session
+                </Badge>
+              </span>
+              <span className="text-muted-foreground text-xs">Read from this browser</span>
+            </div>
+          </div>
         </div>
+        <p className="mt-3 max-w-2xl text-muted-foreground text-xs" data-preview-note>
+          Preview: there is no sign-in, so no other devices are logged in and there is nothing to revoke. Only this
+          browser is listed.
+        </p>
       </Section>
     </>
   );
 }
 
-function NotificationsTab() {
-  const [alerts, setAlerts] = React.useState<string[]>(["assigned", "unassigned"]);
-  const [tone, setTone] = React.useState("ding");
+const NOTIFICATIONS_SAVED = "Your notification preferences are updated successfully";
+
+function NotificationsTab({ saved }: { saved: SavedProfile }) {
+  // Chatwoot AudioNotifications.vue and NotificationPreferences.vue save each change at once; so does this tab.
+  const [alerts, setAlerts] = React.useState<string[]>(saved.audioAlerts ?? ["assigned", "unassigned"]);
+  const [tone, setTone] = React.useState<string>(saved.alertTone ?? "ding");
+  const [onlyInactive, setOnlyInactive] = React.useState(saved.alertOnlyWhenInactive ?? true);
+  const [repeat, setRepeat] = React.useState(saved.alertRepeat ?? false);
   const [prefs, setPrefs] = React.useState(() =>
-    Object.fromEntries(notificationTypes.map((n) => [n.key, { email: n.email, push: n.push }])),
+    Object.fromEntries(
+      notificationTypes.map((n) => [n.key, saved.notifications?.[n.key] ?? { email: n.email, push: n.push }]),
+    ),
   );
   const [permission, setPermission] = React.useState<string>("default");
 
@@ -492,9 +591,18 @@ function NotificationsTab() {
     if (typeof window !== "undefined" && "Notification" in window) setPermission(Notification.permission);
   }, []);
 
-  function setPref(key: string, channel: "email" | "push", value: boolean) {
-    setPrefs((prev) => ({ ...prev, [key]: { ...prev[key], [channel]: value } }));
-    toast.success("Your notification preferences are updated successfully");
+  async function setPref(key: string, channel: "email" | "push", value: boolean) {
+    const choice = { ...prefs[key], [channel]: value };
+    setPrefs((prev) => ({ ...prev, [key]: choice }));
+    if (!(await keep({ notifications: { [key]: choice } }, NOTIFICATIONS_SAVED)))
+      setPrefs((prev) => ({ ...prev, [key]: { ...choice, [channel]: !value } }));
+  }
+
+  async function setAlert(event: string, on: boolean) {
+    const previous = alerts;
+    const next = on ? [...new Set([...alerts, event])] : alerts.filter((x) => x !== event);
+    setAlerts(next);
+    if (!(await keep({ audioAlerts: next }, NOTIFICATIONS_SAVED))) setAlerts(previous);
   }
 
   return (
@@ -510,10 +618,7 @@ function NotificationsTab() {
                 { v: "notme", l: "Open conversations assigned to others" },
               ].map((o) => (
                 <Label key={o.v} className="font-normal">
-                  <Checkbox
-                    checked={alerts.includes(o.v)}
-                    onCheckedChange={(c) => setAlerts((prev) => (c ? [...prev, o.v] : prev.filter((x) => x !== o.v)))}
-                  />
+                  <Checkbox checked={alerts.includes(o.v)} onCheckedChange={(c) => setAlert(o.v, c === true)} />
                   {o.l}
                 </Label>
               ))}
@@ -529,7 +634,17 @@ function NotificationsTab() {
           <div className="grid gap-2">
             <Label htmlFor="alert-tone">Alert tone:</Label>
             <div className="flex items-center gap-2">
-              <NativeSelect id="alert-tone" className="w-48" value={tone} onChange={(e) => setTone(e.target.value)}>
+              <NativeSelect
+                id="alert-tone"
+                className="w-48"
+                value={tone}
+                onChange={async (e) => {
+                  const previous = tone;
+                  const next = e.target.value as NonNullable<ProfileSettings["alertTone"]>;
+                  setTone(next);
+                  if (!(await keep({ alertTone: next }, NOTIFICATIONS_SAVED))) setTone(previous);
+                }}
+              >
                 {tones.map((t) => (
                   <option key={t} value={t}>
                     {t[0].toUpperCase() + t.slice(1)}
@@ -560,10 +675,25 @@ function NotificationsTab() {
           <div className="grid gap-2">
             <Label>Alert conditions:</Label>
             <Label className="font-normal">
-              <Checkbox defaultChecked /> Send audio alerts only if the browser window is not active
+              <Checkbox
+                checked={onlyInactive}
+                onCheckedChange={async (c) => {
+                  setOnlyInactive(c === true);
+                  if (!(await keep({ alertOnlyWhenInactive: c === true }, NOTIFICATIONS_SAVED)))
+                    setOnlyInactive(c !== true);
+                }}
+              />{" "}
+              Send audio alerts only if the browser window is not active
             </Label>
             <Label className="font-normal">
-              <Checkbox /> Send alerts every 30s until all the assigned conversations are read
+              <Checkbox
+                checked={repeat}
+                onCheckedChange={async (c) => {
+                  setRepeat(c === true);
+                  if (!(await keep({ alertRepeat: c === true }, NOTIFICATIONS_SAVED))) setRepeat(c !== true);
+                }}
+              />{" "}
+              Send alerts every 30s until all the assigned conversations are read
             </Label>
           </div>
         </div>
@@ -577,7 +707,10 @@ function NotificationsTab() {
             <span className="col-span-2">Push notification</span>
           </div>
           {notificationTypes.map((n) => (
-            <div key={n.key} className="grid grid-cols-12 items-center gap-4 border-b px-4 py-3 text-sm last:border-b-0">
+            <div
+              key={n.key}
+              className="grid grid-cols-12 items-center gap-4 border-b px-4 py-3 text-sm last:border-b-0"
+            >
               <span className="col-span-8">{n.label}</span>
               <span className="col-span-2">
                 <Checkbox
@@ -622,8 +755,11 @@ function NotificationsTab() {
   );
 }
 
-function AccessTokenTab() {
-  const [token, setToken] = React.useState("xT9vQm2LbR7cKp4WnZ8sHd3J");
+const TOKEN_NOTE =
+  "Preview — simulated: this token is made and kept by the preview. No API accepts it, because the preview has no API or accounts.";
+
+function AccessTokenTab({ saved }: { saved: SavedProfile }) {
+  const [token, setToken] = React.useState(saved.accessToken ?? "xT9vQm2LbR7cKp4WnZ8sHd3J");
   const [visible, setVisible] = React.useState(false);
   const [confirming, setConfirming] = React.useState(false);
 
@@ -633,44 +769,60 @@ function AccessTokenTab() {
     return () => window.clearTimeout(t);
   }, [confirming]);
 
+  // F-12 (Fahad ل4): the token, then the API base URL and docs, then the webhooks, in one place (api-access.tsx).
   return (
-    <Section title="Access Token" note="This token can be used if you are building an API based integration">
-      <div className="grid max-w-xl gap-2">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Input readOnly value={visible ? token : "•".repeat(token.length)} className="pe-9 font-mono" />
+    <>
+      <Section title="Access Token" note="This token can be used if you are building an API based integration">
+        <div className="grid max-w-xl gap-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input readOnly value={visible ? token : "•".repeat(token.length)} className="pe-9 font-mono" />
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="absolute end-1.5 top-1/2 -translate-y-1/2"
+                aria-label={visible ? "Hide token" : "Show token"}
+                onClick={() => setVisible((v) => !v)}
+              >
+                {visible ? <EyeOff /> : <Eye />}
+              </Button>
+            </div>
+            {/* F-12: says "copied" only when the browser took the token (copy-text.ts). */}
+            <Button variant="outline" onClick={() => copyText(token, "Access token copied to clipboard")}>
+              <Copy /> Copy
+            </Button>
             <Button
-              variant="ghost"
-              size="icon-xs"
-              className="absolute end-1.5 top-1/2 -translate-y-1/2"
-              aria-label={visible ? "Hide token" : "Show token"}
-              onClick={() => setVisible((v) => !v)}
+              variant={confirming ? "destructive" : "outline"}
+              onClick={async () => {
+                if (!confirming) {
+                  setConfirming(true);
+                  return;
+                }
+                setConfirming(false);
+                const next = makeToken();
+                if (await keep({ accessToken: next }, "Access token regenerated successfully", TOKEN_NOTE)) {
+                  setToken(next);
+                  setVisible(true);
+                }
+              }}
             >
-              {visible ? <EyeOff /> : <Eye />}
+              <RotateCcw /> {confirming ? "Are you sure?" : "Reset"}
             </Button>
           </div>
-          <Button variant="outline" onClick={() => copy(token)}>
-            <Copy /> Copy
-          </Button>
-          <Button
-            variant={confirming ? "destructive" : "outline"}
-            onClick={() => {
-              if (!confirming) {
-                setConfirming(true);
-                return;
-              }
-              setConfirming(false);
-              setToken(makeToken());
-              setVisible(true);
-              toast.success("Access token regenerated successfully");
-            }}
-          >
-            <RotateCcw /> {confirming ? "Are you sure?" : "Reset"}
-          </Button>
+          {confirming ? <p className="text-muted-foreground text-xs">Click again to confirm</p> : null}
+          {/* F-12 condition 2: the words on the token itself. */}
+          <Badge variant="outline" className="w-fit gap-1.5 font-normal" data-preview-token-label>
+            <Info className="size-3.5" />
+            {PREVIEW_TOKEN_LABEL}
+          </Badge>
+          <p className="text-muted-foreground text-xs" data-preview-note>
+            {TOKEN_NOTE}
+          </p>
         </div>
-        {confirming ? <p className="text-muted-foreground text-xs">Click again to confirm</p> : null}
-      </div>
-    </Section>
+      </Section>
+      <ApiCard />
+      <WebhooksCard />
+    </>
   );
 }
 
@@ -683,7 +835,23 @@ const tabs = [
 ];
 
 export function ProfilePage() {
-  const [tab, setTab] = React.useState("profile");
+  // م137 round 2 item 8: ?tab= opens a tab (the Settings search links to Password, Notifications and Access Token).
+  const asked = useSearchParams().get("tab");
+  const [tab, setTab] = React.useState(tabs.some((t) => t.value === asked) ? (asked as string) : "profile");
+  React.useEffect(() => {
+    if (asked && tabs.some((t) => t.value === asked)) setTab(asked);
+  }, [asked]);
+
+  // F-6A: the tabs start from the saved profile, so they wait for it (a save never writes defaults over it).
+  const { settings, error, reload } = useSettingsPreview();
+  const [latest, setLatest] = React.useState<ProfileSettings | null>(null);
+  React.useEffect(() => {
+    savedListeners.add(setLatest);
+    return () => {
+      savedListeners.delete(setLatest);
+    };
+  }, []);
+  const saved: SavedProfile = latest ?? settings?.profile ?? {};
 
   return (
     <div className="flex flex-col gap-4">
@@ -692,15 +860,24 @@ export function ProfilePage() {
         description="Manage your profile, interface preferences, password, notifications and API access."
       />
       <CountTabs value={tab} onValueChange={setTab} items={tabs} />
-      <Card>
-        <CardContent>
-          {tab === "profile" ? <ProfileTab /> : null}
-          {tab === "preferences" ? <PreferencesTab /> : null}
-          {tab === "security" ? <SecurityTab mfaEnabled={false} /> : null}
-          {tab === "notifications" ? <NotificationsTab /> : null}
-          {tab === "token" ? <AccessTokenTab /> : null}
-        </CardContent>
-      </Card>
+      {error ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+          Saved profile settings could not be read: {error}
+          <Button size="sm" variant="outline" onClick={reload}>
+            Try again
+          </Button>
+        </div>
+      ) : !settings ? (
+        <p className="text-muted-foreground text-sm">Loading saved profile settings…</p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {tab === "profile" ? <ProfileTab saved={saved} /> : null}
+          {tab === "preferences" ? <PreferencesTab saved={saved} /> : null}
+          {tab === "security" ? <SecurityTab /> : null}
+          {tab === "notifications" ? <NotificationsTab saved={saved} /> : null}
+          {tab === "token" ? <AccessTokenTab saved={saved} /> : null}
+        </div>
+      )}
     </div>
   );
 }

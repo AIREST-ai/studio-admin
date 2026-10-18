@@ -4,7 +4,9 @@ export const users = [
     name: "Arham Khan",
     username: "Aarhamkhnz",
     email: "arham.khan@weblabs.studio",
-    avatar: "https://avatars.githubusercontent.com/u/43849669",
+    // F-1 (Fahad 129.2, no request to an outside server): a picture kept with the preview (media/preview-samples), not
+    // the GitHub one this started with.
+    avatar: "/api/preview-sim/sample?name=avatar-arham-khan.png",
     role: "administrator",
   },
   {

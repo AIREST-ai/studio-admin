@@ -1,0 +1,476 @@
+"use client";
+
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+
+import { usePathname, useSearchParams } from "next/navigation";
+
+import { PanelLeftClose, PanelLeftIcon, PanelLeftOpen, Plus } from "lucide-react";
+
+import { useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
+import { useSectionLinked } from "@/app/(main)/dashboard/_components/chatwoot-link/link-context";
+import { LinkedQuickCreate, LinkedSearchOff } from "@/app/(main)/dashboard/_components/chatwoot-link/linked-rail";
+import { CustomerPathInboxGroup } from "@/app/(main)/dashboard/chat/_components/customer-path-inbox";
+import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
+import { InboxCreateDialog, type InboxCreateKind } from "@/app/(main)/dashboard/chat/_components/inbox-create";
+import { useContactsStore } from "@/app/(main)/dashboard/contacts/_components/contacts-store";
+import { ContactsChannelsNav } from "@/app/(main)/dashboard/contacts/_components/contacts-subnav";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuItem,
+  SidebarMenuSubItem,
+} from "@/components/ui/sidebar";
+import { READ_ONLY_TEXT } from "@/lib/chatwoot-link-types";
+import { useCwShared } from "@/lib/cw/store";
+import {
+  type NavGroup,
+  type NavMainItem,
+  type NavMainParentItem,
+  sidebarItems,
+} from "@/navigation/sidebar/sidebar-items";
+
+import { useInboxSectionOpen } from "./inbox-bar-folds";
+import { InboxMessageSearch, openInboxMessageSearch, useInboxSearchAsked } from "./inbox-message-search";
+import {
+  CREATABLE_LISTS,
+  hasSubItems,
+  NavCollapsibleItem,
+  NavLinkItem,
+  pageOwner,
+  QuickCreateButton,
+  withLiveLists,
+} from "./nav-main";
+
+interface Section {
+  title: string;
+  items: NavMainItem[];
+  // The Inbox keeps the data-inbox-subnav mark of T-53.
+  inbox: boolean;
+}
+
+// T-54: the section that owns the page, found the same way the main sidebar marks its active link: a group with an
+// entry (Inbox) lists its items, a subnav item (Settings, Captain, ...) lists its sub items. Any other page has none.
+function findSection(groups: NavGroup[], item: string | null): Section | null {
+  for (const group of groups) {
+    const owner = group.items.find((entry) => entry.id === item);
+    if (!owner) continue;
+    if (group.entry) return { title: group.entry.title, items: group.items, inbox: true };
+    if (hasSubItems(owner) && owner.subnav) {
+      return {
+        title: owner.title,
+        items: owner.subItems.map((sub) => ({ ...sub, subItems: undefined })),
+        inbox: false,
+      };
+    }
+  }
+  return null;
+}
+
+function useSection() {
+  const path = usePathname();
+  const folders = useCwStore((s) => s.folders);
+  const { tags } = useChatTags();
+  const teams = useCwShared((s) => s.teams);
+  const inboxes = useCwShared((s) => s.inboxes);
+  const segments = useContactsStore((s) => s.segments);
+  // T-75: Folders and Teams stay in the Inbox bar while empty, with their create button.
+  const groups = withLiveLists(sidebarItems, folders, tags, teams, inboxes, segments, { keepEmpty: true });
+  const owner = pageOwner(groups, path);
+  return { section: findSection(groups, owner.item), owner };
+}
+
+const CREATE_KIND: Record<string, InboxCreateKind> = { "cv-folders": "folder", "cv-teams": "team" };
+
+// Folders or Teams, also with no links yet (withLiveLists keepEmpty), which hasSubItems() does not count as a list.
+function creatableList(item: NavMainItem): NavMainParentItem | null {
+  return CREATABLE_LISTS.includes(item.id) && Array.isArray(item.subItems) ? (item as NavMainParentItem) : null;
+}
+
+// T-75: Folders and Teams (Fahad: they start empty and the admin creates them) are always listed with a create button
+// beside the name, like respond.io's Team Inbox / Custom Inbox headings, and "No … created" while empty. T-289: they
+// open and fold like the other sections of the Inbox bar (InboxSection).
+function CreatableList({
+  item,
+  owner,
+  onCreate,
+  open,
+  onOpenChange,
+  readOnly,
+}: {
+  item: NavMainParentItem;
+  owner: { item: string | null; url: string | null };
+  onCreate: (kind: InboxCreateKind) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  // L-2 round 2: Conversations is linked to the Chatwoot test copy (read-only), so creating is off.
+  readOnly?: boolean;
+}) {
+  const kind = CREATE_KIND[item.id];
+  return (
+    <NavCollapsibleItem
+      item={item}
+      isActive={item.id === owner.item}
+      defaultOpen={false}
+      open={open}
+      onOpenChange={onOpenChange}
+      isSubItemActive={(url) => url === owner.url}
+      action={
+        <SidebarMenuAction
+          data-subnav-create
+          aria-label={readOnly ? `Create ${kind} (${READ_ONLY_TEXT})` : `Create ${kind}`}
+          title={readOnly ? READ_ONLY_TEXT : `Create ${kind}`}
+          disabled={readOnly}
+          data-linked-read-only={readOnly ? true : undefined}
+          className={readOnly ? "cursor-not-allowed opacity-50 hover:bg-transparent" : undefined}
+          onClick={() => !readOnly && onCreate(kind)}
+        >
+          <Plus />
+        </SidebarMenuAction>
+      }
+      empty={
+        <SidebarMenuSubItem className="px-2 py-1 text-muted-foreground text-xs">
+          No {item.title.toLowerCase()} created
+        </SidebarMenuSubItem>
+      }
+    />
+  );
+}
+
+// T-289 (Fahad 128.3, 2026-10-15 01:31: «المفروض أن هذه تكون مطوية… الشخص هو من يفتحها ليس نحن… عندما سوف أخرج وأعود
+// أعادت كلها مفتوحة»): every section of the Inbox bar (Conversations, Folders, Teams, Channels, Labels; Customer Path in
+// customer-path-inbox.tsx) starts folded and stays as the person left it, after leaving the page and after a reload
+// (inbox-bar-folds.ts). It replaces the sections opened for the person: T-75's Folders and Teams, T-141's Channels,
+// the views (Conversations) and a list opening on its own pages.
+function InboxSection({
+  item,
+  owner,
+  onCreate,
+  readOnly,
+}: {
+  item: NavMainParentItem;
+  owner: { item: string | null; url: string | null };
+  onCreate: (kind: InboxCreateKind) => void;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useInboxSectionOpen(item.id);
+  const list = creatableList(item);
+  if (list)
+    return (
+      <CreatableList
+        item={list}
+        owner={owner}
+        onCreate={onCreate}
+        open={open}
+        onOpenChange={setOpen}
+        readOnly={readOnly}
+      />
+    );
+  return (
+    <NavCollapsibleItem
+      item={item}
+      isActive={item.id === owner.item}
+      defaultOpen={false}
+      open={open}
+      onOpenChange={setOpen}
+      isSubItemActive={(url) => url === owner.url}
+    />
+  );
+}
+
+// م137 (Fahad 137): a section whose links carry a group (Settings, sidebar-items.ts) is listed in headed parts, one
+// SidebarGroup with its SidebarGroupLabel each, as Front, Zendesk, Intercom and HubSpot head the parts of their
+// settings. Links with no group (All Settings) come first with no heading. Only this inner bar; the main sidebar keeps
+// no group headings (T-66).
+function sectionParts(items: NavMainItem[]): { label?: string; items: NavMainItem[] }[] {
+  const parts: { label?: string; items: NavMainItem[] }[] = [];
+  for (const item of items) {
+    const last = parts.at(-1);
+    if (last && last.label === item.group) last.items.push(item);
+    else parts.push({ label: item.group, items: [item] });
+  }
+  return parts;
+}
+
+// م137 round 2 (judge M137): a link with a query (Custom Roles: /dashboard/users?tab=roles) is the current one when the
+// address carries that query; otherwise the page's link without one (Agents: /dashboard/users) stays current.
+function currentUrl(items: NavMainItem[], ownerUrl: string | null, path: string, params: URLSearchParams) {
+  for (const item of items) {
+    const url = "url" in item ? item.url : undefined;
+    if (!url?.includes("?")) continue;
+    const parsed = new URL(url, "http://studio.local");
+    if (parsed.pathname === path && [...parsed.searchParams].every(([key, value]) => params.get(key) === value))
+      return url;
+  }
+  // م137 round 2 item 8 (simulation: on Profile Settings "All Settings" stayed marked): the top link with no part (All
+  // Settings) is current on its own page only; a page that is not in the bar (Profile Settings) marks nothing.
+  const top = items.find((item) => !item.group && "url" in item && item.url === ownerUrl);
+  if (top && path !== ownerUrl) return null;
+  return ownerUrl;
+}
+
+function GroupedSectionNav({
+  section,
+  owner,
+  scrollActive,
+}: {
+  section: Section;
+  owner: { item: string | null; url: string | null };
+  // The desktop bar scrolls on its own: the current page's link is brought into its view (Billing is last).
+  scrollActive?: boolean;
+}) {
+  const list = useRef<HTMLDivElement>(null);
+  const baseId = useId();
+  const path = usePathname();
+  const params = useSearchParams();
+  const activeUrl = currentUrl(section.items, owner.url, path, new URLSearchParams(params.toString()));
+  useEffect(() => {
+    if (!scrollActive || !activeUrl) return;
+    list.current?.querySelector<HTMLElement>("[aria-current=page]")?.scrollIntoView({ block: "nearest" });
+  }, [scrollActive, activeUrl]);
+  return (
+    <div ref={list} data-subnav-parts className="flex flex-col">
+      {sectionParts(section.items).map((part, index) => {
+        const labelId = `${baseId}-part-${index}`;
+        return (
+          <SidebarGroup key={part.label ?? ""} data-subnav-part={part.label ?? ""} className="py-1">
+            {part.label ? (
+              <SidebarGroupLabel id={labelId} className="h-7">
+                {part.label}
+              </SidebarGroupLabel>
+            ) : null}
+            <SidebarGroupContent>
+              <SidebarMenu aria-labelledby={part.label ? labelId : undefined}>
+                {part.items.map((item) =>
+                  hasSubItems(item) ? (
+                    <NavCollapsibleItem
+                      key={item.id}
+                      item={item}
+                      isActive={item.id === owner.item}
+                      defaultOpen={item.id === owner.item}
+                      isSubItemActive={(url) => url === owner.url}
+                    />
+                  ) : (
+                    <NavLinkItem key={item.id} item={item} isActive={item.url === activeUrl} showIconFallback={false} />
+                  ),
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        );
+      })}
+    </div>
+  );
+}
+
+// The section's items with the same live lists, active marks and menu parts as the main sidebar.
+function SectionNav({
+  section,
+  owner,
+  onCreate,
+  onHide,
+  scrollActive,
+}: {
+  section: Section;
+  owner: { item: string | null; url: string | null };
+  onCreate: (kind: InboxCreateKind) => void;
+  // T-134 (T-100): the desktop Inbox bar only; the phone sheet closes on its own.
+  onHide?: () => void;
+  scrollActive?: boolean;
+}) {
+  // L-2 round 2: while Conversations is linked to the Chatwoot test copy (read-only), the Inbox bar's Quick Create,
+  // Create folder and Create team are off, and its message search (preview data) says so (chatwoot-link/linked-rail).
+  const conversationsLinked = useSectionLinked("conversations");
+  const linked = section.inbox && conversationsLinked;
+  if (!section.inbox && section.items.some((item) => item.group))
+    return <GroupedSectionNav section={section} owner={owner} scrollActive={scrollActive} />;
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {/* T-62: the Inbox bar starts with Quick Create, before Search and the conversation lists. */}
+          {section.inbox && (
+            <SidebarMenuItem className="mb-2 flex items-center gap-1">
+              <div data-quick-create className="min-w-0 flex-1">
+                {linked ? <LinkedQuickCreate /> : <QuickCreateButton />}
+              </div>
+              {/* T-134 (T-100): a square button in the bar folds the whole bar (Fahad 21:45). The header's Hide
+                  sidebar (T-89) still shows or hides the icon rail only. */}
+              {onHide && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 shrink-0"
+                  aria-label="Hide Inbox bar"
+                  title="Hide Inbox bar"
+                  onClick={onHide}
+                >
+                  <PanelLeftClose />
+                </Button>
+              )}
+            </SidebarMenuItem>
+          )}
+          {section.items.map((item) => {
+            // T-117: Fahad 20:41: the message search is here in the bar, at its size, not the full search page.
+            if (section.inbox && item.id === "cv-search")
+              return linked ? <LinkedSearchOff key={item.id} /> : <InboxMessageSearch key={item.id} />;
+            // T-285 (Fahad 125.8): Contacts lists its channels right after All contacts.
+            if (item.id === "ct-all" && !hasSubItems(item))
+              return <ContactsChannelsNav key={item.id} allContacts={item} />;
+            const list = creatableList(item);
+            // T-289: the Inbox bar's sections, folded until the person opens them.
+            if (section.inbox && (list || hasSubItems(item)))
+              return (
+                <InboxSection
+                  key={item.id}
+                  item={list ?? (item as NavMainParentItem)}
+                  owner={owner}
+                  onCreate={onCreate}
+                  readOnly={linked}
+                />
+              );
+            return hasSubItems(item) ? (
+              <NavCollapsibleItem
+                key={item.id}
+                item={item}
+                isActive={item.id === owner.item}
+                // Other sections' bars: the views stay open; a list opens on its own pages.
+                defaultOpen={item.id === "chat" || item.id === owner.item}
+                isSubItemActive={(url) => url === owner.url}
+              />
+            ) : (
+              <NavLinkItem
+                key={item.id}
+                item={item}
+                // Inbox links own their pages by item; a section's links by URL (two may share a page's item).
+                isActive={section.inbox ? item.id === owner.item : item.url === owner.url}
+                showIconFallback={false}
+              />
+            );
+          })}
+          {section.inbox && <CustomerPathInboxGroup />}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+// T-53, T-54: a section's pages (its layout.tsx): the inner bar beside the main sidebar, with the sidebar's colours,
+// border and menu sizes, scrolling on its own. Below md it is a sheet opened from a button above the page. A page
+// with no section (a single page) gets no bar.
+export function SectionShell({ children }: Readonly<{ children: ReactNode }>) {
+  const [open, setOpen] = useState(false);
+  // T-75: the create dialog lives here, outside the phone sheet, which closes when a create button is pressed. It has
+  // no trigger of its own, so focus goes back to the button that opened it (when that button is still on the page).
+  const [creating, setCreating] = useState<InboxCreateKind | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const startCreate = (kind: InboxCreateKind) => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCreating(kind);
+  };
+  const endCreate = () => {
+    setCreating(null);
+    requestAnimationFrame(() => {
+      if (opener.current?.isConnected) opener.current.focus();
+    });
+  };
+  const { section, owner } = useSection();
+  // T-134 (T-100): the Inbox bar folded by its square button, until its Show button brings it back.
+  const [barHidden, setBarHidden] = useState(false);
+  // T-259: a message search asked for elsewhere shows its box: the bar unfolds, and on phones the sheet opens.
+  // Only the requests made while this page is open, not one left from a page before.
+  const asked = useInboxSearchAsked();
+  const seen = useRef(asked);
+  const inbox = Boolean(section?.inbox);
+  useEffect(() => {
+    if (asked === seen.current || !inbox) return;
+    seen.current = asked;
+    setBarHidden(false);
+    if (window.matchMedia("(max-width: 767px)").matches) setOpen(true);
+  }, [asked, inbox]);
+  // T-259: the Inbox preview's Search links to /dashboard/chat?search=; the box opens and the address drops the mark.
+  const params = useSearchParams();
+  const askedByLink = params.get("search");
+  useEffect(() => {
+    if (askedByLink === null || !inbox) return;
+    openInboxMessageSearch(askedByLink);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("search");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [askedByLink, inbox]);
+
+  if (!section) return <>{children}</>;
+  const folded = section.inbox && barHidden;
+
+  return (
+    <div data-content-padding="false" className="flex min-h-[calc(100svh-var(--dashboard-header-height))]">
+      {folded ? (
+        // T-134 (T-100): the folded bar leaves a thin strip with the button that shows it again.
+        <div
+          data-inbox-subnav-folded
+          className="sticky top-0 hidden max-h-[calc(100svh-var(--dashboard-header-height))] shrink-0 border-r bg-sidebar p-2 text-sidebar-foreground md:block"
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label="Show Inbox bar"
+            title="Show Inbox bar"
+            onClick={() => setBarHidden(false)}
+          >
+            <PanelLeftOpen />
+          </Button>
+        </div>
+      ) : (
+        <aside
+          data-section-subnav
+          data-inbox-subnav={section.inbox ? "" : undefined}
+          aria-label={section.title}
+          className="sticky top-0 hidden max-h-[calc(100svh-var(--dashboard-header-height))] w-56 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex"
+        >
+          <SidebarContent>
+            <SectionNav
+              section={section}
+              owner={owner}
+              onCreate={startCreate}
+              onHide={section.inbox ? () => setBarHidden(true) : undefined}
+              scrollActive
+            />
+          </SidebarContent>
+        </aside>
+      )}
+      <div className="min-w-0 flex-1 p-4 md:p-6">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="mb-4 md:hidden">
+              <PanelLeftIcon />
+              {section.title}
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="left"
+            className="w-72 bg-sidebar p-0 text-sidebar-foreground"
+            onClick={(event) => {
+              // T-62: and once Quick Create opens its dialog.
+              if ((event.target as HTMLElement).closest("a, [data-quick-create], [data-subnav-create]")) setOpen(false);
+            }}
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>{section.title}</SheetTitle>
+            </SheetHeader>
+            <SidebarContent>
+              <SectionNav section={section} owner={owner} onCreate={startCreate} />
+            </SidebarContent>
+          </SheetContent>
+        </Sheet>
+        {children}
+        {creating && <InboxCreateDialog kind={creating} onOpenChange={(next) => !next && endCreate()} />}
+      </div>
+    </div>
+  );
+}

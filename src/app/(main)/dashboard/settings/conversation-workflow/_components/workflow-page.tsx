@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -17,8 +18,15 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
+import {
+  type AutoResolve,
+  type ConversationWorkflow,
+  loadSettingsPreview,
+  SAVED_IN_PREVIEW,
+  saveConversationWorkflow,
+} from "../../_components/settings-preview-client";
+import { useLivePickerNames } from "../../labels/_shared/live-picker-names";
 import { PageHeader } from "../../labels/_shared/settings-shell";
-import { labelNames } from "../../labels/_shared/settings-data";
 import { FieldError, ToneBadge } from "../../labels/_shared/settings-ui";
 
 type AttrType = "Text" | "Number" | "Link" | "Date" | "List" | "Checkbox";
@@ -51,16 +59,57 @@ const typeIcon: Record<AttrType, React.ElementType> = {
 const minutesPer = { minutes: 1, hours: 60, days: 1440 } as const;
 type Unit = keyof typeof minutesPer;
 
-function AutoResolveCard() {
-  const [enabled, setEnabled] = React.useState(true);
-  const [amount, setAmount] = React.useState("7");
-  const [unit, setUnit] = React.useState<Unit>("days");
-  const [message, setMessage] = React.useState(
-    "We have closed this chat after 7 days without a reply. Message us any time and we will be happy to help.",
-  );
-  const [label, setLabel] = React.useState("auto-closed");
-  const [ignoreWaiting, setIgnoreWaiting] = React.useState(true);
+// The page's first values until something is saved (no default label, as in Chatwoot: auto-closed was removed by T-262).
+const AUTO_RESOLVE_DEFAULT: AutoResolve = {
+  enabled: true,
+  amount: 7,
+  unit: "days",
+  message: "We have closed this chat after 7 days without a reply. Message us any time and we will be happy to help.",
+  ignoreWaiting: true,
+  label: "",
+};
+
+// م137 round 2 (item 99, judge M137): the switch and the form are saved in this preview (api/settings-preview) and come
+// back after a reload; each message says what happened. The switch saves at once (NN/g); the form's fields save with
+// its button (Primer), and its yes/no field is a checkbox, not a second switch.
+function AutoResolveCard({ saved }: { saved: AutoResolve | null | undefined }) {
+  const { labels: labelNames } = useLivePickerNames(); // F-6B: the live labels (Settings > Labels), not the seed
+  const [stored, setStored] = React.useState<AutoResolve>(AUTO_RESOLVE_DEFAULT);
+  const [enabled, setEnabled] = React.useState(AUTO_RESOLVE_DEFAULT.enabled);
+  const [amount, setAmount] = React.useState(String(AUTO_RESOLVE_DEFAULT.amount));
+  const [unit, setUnit] = React.useState<Unit>(AUTO_RESOLVE_DEFAULT.unit);
+  const [message, setMessage] = React.useState(AUTO_RESOLVE_DEFAULT.message);
+  const [label, setLabel] = React.useState(AUTO_RESOLVE_DEFAULT.label);
+  const [ignoreWaiting, setIgnoreWaiting] = React.useState(AUTO_RESOLVE_DEFAULT.ignoreWaiting);
   const [submitted, setSubmitted] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+
+  // Show what was saved, once it is read (undefined: still reading).
+  React.useEffect(() => {
+    if (!saved) return;
+    setStored(saved);
+    setEnabled(saved.enabled);
+    setAmount(String(saved.amount));
+    setUnit(saved.unit);
+    setMessage(saved.message);
+    setLabel(saved.label);
+    setIgnoreWaiting(saved.ignoreWaiting);
+  }, [saved]);
+
+  async function keep(next: AutoResolve) {
+    setBusy(true);
+    try {
+      const result = await saveConversationWorkflow({ autoResolve: next });
+      if (result.autoResolve) setStored(result.autoResolve);
+      toast.success("Auto resolve settings updated successfully", { description: SAVED_IN_PREVIEW });
+      return true;
+    } catch (error) {
+      toast.error("Failed to update auto resolve settings", { description: (error as Error).message });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const minutes = Number(amount) * minutesPer[unit];
   const durationError =
@@ -72,10 +121,10 @@ function AutoResolveCard() {
     event.preventDefault();
     setSubmitted(true);
     if (durationError) {
-      toast.error("Failed to update auto resolve settings");
+      toast.error("Failed to update auto resolve settings", { description: durationError });
       return;
     }
-    toast.success("Auto resolve settings updated successfully");
+    void keep({ enabled, amount: Number(amount), unit, message, ignoreWaiting, label });
   }
 
   return (
@@ -90,9 +139,11 @@ function AutoResolveCard() {
           {enabled ? <ToneBadge tone="green">Enabled</ToneBadge> : <ToneBadge tone="gray">Disabled</ToneBadge>}
           <Switch
             checked={enabled}
-            onCheckedChange={(c) => {
+            disabled={busy || saved === undefined}
+            onCheckedChange={async (c) => {
+              // At once, with the last saved fields (unsaved edits in the form stay unsaved).
               setEnabled(c);
-              toast.success("Auto resolve settings updated successfully");
+              if (!(await keep({ ...stored, enabled: c }))) setEnabled(!c);
             }}
             aria-label="Auto-resolve conversations"
           />
@@ -148,11 +199,15 @@ function AutoResolveCard() {
             <div className="grid gap-2">
               <Label>Preferences</Label>
               <div className="divide-y rounded-lg border">
-                <div className="flex items-center justify-between gap-4 p-3">
+                <div className="flex items-center gap-3 p-3">
+                  <Checkbox
+                    id="ar-ignore"
+                    checked={ignoreWaiting}
+                    onCheckedChange={(c) => setIgnoreWaiting(c === true)}
+                  />
                   <Label htmlFor="ar-ignore" className="font-normal">
                     Skip conversations waiting for agent’s reply
                   </Label>
-                  <Switch id="ar-ignore" checked={ignoreWaiting} onCheckedChange={setIgnoreWaiting} />
                 </div>
                 <div className="flex items-center justify-between gap-4 p-3">
                   <Label htmlFor="ar-label" className="font-normal">
@@ -173,7 +228,7 @@ function AutoResolveCard() {
                 </div>
               </div>
             </div>
-            <Button type="submit" className="w-fit">
+            <Button type="submit" className="w-fit" disabled={busy || saved === undefined}>
               Save Changes
             </Button>
           </form>
@@ -183,8 +238,11 @@ function AutoResolveCard() {
   );
 }
 
-function RequiredAttributesCard() {
+function RequiredAttributesCard({ saved }: { saved: string[] | null | undefined }) {
   const [required, setRequired] = React.useState<string[]>(["resolution_reason", "order_number"]);
+  React.useEffect(() => {
+    if (saved) setRequired(saved);
+  }, [saved]);
   const [search, setSearch] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const chosen = required
@@ -195,9 +253,17 @@ function RequiredAttributesCard() {
   );
   const remaining = conversationAttributes.length - required.length;
 
-  function change(next: string[]) {
+  // م137 round 2 (item 99): each add or remove is saved in this preview at once; on a failure the list goes back.
+  async function change(next: string[]) {
+    const before = required;
     setRequired(next);
-    toast.success("Required attributes updated");
+    try {
+      await saveConversationWorkflow({ requiredAttributes: next });
+      toast.success("Required attributes updated", { description: SAVED_IN_PREVIEW });
+    } catch (error) {
+      setRequired(before);
+      toast.error("Required attributes not updated", { description: (error as Error).message });
+    }
   }
 
   return (
@@ -299,14 +365,29 @@ function RequiredAttributesCard() {
 }
 
 export function WorkflowPage() {
+  // undefined while the saved copy is read; null when nothing was saved yet.
+  const [saved, setSaved] = React.useState<ConversationWorkflow | null | undefined>(undefined);
+  React.useEffect(() => {
+    let alive = true;
+    loadSettingsPreview()
+      .then((all) => alive && setSaved(all.conversationWorkflow))
+      .catch((error) => {
+        if (!alive) return;
+        setSaved(null);
+        toast.error("Saved workflow settings could not be read", { description: (error as Error).message });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Conversation Workflows"
+        title="Conversation Workflow"
         description="Configure rules and required fields for conversation resolution."
       />
-      <AutoResolveCard />
-      <RequiredAttributesCard />
+      <AutoResolveCard saved={saved === undefined ? undefined : (saved?.autoResolve ?? null)} />
+      <RequiredAttributesCard saved={saved === undefined ? undefined : (saved?.requiredAttributes ?? null)} />
     </div>
   );
 }

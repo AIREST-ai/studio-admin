@@ -5,7 +5,15 @@ import type * as React from "react";
 
 import { cn } from "cn";
 
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function SettingsCard({
   title,
@@ -28,9 +36,7 @@ export function SettingsCard({
     <Card className={cn(tone === "danger" && "border-destructive/30", className)}>
       <CardHeader className={cn(children ? "border-b" : undefined)}>
         <CardTitle className={cn("text-lg leading-none", tone === "danger" && "text-destructive")}>{title}</CardTitle>
-        {description ? (
-          <CardDescription className="max-w-2xl leading-relaxed">{description}</CardDescription>
-        ) : null}
+        {description ? <CardDescription className="max-w-2xl leading-relaxed">{description}</CardDescription> : null}
         {action ? <CardAction className="self-center">{action}</CardAction> : null}
       </CardHeader>
       {children ? <CardContent>{children}</CardContent> : null}

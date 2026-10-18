@@ -17,11 +17,9 @@ import {
   Music,
   Plus,
   Settings2,
-  Sparkles,
   Video,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { TagChips, TagPicker } from "@/app/(main)/chat/_components/chat-tags";
 import { brown } from "@/app/(main)/chat/_components/chat-thread-extras";
@@ -35,31 +33,36 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SIMULATED } from "@/lib/cw/preview-sim";
+import { downloadSample, SimBadge } from "@/lib/cw/preview-sim-ui";
+import { useViewer } from "@/lib/cw/view-as";
 
+import { GalleryView } from "./conversation-pane";
 import {
   agentName,
-  agents,
   baseConversations,
   buildThread,
   type Conversation,
-  CURRENT_AGENT_ID,
   contactAttributeDefs,
   contactIdOf,
   conversationAttributeDefs,
   conversationInfo,
-  linearIssues,
   previousConversations,
   priorities,
   shopifyOrders,
   teamName,
+  useLiveAgents,
 } from "./cw-data";
 import { cw, useCwStore } from "./cw-store";
 import { AgentAvatar, AgentPicker, ChannelIcon, PriorityIcon, PriorityPicker, StatusPill, TeamPicker } from "./cw-ui";
-import { CustomAttributes } from "./panel-attributes";
+import { CustomAttributes, PREVIEW_ONLY, previewOnly } from "./panel-attributes";
 import { ContactInfo } from "./panel-contact-info";
 import { ContactNotes, MacrosList } from "./panel-sections";
 import { applyOrder, moveKey, useHydratePanelSettings, usePanelSetting } from "./panel-settings";
+import { useLabelSaves } from "./sim-panel-persist";
+import { SimCopilot, SimLinearIssues } from "./sim-panel-tools";
+import { usePanelTab } from "./studio-profile";
 
 // F159: the contact panel shows a soft fade at its bottom edge while more sections are below, so the last visible
 // line reads as "scroll for more" instead of a control cut in half. This sentinel after the last section tells when
@@ -79,7 +82,10 @@ function EndSentinel({ onMoreBelow }: { onMoreBelow: (more: boolean) => void }) 
 
 function Participants({ conversation }: { conversation: Conversation }) {
   const participants = useCwStore((s) => s.meta[conversation.id]?.participants ?? []);
-  const watching = participants.includes(CURRENT_AGENT_ID);
+  const agents = useLiveAgents();
+  // F-5A "View as": "you" is the person the page is viewed as.
+  const me = useViewer().id;
+  const watching = participants.includes(me);
   const count = participants.length;
   // F159: Chatwoot ConversationParticipant.vue layout, two rows: the count text with the settings button, then the
   // avatars with "You are participating" or the "Join conversation" link beside them. The old three rows pushed the
@@ -117,7 +123,7 @@ function Participants({ conversation }: { conversation: Conversation }) {
                             conversation.id,
                             on ? participants.filter((p) => p !== agent.id) : [...participants, agent.id],
                           );
-                          toast.success("Participants updated!");
+                          previewOnly("Participants updated");
                         }}
                       >
                         <Checkbox checked={on} className="pointer-events-none" />
@@ -153,8 +159,8 @@ function Participants({ conversation }: { conversation: Conversation }) {
             size="xs"
             className="h-6 gap-1 px-0"
             onClick={() => {
-              cw.setParticipants(conversation.id, [...participants, CURRENT_AGENT_ID]);
-              toast.success("Participants updated!");
+              cw.setParticipants(conversation.id, [...participants, me]);
+              previewOnly("Participants updated");
             }}
           >
             Join conversation <ArrowRight />
@@ -167,6 +173,7 @@ function Participants({ conversation }: { conversation: Conversation }) {
 
 function ConversationActions({ conversation }: { conversation: Conversation }) {
   const meta = useCwStore((s) => s.meta[conversation.id]);
+  const me = useViewer().id;
   const id = conversation.id;
   const assignee = agentName(meta.assigneeId);
   const team = teamName(meta.teamId);
@@ -180,14 +187,14 @@ function ConversationActions({ conversation }: { conversation: Conversation }) {
       <div className="grid gap-1.5">
         <div className="flex items-center justify-between">
           <span className="font-medium text-muted-foreground text-xs">Assigned Agent</span>
-          {meta.assigneeId !== CURRENT_AGENT_ID && (
+          {meta.assigneeId !== me && (
             <Button
               variant="link"
               size="sm"
               className="h-auto px-0 text-xs"
               onClick={() => {
-                cw.assignAgent([id], CURRENT_AGENT_ID);
-                toast.success("Conversation Assignee changed");
+                cw.assignAgent([id], me);
+                previewOnly("Conversation Assignee changed");
               }}
             >
               Assign to me
@@ -199,7 +206,7 @@ function ConversationActions({ conversation }: { conversation: Conversation }) {
           value={meta.assigneeId}
           onChange={(agentId) => {
             cw.assignAgent([id], agentId);
-            toast.success("Conversation Assignee changed");
+            previewOnly("Conversation Assignee changed");
           }}
           trigger={
             <button type="button" className={row}>
@@ -218,7 +225,7 @@ function ConversationActions({ conversation }: { conversation: Conversation }) {
           value={meta.teamId}
           onChange={(teamId) => {
             cw.assignTeam([id], teamId);
-            toast.success("Conversation team changed");
+            previewOnly("Conversation team changed");
           }}
           trigger={
             <button type="button" className={row}>
@@ -234,7 +241,7 @@ function ConversationActions({ conversation }: { conversation: Conversation }) {
           value={meta.priority}
           onChange={(value) => {
             cw.setPriority([id], value);
-            toast.success(`Changed priority of conversation id ${id} to ${value}`);
+            previewOnly(`Priority changed to ${value}`);
           }}
           trigger={
             <button type="button" className={row}>
@@ -256,8 +263,35 @@ function ConversationActions({ conversation }: { conversation: Conversation }) {
             </Button>
           </TagPicker>
         </div>
+        {/* M129-A round 2: labels on the conversation are kept in the preview's saved copy (sim-panel-persist.ts).
+            F-19: the line says "saved" only after the server took this page's change, and says plainly when not. */}
+        <LabelSaveLine convId={convId} />
       </div>
     </div>
+  );
+}
+
+// F-19 (F-8's note): was a fixed "saved in this preview" line, shown even when the save failed.
+function LabelSaveLine({ convId }: { convId: string }) {
+  const save = useLabelSaves((state) => state[convId]);
+  if (!save) return null;
+  if (save.state === "saving")
+    return (
+      <p className="text-muted-foreground text-xs" data-labels-save="saving">
+        Saving the labels in this preview…
+      </p>
+    );
+  if (save.state === "saved")
+    return (
+      <p className="text-muted-foreground text-xs" data-labels-save="saved">
+        {PREVIEW_ONLY}.
+      </p>
+    );
+  return (
+    <p className="text-destructive text-xs" data-labels-save="failed">
+      Not saved in the preview ({save.message}). This label change shows on this page only and will be gone after a
+      reload.
+    </p>
   );
 }
 
@@ -266,9 +300,15 @@ function SharedFiles({ conversation }: { conversation: Conversation }) {
   const sent = useCwStore((s) => s.sent[conversation.id]);
   const [allMedia, setAllMedia] = useState(false);
   const [allFiles, setAllFiles] = useState(false);
+  const [viewing, setViewing] = useState<string | null>(null);
   // Chatwoot SharedFiles.vue: Media = images and videos, Files = documents and audio; locations and shared
   // contact cards are not files, so they are left out.
-  const files = [...buildThread(conversation, meta), ...(sent ?? [])].flatMap((m) => m.attachments ?? []);
+  const thread = [...buildThread(conversation, meta), ...(sent ?? [])];
+  const files = thread.flatMap((m) => m.attachments ?? []);
+  // M129-A: who sent a file and when, for the image viewer's header (Chatwoot GalleryView).
+  const messageOf = (name: string) => thread.find((m) => m.attachments?.some((f) => f.name === name));
+  const viewed = viewing ? files.find((f) => f.name === viewing) : undefined;
+  const viewedMessage = viewing ? messageOf(viewing) : undefined;
   const media = files.filter((f) => f.type === "image" || f.type === "video");
   const docs = files.filter((f) => f.type === "file" || f.type === "audio");
   if (media.length + docs.length === 0) return <p className="text-muted-foreground text-xs">No attachments yet</p>;
@@ -286,7 +326,8 @@ function SharedFiles({ conversation }: { conversation: Conversation }) {
                 type="button"
                 title={file.name}
                 aria-label={file.name}
-                onClick={() => toast(file.name)}
+                // M129-A (Fahad 129.2): opens the conversation's image viewer (GalleryView) on this file.
+                onClick={() => setViewing(file.name)}
                 className="relative grid aspect-square place-items-center rounded-md border bg-gradient-to-br from-sky-100 to-indigo-100 text-indigo-500 dark:from-sky-500/15 dark:to-indigo-500/15"
               >
                 {file.type === "video" ? <Video className="size-5" /> : <ImageIcon className="size-5" />}
@@ -318,23 +359,29 @@ function SharedFiles({ conversation }: { conversation: Conversation }) {
         <div className="grid gap-1.5">
           <span className="font-medium text-muted-foreground text-xs">Files</span>
           {shownDocs.map((file) => (
-            <div key={file.name} className="group/file flex items-center gap-2 text-sm">
+            <div key={file.name} className="group/file flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
               {file.type === "audio" ? (
                 <Music className="size-3.5 shrink-0 text-muted-foreground" />
               ) : (
                 <FileText className="size-3.5 shrink-0 text-muted-foreground" />
               )}
-              <span className="min-w-0 truncate">{file.name}</span>
-              <span className="ms-auto shrink-0 text-muted-foreground text-xs">{file.size ?? file.duration}</span>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label="Download file"
-                className="shrink-0 opacity-0 group-hover/file:opacity-100 focus-visible:opacity-100"
-                onClick={() => toast.success(`Downloading ${file.name}`)}
-              >
-                <Download />
-              </Button>
+              <span className="min-w-24 flex-1 truncate">{file.name}</span>
+              <span className="shrink-0 text-muted-foreground text-xs">{file.size ?? file.duration}</span>
+              {/* M129-A (Fahad 129.2, replaces T-277's disabled button): downloads the sample file kept with the preview. */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="ms-auto"
+                    aria-label={`Download ${file.name}`}
+                    onClick={() => downloadSample(file.name)}
+                  >
+                    <Download />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download sample file — {SIMULATED}</TooltipContent>
+              </Tooltip>
             </div>
           ))}
           {docs.length > 3 && (
@@ -344,69 +391,17 @@ function SharedFiles({ conversation }: { conversation: Conversation }) {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function Copilot({ conversation }: { conversation: Conversation }) {
-  const [messages, setMessages] = useState<{ role: "you" | "copilot"; text: string }[]>([]);
-  const [draft, setDraft] = useState("");
-  const prompts = ["Summarize this conversation", "Suggest an answer", "Rate this conversation"];
-  const ask = (question: string) => {
-    const answer =
-      question === "Summarize this conversation"
-        ? `${conversation.contact.name} wrote about "${conversation.subject}". We have replied and are waiting on the next step.`
-        : question === "Suggest an answer"
-          ? `Hi ${conversation.contact.name.split(" ")[0]}, thanks for your patience. I have checked this and will confirm the fix shortly.`
-          : "Tone is positive and the customer is engaged. Response times are within the SLA.";
-    setMessages((prev) => [...prev, { role: "you", text: question }, { role: "copilot", text: answer }]);
-  };
-  return (
-    <div className="flex h-full flex-col gap-3 p-4">
-      {messages.length === 0 ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 font-medium text-sm">
-            <Sparkles className="size-4" /> Copilot
-          </div>
-          <p className="text-muted-foreground text-xs">Try these prompts</p>
-          {prompts.map((prompt) => (
-            <Button key={prompt} variant="outline" size="sm" className="justify-start" onClick={() => ask(prompt)}>
-              {prompt}
-            </Button>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {messages.map((m, index) => (
-            <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: append-only local chat
-              key={index}
-              className={
-                m.role === "you"
-                  ? "self-end rounded-lg bg-primary px-3 py-2 text-primary-foreground text-sm"
-                  : "rounded-lg bg-muted px-3 py-2 text-sm"
-              }
-            >
-              {m.text}
-            </div>
-          ))}
-        </div>
-      )}
-      <form
-        className="mt-auto"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (draft.trim()) ask(draft.trim());
-          setDraft("");
-        }}
-      >
-        <Textarea
-          className="min-h-16 text-sm"
-          placeholder="Give copilot additional prompts, or ask anything else... Press enter to send follow-up"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+      {viewed && (
+        <GalleryView
+          file={viewed}
+          sender={viewedMessage?.sender ?? (viewedMessage?.kind === "incoming" ? conversation.name : "Arham Khan")}
+          time={viewedMessage?.time ?? ""}
+          open
+          onOpenChange={(open) => {
+            if (!open) setViewing(null);
+          }}
         />
-      </form>
+      )}
     </div>
   );
 }
@@ -498,39 +493,20 @@ const PANEL_SECTIONS: { id: SectionId; title: string }[] = [
 
 const DEFAULT_OPEN: SectionId[] = ["conversation_actions", "conversation_info"];
 
+// M129-A (Fahad 129.2, replaces T-277's disabled buttons): Link issue and Create issue work as a simulation
+// (sim-panel-tools.tsx); the issues stay in the preview and nothing is sent to Linear.
 function LinearIssues({ conversation }: { conversation: Conversation }) {
-  return (
-    <div className="flex flex-col gap-2">
-      {conversation.id === 1 ? (
-        linearIssues.map((issue) => (
-          <div key={issue.id} className="rounded-md border p-2 text-sm">
-            <div className="flex items-center justify-between text-muted-foreground text-xs">
-              <span>{issue.id}</span>
-              <Badge variant="outline" className="text-[10px]">
-                {issue.state}
-              </Badge>
-            </div>
-            <div className="mt-1">{issue.title}</div>
-          </div>
-        ))
-      ) : (
-        <p className="text-muted-foreground text-xs">No linked issues yet.</p>
-      )}
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => toast("Linear: link an existing issue")}>
-          Link issue
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => toast("Linear: create a new issue")}>
-          Create issue
-        </Button>
-      </div>
-    </div>
-  );
+  return <SimLinearIssues conversation={conversation} />;
 }
 
 function ShopifyOrders() {
   return (
     <div className="flex flex-col gap-2">
+      {/* T-277: the same sample orders show for every contact (no Shopify store); M129-A: said in English. */}
+      <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
+        <SimBadge />
+        <span>Sample orders: the same ones show for every contact.</span>
+      </div>
       {shopifyOrders.map((order) => (
         <div key={order.id} className="rounded-md border p-2 text-sm">
           <div className="flex items-center justify-between">
@@ -548,6 +524,34 @@ function ShopifyOrders() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Item 105c: Chatwoot's Copilot sits beside Contact in the conversation (SidepanelSwitch.vue). Studio's Captain
+// pages are the place it belongs to. M129-A (Fahad 129.2): the prompts and "Ask Copilot" work with ready-made sample
+// answers marked as such (sim-panel-tools.tsx) instead of being disabled until Captain is linked.
+const CAPTAIN_LINKS = [
+  { href: "/dashboard/captain", label: "Captain" },
+  { href: "/dashboard/captain/assistants", label: "Assistants" },
+  { href: "/dashboard/captain/playground", label: "Playground" },
+];
+
+function CopilotTab({ conversation }: { conversation: Conversation }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-4 p-4">
+      <SimCopilot conversation={conversation} />
+      <Separator />
+      <div className="flex flex-col gap-1">
+        {CAPTAIN_LINKS.map((link) => (
+          <Button key={link.href} variant="link" size="sm" className="w-fit px-0" asChild>
+            <Link href={link.href}>
+              {link.label}
+              <ArrowRight />
+            </Link>
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -626,6 +630,10 @@ function SectionBody({ section, conversation }: { section: SectionId; conversati
 
 export function ContactPanel({ conversation, onClose }: { conversation: Conversation; onClose?: () => void }) {
   useHydratePanelSettings();
+  const panelTab = usePanelTab((s) => s.tab);
+  // Item 73: the old Profile tab is gone; "profile" (View profile in the header) opens the first tab.
+  // Item 105c brought Copilot back beside it.
+  const tab = panelTab === "profile" ? "contact" : panelTab;
   const [moreBelow, setMoreBelow] = useState(false);
   const [savedOrder, setSavedOrder] = usePanelSetting<string[]>("conversation_sidebar_items_order", []);
   const [open, setOpen] = usePanelSetting<string[]>("conversation_sidebar_open", DEFAULT_OPEN);
@@ -651,10 +659,14 @@ export function ContactPanel({ conversation, onClose }: { conversation: Conversa
   };
 
   return (
-    <Tabs defaultValue="contact" className="flex h-full min-h-0 flex-col gap-0">
+    <Tabs
+      value={tab}
+      onValueChange={(value) => usePanelTab.setState({ tab: value as typeof panelTab })}
+      className="flex h-full min-h-0 flex-col gap-0"
+    >
       <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
         <TabsList variant="line" className="h-8">
-          <TabsTrigger value="contact">Contact</TabsTrigger>
+          <TabsTrigger value="contact">Profile</TabsTrigger>
           <TabsTrigger value="copilot">Copilot</TabsTrigger>
         </TabsList>
         <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
@@ -666,12 +678,14 @@ export function ContactPanel({ conversation, onClose }: { conversation: Conversa
         {/* Radix's scroll wrapper is display:table and grows with long text; block keeps it to the panel width. */}
         <ScrollArea className="[&_[data-slot=scroll-area-viewport]>div]:block! h-full">
           <div className="flex min-w-0 flex-col gap-4 p-4">
+            {/* T-285 (Fahad 124.4): Customer Path (T-96 «مسار العميل») sits inside the details, right above the phone. */}
             <ContactInfo conversation={conversation} />
 
             <Separator />
 
             <Accordion type="multiple" value={open} onValueChange={setOpen} className="-mx-1">
               {ordered.map((item) => (
+                // biome-ignore lint/a11y/noStaticElementInteractions: drop target for mouse reordering of panel sections; the row is not a control
                 <div
                   key={item.id}
                   draggable={armed === item.id}
@@ -711,7 +725,8 @@ export function ContactPanel({ conversation, onClose }: { conversation: Conversa
                       </span>
                       <AccordionTrigger className="px-1">{item.title}</AccordionTrigger>
                     </div>
-                    <AccordionContent className="px-1">
+                    {/* T-277: h-auto drops the height measured at open, so a narrower panel cannot cut off the last row. */}
+                    <AccordionContent className="h-auto px-1">
                       <SectionBody section={item.id} conversation={conversation} />
                     </AccordionContent>
                   </AccordionItem>
@@ -730,8 +745,11 @@ export function ContactPanel({ conversation, onClose }: { conversation: Conversa
           }
         />
       </TabsContent>
+
       <TabsContent value="copilot" className="m-0 min-h-0 flex-1">
-        <Copilot conversation={conversation} />
+        <ScrollArea className="h-full">
+          <CopilotTab conversation={conversation} />
+        </ScrollArea>
       </TabsContent>
     </Tabs>
   );

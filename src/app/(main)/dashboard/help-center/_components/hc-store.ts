@@ -6,14 +6,14 @@ import * as React from "react";
 import {
   type Article,
   type ArticleStatus,
+  type Category,
+  type Locale,
+  type Portal,
   articles as seedArticles,
   categories as seedCategories,
   locales as seedLocales,
   portals as seedPortals,
   translatedArticles,
-  type Category,
-  type Locale,
-  type Portal,
 } from "./data";
 
 export interface HelpCenterState {
@@ -73,7 +73,10 @@ export const hc = {
     set((s) => ({ ...s, articles: s.articles.map((a) => (ids.includes(a.id) ? { ...a, categoryId } : a)) }));
   },
   updateArticle(id: number, patch: Partial<Article>) {
-    set((s) => ({ ...s, articles: s.articles.map((a) => (a.id === id ? { ...a, ...patch, updated: "Just now" } : a)) }));
+    set((s) => ({
+      ...s,
+      articles: s.articles.map((a) => (a.id === id ? { ...a, ...patch, updated: "Just now" } : a)),
+    }));
   },
   createArticle(article: Omit<Article, "id" | "views" | "updated">) {
     const id = Math.max(...state.articles.map((a) => a.id), 0) + 1;

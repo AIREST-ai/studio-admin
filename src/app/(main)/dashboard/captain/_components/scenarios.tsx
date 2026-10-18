@@ -4,9 +4,10 @@
 import * as React from "react";
 
 import { cn } from "cn";
-import { Lightbulb, Pencil, Plus, Search, Trash2, Wrench } from "lucide-react";
+import { Lightbulb, Pencil, Plus, Trash2, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,13 +19,13 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { exampleScenarios, type Scenario, scenarios } from "./data";
+import { exampleScenarios, type Scenario } from "./data";
 import { ConfirmDialog, ScenarioDialog } from "./dialogs";
 import { CaptainShell, ChipSelect, RowMenuTrigger, ToneBadge } from "./shared";
+import { useCaptainState } from "./store";
 
 const statusOptions = [
   { value: "all", label: "All" },
@@ -38,7 +39,7 @@ const exampleTools: Record<string, string[]> = {
 };
 
 export function ScenariosList() {
-  const [items, setItems] = React.useState<Scenario[]>(scenarios);
+  const [items, setItems] = useCaptainState("scenarios");
   const [examples, setExamples] = React.useState(exampleScenarios);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
@@ -92,9 +93,12 @@ export function ScenariosList() {
             <CardTitle className="inline-flex items-center gap-2 text-sm">
               <Lightbulb className="size-4 text-amber-500" /> Example scenarios
             </CardTitle>
-            <CardAction>
+            <CardAction className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={() => addExamples(examples)}>
                 Add all
+              </Button>
+              <Button variant="ghost" size="icon-sm" aria-label="Close examples" onClick={() => setExamples([])}>
+                <X />
               </Button>
             </CardAction>
           </CardHeader>
@@ -122,17 +126,14 @@ export function ScenariosList() {
             {items.filter((s) => s.enabled).length} of {items.length} enabled
           </CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                <Search className="size-3.5" />
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
-                placeholder="Search..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </InputGroup>
+            <ExpandingSearch
+              name="scenarios"
+              label="Search scenarios"
+              placeholder="Search..."
+              className="w-full md:w-64"
+              value={query}
+              onChange={setQuery}
+            />
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 px-0">
@@ -195,7 +196,7 @@ export function ScenariosList() {
                       </button>
                     </TableCell>
                     <TableCell className="max-w-md whitespace-normal py-4">
-                      <span className="line-clamp-2 text-sm">{s.instruction}</span>
+                      <span className="line-clamp-2 whitespace-pre-line text-sm">{s.instruction}</span>
                     </TableCell>
                     <TableCell className="py-4">
                       {s.tools.length ? (

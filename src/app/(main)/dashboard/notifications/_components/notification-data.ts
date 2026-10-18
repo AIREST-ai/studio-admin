@@ -34,13 +34,15 @@ export const typeLabels: Record<NotificationType, string> = {
   sla_missed_resolution: "SLA breach",
 };
 
+export type SnoozeKey = "1h" | "1d" | "1w" | "1mo";
+
 export interface NotificationSeed {
   id: number;
   conversationId: number;
   type: NotificationType;
   unread: boolean;
-  snoozedUntil?: string; // shown as "Snoozed for {time}"
-  snoozeEnded?: boolean; // "Snooze ended"
+  snooze?: SnoozeKey; // snoozed when the page loads, with one of the snoozeOptions below
+  snoozeEnded?: boolean; // already back from a snooze when the page loads
 }
 
 export const notificationSeeds: NotificationSeed[] = [
@@ -52,15 +54,19 @@ export const notificationSeeds: NotificationSeed[] = [
   { id: 6, conversationId: 16, type: "sla_missed_first_response", unread: false },
   { id: 7, conversationId: 6, type: "assigned_conversation_new_message", unread: false },
   { id: 8, conversationId: 7, type: "conversation_mention", unread: false },
-  { id: 9, conversationId: 13, type: "conversation_mention", unread: false, snoozedUntil: "1d" },
+  { id: 9, conversationId: 13, type: "conversation_mention", unread: false, snooze: "1d" },
   { id: 10, conversationId: 14, type: "participating_conversation_new_message", unread: false },
   { id: 11, conversationId: 15, type: "conversation_creation", unread: true, snoozeEnded: true },
   { id: 12, conversationId: 19, type: "conversation_assignment", unread: false },
   { id: 13, conversationId: 23, type: "assigned_conversation_new_message", unread: false },
-  { id: 14, conversationId: 21, type: "conversation_creation", unread: false, snoozedUntil: "1w" },
+  { id: 14, conversationId: 21, type: "conversation_creation", unread: false, snooze: "1w" },
 ];
 
-export interface InboxNotification extends NotificationSeed {
+// T-286 (Fahad, item 125.5): a snooze is a real return time, not a label. `snoozedUntil` is when it comes back (epoch
+// ms); at that time it returns to the top of Unread with the "Returned from snooze" mark, and `returnedAt` keeps when.
+export interface InboxNotification extends Omit<NotificationSeed, "snooze" | "snoozeEnded"> {
+  snoozedUntil?: number;
+  returnedAt?: number;
   conversation: Conversation;
   contactName: string;
   assigneeId: number | null;
@@ -80,7 +86,7 @@ function minutesOf(conversation: Conversation, index: number) {
   return conversation.ago ?? 24 * 60 + index * 45;
 }
 
-export function buildNotification(seed: NotificationSeed, index: number): InboxNotification | null {
+export function buildNotification(seed: NotificationSeed, index: number, now = Date.now()): InboxNotification | null {
   const conversation = baseConversations.find((c) => c.id === seed.conversationId);
   if (!conversation) return null;
   const meta = initialMeta[conversation.id];
@@ -95,24 +101,45 @@ export function buildNotification(seed: NotificationSeed, index: number): InboxN
       message = note.text;
     }
   }
+  const { snooze, snoozeEnded, ...rest } = seed;
+  const minutesAgo = minutesOf(conversation, index);
   return {
-    ...seed,
+    ...rest,
+    snoozedUntil: snooze ? snoozeTime(snooze, now) : undefined,
+    returnedAt: snoozeEnded ? now - minutesAgo * 60_000 : undefined,
     conversation,
     contactName,
     assigneeId: meta?.assigneeId ?? null,
     assignee: agentName(meta?.assigneeId),
     actor,
     message,
-    minutesAgo: minutesOf(conversation, index),
+    minutesAgo,
   };
 }
 
-export const snoozeOptions: { label: string; short: string }[] = [
+export const snoozeOptions: { label: string; short: SnoozeKey }[] = [
   { label: "Until an hour from now", short: "1h" },
   { label: "Until tomorrow", short: "1d" },
   { label: "Until next week", short: "1w" },
   { label: "Until next month", short: "1mo" },
 ];
+
+// When each option returns, as Chatwoot computes it (app/javascript/dashboard/helper/snoozeHelpers.js, SNOOZE_RESOLVERS:
+// https://github.com/chatwoot/chatwoot/blob/develop/app/javascript/dashboard/helper/snoozeHelpers.js): an hour from
+// now; tomorrow 9:00; next week = the Monday after next week's Sunday (date-fns startOfWeek), 9:00; next month = the
+// first Monday on or after the 1st of next month, 9:00 (findStartOfNextWeek / findStartOfNextMonth). Local time.
+function mondayOnOrAfter(year: number, month: number, day: number): number {
+  const start = new Date(year, month, day);
+  return new Date(year, month, day + ((8 - start.getDay()) % 7), 9).getTime();
+}
+
+export function snoozeTime(key: SnoozeKey, now: number): number {
+  const d = new Date(now);
+  if (key === "1h") return now + 60 * 60_000;
+  if (key === "1d") return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 9).getTime();
+  if (key === "1w") return mondayOnOrAfter(d.getFullYear(), d.getMonth(), d.getDate() + 7 - d.getDay());
+  return mondayOnOrAfter(d.getFullYear(), d.getMonth() + 1, 1);
+}
 
 export function relativeTime(minutes: number) {
   if (minutes < 1) return "now";

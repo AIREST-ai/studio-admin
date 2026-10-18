@@ -1,12 +1,16 @@
 "use client";
 // F159 settings-b: Chatwoot v4.18 Settings > SLA (sla/Index.vue, AddSLA.vue, SlaForm.vue, SlaTimeInput.vue,
 // validations.js; sla.json) in the Studio pattern. Chatwoot lists SLAs with Add and Delete only (no edit).
+// T-261 (buried 6, Fahad item 5 "افتحها"): the list is saved on the preview server (sla-store.ts) and the inbox's SLA
+// badge follows it, so a policy can also be edited here: Chatwoot's API has the update (SlaPoliciesController#update
+// permits the same fields as create), its settings page only lacks the button.
 import * as React from "react";
 
-import { Info, Plus, Trash2 } from "lucide-react";
+import { Info, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -19,39 +23,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { CeUnavailableNotice } from "@/lib/chatwoot/settings-adapter";
 
 import { ConfirmDelete, NoResults, plural, SettingsShell } from "../../labels/_shared/settings-shell";
-import { ChipBar, ChipSelect, FieldError, RowMenu, tableClass, ToneBadge } from "../../labels/_shared/settings-ui";
+import { ChipBar, ChipSelect, FieldError, RowMenu, ToneBadge, tableClass } from "../../labels/_shared/settings-ui";
+import { D, H, M, type Sla } from "./sla-data";
+import { loadSlaPolicies, saveSlaChange, useSlaPolicies } from "./sla-store";
 
 type Unit = "Minutes" | "Hours" | "Days";
 type Key = "frt" | "nrt" | "rt";
-
-interface Sla {
-  id: number;
-  name: string;
-  description: string;
-  /** Thresholds in seconds, as the API stores them; null when not set. */
-  frt: number | null;
-  nrt: number | null;
-  rt: number | null;
-  businessHours: boolean;
-}
-
-const M = 60;
-const H = 3600;
-const D = 86400;
-
-const initialSlas: Sla[] = [
-  { id: 1, name: "Enterprise P0", description: "Issues raised by enterprise customers, that require immediate attention.", frt: 15 * M, nrt: 30 * M, rt: 4 * H, businessHours: false },
-  { id: 2, name: "Enterprise P1", description: "Issues raised by enterprise customers, that needs to be acknowledged quickly.", frt: 1 * H, nrt: 2 * H, rt: 1 * D, businessHours: true },
-  { id: 3, name: "VIP Doha", description: "Repeat buyers and corporate accounts in Qatar", frt: 10 * M, nrt: 20 * M, rt: 8 * H, businessHours: false },
-  { id: 4, name: "Refund 24h", description: "Refund and billing requests must close within one day", frt: 2 * H, nrt: null, rt: 1 * D, businessHours: true },
-  { id: 5, name: "Standard", description: "Default promise for all website and WhatsApp chats", frt: 4 * H, nrt: 8 * H, rt: 3 * D, businessHours: true },
-];
 
 const columns: { key: Key; short: string; long: string; label: string; placeholder: string }[] = [
   { key: "frt", short: "FRT", long: "First response time threshold", label: "First Response Time", placeholder: "5" },
@@ -74,16 +57,28 @@ interface TimeInput {
   unit: Unit;
 }
 
+// T-261: a saved threshold back in the form's largest whole unit (Chatwoot convertSecondsToTimeUnit).
+function timeInput(seconds: number | null): TimeInput {
+  if (!seconds) return { threshold: "", unit: "Minutes" };
+  if (seconds % D === 0) return { threshold: String(seconds / D), unit: "Days" };
+  if (seconds % H === 0) return { threshold: String(seconds / H), unit: "Hours" };
+  return { threshold: String(seconds / M), unit: "Minutes" };
+}
+
 function SlaDialog({
   open,
   onOpenChange,
   takenNames,
+  editing,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   takenNames: string[];
-  onSave: (sla: Omit<Sla, "id">) => void;
+  /** T-261: the policy being edited; none for Add SLA. */
+  editing?: Sla;
+  /** Resolves once saved; the dialog stays open with the person's values when it rejects. */
+  onSave: (sla: Omit<Sla, "id">) => Promise<void>;
 }) {
   const blankTimes = (): Record<Key, TimeInput> => ({
     frt: { threshold: "", unit: "Minutes" },
@@ -95,15 +90,19 @@ function SlaDialog({
   const [times, setTimes] = React.useState(blankTimes);
   const [businessHours, setBusinessHours] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
-    setName("");
-    setDescription("");
-    setTimes(blankTimes());
-    setBusinessHours(false);
+    setName(editing?.name ?? "");
+    setDescription(editing?.description ?? "");
+    setTimes(
+      editing ? { frt: timeInput(editing.frt), nrt: timeInput(editing.nrt), rt: timeInput(editing.rt) } : blankTimes(),
+    );
+    setBusinessHours(editing?.businessHours ?? false);
     setSubmitted(false);
-  }, [open]);
+    setSaving(false);
+  }, [open, editing]);
 
   const nameError = !name.trim()
     ? "SLA name is required"
@@ -120,20 +119,27 @@ function SlaDialog({
   const noneSet = columns.every((c) => !times[c.key].threshold);
   const hasError = !!nameError || columns.some((c) => timeError(c.key)) || noneSet;
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitted(true);
-    if (hasError) return;
+    if (hasError || saving) return;
     const seconds = (k: Key) => (times[k].threshold ? Number(times[k].threshold) * unitSeconds[times[k].unit] : null);
-    onSave({
-      name: name.trim(),
-      description: description.trim(),
-      frt: seconds("frt"),
-      nrt: seconds("nrt"),
-      rt: seconds("rt"),
-      businessHours,
-    });
-    onOpenChange(false);
+    setSaving(true);
+    try {
+      await onSave({
+        name: name.trim(),
+        description: description.trim(),
+        frt: seconds("frt"),
+        nrt: seconds("nrt"),
+        rt: seconds("rt"),
+        businessHours,
+      });
+      onOpenChange(false);
+    } catch {
+      // The reason is shown by the page; the values stay in the form.
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -141,7 +147,7 @@ function SlaDialog({
       <DialogContent className="sm:max-w-lg">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
-            <DialogTitle>Add SLA</DialogTitle>
+            <DialogTitle>{editing ? "Edit SLA" : "Add SLA"}</DialogTitle>
             <DialogDescription>Friendly promises for great service!</DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
@@ -180,9 +186,7 @@ function SlaDialog({
                     className="flex-1"
                     aria-invalid={!!error}
                     value={times[c.key].threshold}
-                    onChange={(e) =>
-                      setTimes((t) => ({ ...t, [c.key]: { ...t[c.key], threshold: e.target.value } }))
-                    }
+                    onChange={(e) => setTimes((t) => ({ ...t, [c.key]: { ...t[c.key], threshold: e.target.value } }))}
                   />
                   <NativeSelect
                     className="w-28"
@@ -207,7 +211,7 @@ function SlaDialog({
               <Label htmlFor="sla-bh">Business Hours</Label>
               <span className="text-muted-foreground text-xs">Only during business hours</span>
             </div>
-            <Switch id="sla-bh" checked={businessHours} onCheckedChange={setBusinessHours} />
+            <Checkbox id="sla-bh" checked={businessHours} onCheckedChange={(v) => setBusinessHours(v === true)} />
           </div>
           <DialogFooter>
             <DialogClose asChild>
@@ -215,7 +219,9 @@ function SlaDialog({
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit">Create</Button>
+            <Button type="submit" disabled={saving}>
+              {editing ? "Update" : "Create"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -223,12 +229,33 @@ function SlaDialog({
   );
 }
 
+// T-261: every change waits for the preview server; a failed save says why and keeps the saved list.
+async function save(change: Parameters<typeof saveSlaChange>[0], done: string) {
+  try {
+    await saveSlaChange(change);
+    toast.success(done);
+  } catch (error) {
+    toast.error(`SLA not saved: ${(error as Error).message}`);
+    throw error;
+  }
+}
+
 export function SlaList() {
-  const [slas, setSlas] = React.useState(initialSlas);
+  const slas = useSlaPolicies((state) => state.policies);
+  const loadFailed = useSlaPolicies((state) => state.status === "error");
   const [query, setQuery] = React.useState("");
   const [hours, setHours] = React.useState("All");
   const [adding, setAdding] = React.useState(false);
+  const [editing, setEditing] = React.useState<Sla | undefined>();
   const [deleting, setDeleting] = React.useState<Sla | undefined>();
+
+  React.useEffect(() => {
+    void loadSlaPolicies();
+  }, []);
+
+  React.useEffect(() => {
+    if (loadFailed) toast.error("The saved SLA policies could not be loaded. Changes will not be saved.");
+  }, [loadFailed]);
 
   const q = query.trim().toLowerCase();
   const rows = slas.filter(
@@ -240,7 +267,7 @@ export function SlaList() {
   return (
     <>
       <SettingsShell
-        title="Service Level Agreements"
+        title="SLA"
         description="Service Level Agreements (SLAs) are contracts that define clear expectations between your team and customers. They establish standards for response and resolution times, creating a framework for accountability and ensures a consistent, high-quality experience."
         learnMore="Learn more about SLA"
         count={plural(rows.length, "SLA", "SLAs")}
@@ -252,6 +279,11 @@ export function SlaList() {
           </Button>
         }
       >
+        <CeUnavailableNotice
+          area="sla_policies"
+          title="SLA policies are unavailable in Chatwoot Community Edition (501)"
+          className="mx-6 mt-4"
+        />
         <ChipBar>
           <ChipSelect
             label="Business hours"
@@ -304,6 +336,7 @@ export function SlaList() {
                     <RowMenu
                       name={sla.name}
                       items={[
+                        { label: "Edit", icon: Pencil, onSelect: () => setEditing(sla) },
                         { label: "Delete", icon: Trash2, destructive: true, onSelect: () => setDeleting(sla) },
                       ]}
                     />
@@ -314,7 +347,9 @@ export function SlaList() {
           </Table>
         ) : (
           <NoResults>
-            {q || hours !== "All" ? "No SLA found matching your search" : "There are no SLAs available in this account."}
+            {q || hours !== "All"
+              ? "No SLA found matching your search"
+              : "There are no SLAs available in this account."}
           </NoResults>
         )}
       </SettingsShell>
@@ -323,9 +358,20 @@ export function SlaList() {
         open={adding}
         onOpenChange={setAdding}
         takenNames={slas.map((s) => s.name.toLowerCase())}
+        onSave={(sla) => save({ type: "add", sla }, "SLA added successfully")}
+      />
+      <SlaDialog
+        open={!!editing}
+        onOpenChange={(o) => !o && setEditing(undefined)}
+        editing={editing}
+        takenNames={slas.filter((s) => s.id !== editing?.id).map((s) => s.name.toLowerCase())}
         onSave={(sla) => {
-          setSlas((prev) => [...prev, { ...sla, id: Date.now() }]);
-          toast.success("SLA added successfully");
+          const before = editing as Sla;
+          // Only the changed fields, so a save made on top of another tab's keeps that tab's other changes.
+          const patch = Object.fromEntries(
+            (Object.keys(sla) as (keyof typeof sla)[]).filter((k) => sla[k] !== before[k]).map((k) => [k, sla[k]]),
+          );
+          return save({ type: "update", id: before.id, patch }, "SLA updated successfully");
         }}
       />
       <ConfirmDelete
@@ -336,8 +382,8 @@ export function SlaList() {
         yes={`Yes, Delete ${deleting?.name ?? ""}`}
         no={`No, Keep ${deleting?.name ?? ""}`}
         onConfirm={() => {
-          setSlas((prev) => prev.filter((s) => s.id !== deleting?.id));
-          toast.success("SLA deleted successfully");
+          if (deleting)
+            void save({ type: "delete", id: deleting.id }, "SLA deleted successfully").catch(() => undefined);
         }}
       />
     </>

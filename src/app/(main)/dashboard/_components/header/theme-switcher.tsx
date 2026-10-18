@@ -24,7 +24,13 @@ export function ThemeSwitcher() {
   };
 
   return (
-    <Button size="icon" onClick={cycleTheme} aria-label={`Current theme: ${themeMode}. Click to cycle themes`}>
+    // T-146 (item 51): unfilled like the rest of the header, the icon in the text colour of each theme.
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={cycleTheme}
+      aria-label={`Current theme: ${themeMode}. Click to cycle themes`}
+    >
       {/* SYSTEM */}
       <Monitor className="hidden [html[data-theme-mode=system]_&]:block" />
 

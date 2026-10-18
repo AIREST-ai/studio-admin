@@ -9,20 +9,29 @@ import { type DragEvent, useState } from "react";
 
 import Link from "next/link";
 
+import { cn } from "cn";
 import { ChevronDown, ChevronUp, GripVertical, Info, Play, Plus, Trash2 } from "lucide-react";
 
-import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useVisibleMacros } from "@/lib/cw/macro-visibility";
 
-import { type Conversation, currentUser, initialContactNotes, macros } from "./cw-data";
+import { type Conversation, currentUser, initialContactNotes, useLiveTeams } from "./cw-data";
+import { macroTeam } from "./cw-dialog-store";
 import { openDialog, runMacro } from "./cw-dialogs";
 import { cw, useCwStore } from "./cw-store";
 import { AgentAvatar } from "./cw-ui";
+import { previewOnly } from "./panel-attributes";
 import { applyOrder, moveKey, usePanelSetting } from "./panel-settings";
 
-function NoteItem({ note, onDelete }: { note: { id: number; author: string; time: string; text: string }; onDelete: () => void }) {
+function NoteItem({
+  note,
+  onDelete,
+}: {
+  note: { id: number; author: string; time: string; text: string };
+  onDelete: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const long = note.text.length > 180;
   const you = note.author === currentUser.name;
@@ -74,7 +83,14 @@ export function ContactNotes({ conversation }: { conversation: Conversation }) {
       {notes.length > 0 ? (
         <div className="flex max-h-[300px] flex-col overflow-y-auto">
           {notes.map((note) => (
-            <NoteItem key={note.id} note={note} onDelete={() => cw.deleteNote(conversation.id, note.id)} />
+            <NoteItem
+              key={note.id}
+              note={note}
+              onDelete={() => {
+                cw.deleteNote(conversation.id, note.id);
+                previewOnly("Note deleted");
+              }}
+            />
           ))}
         </div>
       ) : (
@@ -87,17 +103,28 @@ export function ContactNotes({ conversation }: { conversation: Conversation }) {
 }
 
 function MacroPreview({ macroId }: { macroId: number }) {
-  const macro = macros.find((m) => m.id === macroId);
+  const teams = useLiveTeams(); // F-8: a missing team is marked below
+  // F-19: the macro as Settings > Macros saved it (the one runMacro runs), not the sample copy.
+  // F-24: only one the person the page is viewed as may see (a private macro is its creator's).
+  const macro = useVisibleMacros().find((m) => m.id === macroId);
   if (!macro) return null;
   return (
     <div className="flex max-h-[22.5rem] flex-col overflow-y-auto">
       <h6 className="mb-3 font-medium text-sm">{macro.name}</h6>
       {macro.actions.map((action, index) => (
         <div key={`${action.action}-${action.value}`} className="relative ps-4 pb-2 last:pb-0">
-          {index !== macro.actions.length - 1 && <div className="absolute start-[3px] top-2 -bottom-1 w-px bg-border" />}
+          {index !== macro.actions.length - 1 && (
+            <div className="absolute start-[3px] top-2 -bottom-1 w-px bg-border" />
+          )}
           <div className="absolute start-0 top-1 size-2 rounded-full border-2 bg-background" />
           <p className="mb-0.5 text-muted-foreground text-xs">{action.action}</p>
           {action.value && <p className="text-sm">{action.value}</p>}
+          {/* F-8 (sim3 8.14e): a team that does not exist is named; running the macro skips this action. */}
+          {action.action === "Assign a Team" && macroTeam(action.value, teams).kind === "missing" && (
+            <p className="text-destructive text-xs" data-macro-missing-team="">
+              {`Team “${action.value.trim()}” does not exist. This action will be skipped.`}
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -107,6 +134,10 @@ function MacroPreview({ macroId }: { macroId: number }) {
 export function MacrosList({ conversation }: { conversation: Conversation }) {
   const [savedOrder, setSavedOrder] = usePanelSetting<string[]>("macros_order", []);
   const [dragKey, setDragKey] = useState<string | null>(null);
+  // F-19 (F-8's note): the macros Settings > Macros saved (the shared list, lib/cw/store.ts), so a macro added there
+  // shows here after a reload; it was the fixed sample list.
+  // F-24 (F-19's note): without other people's private macros (Chatwoot Macro.with_visibility), also under View as.
+  const macros = useVisibleMacros();
   const ordered = applyOrder(macros, (macro) => String(macro.id), savedOrder);
 
   if (ordered.length === 0) {
@@ -140,6 +171,7 @@ export function MacrosList({ conversation }: { conversation: Conversation }) {
       {ordered.map((macro) => {
         const key = String(macro.id);
         return (
+          // biome-ignore lint/a11y/noStaticElementInteractions: drop target for mouse reordering of macros; the row is not a control
           <div
             key={macro.id}
             draggable

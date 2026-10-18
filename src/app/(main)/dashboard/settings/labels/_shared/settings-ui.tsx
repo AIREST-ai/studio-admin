@@ -79,7 +79,7 @@ export function ChipSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm">
+      <SelectTrigger size="sm" aria-label={label}>
         <span className="text-muted-foreground">{label}:</span>
         <SelectValue />
       </SelectTrigger>
@@ -119,10 +119,10 @@ const tones = {
 
 export type Tone = keyof typeof tones;
 
-/** Coloured badge with a dot, same as StatusBadge on Contacts. */
+/** Coloured badge with a dot, same as StatusBadge on Contacts. B-3: light and standard, not a heavy pill. */
 export function ToneBadge({ tone, children, dot = true }: { tone: Tone; children: React.ReactNode; dot?: boolean }) {
   return (
-    <Badge variant="outline" className={cn("gap-1.5 border px-2 py-1 font-medium", tones[tone])}>
+    <Badge variant="outline" className={cn("h-4.5 gap-1 border px-1.5 py-0 text-[10px] font-normal", tones[tone])}>
       {dot ? <span className="size-1.5 rounded-full bg-current opacity-70" /> : null}
       {children}
     </Badge>

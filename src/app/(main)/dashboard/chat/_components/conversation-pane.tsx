@@ -9,7 +9,6 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
-  Bot,
   Check,
   ChevronDown,
   CircleAlert,
@@ -22,6 +21,7 @@ import {
   Image as ImageIcon,
   Languages,
   Link2,
+  ListTodo,
   Lock,
   Mail,
   MessageSquarePlus,
@@ -39,7 +39,6 @@ import {
   Trash2,
   TriangleAlert,
   UserRound,
-  UsersRound,
   Volume1,
   VolumeOff,
   X,
@@ -79,13 +78,18 @@ import {
 } from "@/components/ui/message-scroller";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
+import { SIMULATED } from "@/lib/cw/preview-sim";
+import { downloadSample } from "@/lib/cw/preview-sim-ui";
+import { useViewer } from "@/lib/cw/view-as";
 
+import { BotReplySim } from "./bot-reply-sim";
+import { CreateTaskDialog, openCreateTask } from "./create-task-dialog";
+import { CustomerPathOption } from "./customer-path";
 import {
-  agentName,
   baseConversations,
   buildThread,
   type Conversation,
-  CURRENT_AGENT_ID,
   type CwAttachment,
   type CwMessage,
   type CwStatus,
@@ -98,23 +102,26 @@ import {
   lastPreview,
   priorities,
   snoozeOptions,
-  teamName,
+  withDeletions,
 } from "./cw-data";
+import { missingResolveAttributes } from "./cw-dialog-store";
 import { openDialog } from "./cw-dialogs";
-import { cw, useCwStore } from "./cw-store";
-import {
-  AgentAvatar,
-  AgentPicker,
-  BotAvatar,
-  ChannelIcon,
-  PersonAvatar,
-  PriorityIcon,
-  PriorityPicker,
-  SlaBadge,
-  TeamPicker,
-} from "./cw-ui";
+import { cw, useContactOf, useCwStore } from "./cw-store";
+import { BotAvatar, ChannelIcon, PersonAvatar, PriorityIcon, SlaBadge } from "./cw-ui";
 import { AudioAttachment, ContactAttachment, LocationAttachment, VideoAttachment } from "./message-attachments";
+import { PresenceBar } from "./presence";
 import { ReplyBox } from "./reply-box";
+import { SharedPostCard } from "./shared-post-card";
+import { sharedPostsByMessage } from "./shared-post-samples";
+import { getCallChannelInfo, SimCallScreen, startSimCall } from "./sim-call";
+import {
+  changeStatus as keepStatus,
+  NOT_DELIVERED,
+  type SnoozeKind,
+  toggleBlock,
+  useKeepState,
+} from "./sim-thread-persist";
+import { openProfileTab } from "./studio-profile";
 
 function Hint({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -125,9 +132,42 @@ function Hint({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function changeStatus(id: number, status: CwStatus, snoozedUntil?: string) {
-  cw.setStatus([id], status, snoozedUntil ?? null);
-  toast.success("Conversation status changed");
+// M129-A (Fahad 129.2, replaces T-281's disabled "after linking" buttons): Download hands over the attachment's
+// sample file kept with the preview (lib/cw/preview-sim-ui.tsx downloadSample), and says so.
+function SampleDownload({
+  name,
+  size = "icon-xs",
+  className,
+}: {
+  name: string;
+  size?: "icon-xs" | "icon-sm";
+  className?: string;
+}) {
+  return (
+    <Hint label={`Download sample file — ${SIMULATED}`}>
+      <Button
+        variant="ghost"
+        size={size}
+        aria-label={`Download ${name}`}
+        className={className}
+        onClick={() => downloadSample(name)}
+      >
+        <Download />
+      </Button>
+    </Hint>
+  );
+}
+
+function changeStatus(id: number, status: CwStatus, snooze?: SnoozeKind) {
+  // F161: Resolve asks for the required attributes first (Chatwoot ResolveAction.vue
+  // checkMissingAttributes); the dialog resolves the conversation once they are filled.
+  const missing = status === "resolved" || status === "closed" ? missingResolveAttributes(id) : [];
+  if (missing.length > 0) {
+    openDialog({ type: "resolve-attributes", convId: id, missing });
+    return;
+  }
+  // F-5A: kept in the preview (sim-thread-persist.ts), with a toast that says it is simulated once it is saved.
+  void keepStatus([id], status, { snooze });
 }
 
 function ResolveAction({ id, status }: { id: number; status: CwStatus }) {
@@ -137,10 +177,19 @@ function ResolveAction({ id, status }: { id: number; status: CwStatus }) {
   else if (status === "open") primary = { label: "Resolve", icon: CircleCheck, next: "resolved" };
   return (
     <ButtonGroup>
-      <Button size="sm" variant={resolved ? "outline" : "default"} onClick={() => changeStatus(id, primary.next)}>
-        <primary.icon />
-        {primary.label}
-      </Button>
+      {/* T-118 row 11: the word shows only when the header is 24rem or wider (@sm of the header's @container); in a
+          narrower header (1024 px with the panel open, phones) it cut the contact's name to one letter. */}
+      <Hint label={primary.label}>
+        <Button
+          size="sm"
+          variant={resolved ? "outline" : "default"}
+          aria-label={primary.label}
+          onClick={() => changeStatus(id, primary.next)}
+        >
+          <primary.icon />
+          <span className="hidden @sm:inline">{primary.label}</span>
+        </Button>
+      </Hint>
       {!resolved && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -161,7 +210,7 @@ function ResolveAction({ id, status }: { id: number; status: CwStatus }) {
               <DropdownMenuSubContent className="w-44">
                 <DropdownMenuLabel>Snooze until</DropdownMenuLabel>
                 {snoozeOptions.map((option) => (
-                  <DropdownMenuItem key={option.value} onSelect={() => changeStatus(id, "snoozed", option.display)}>
+                  <DropdownMenuItem key={option.value} onSelect={() => changeStatus(id, "snoozed", option.value)}>
                     {option.label}
                   </DropdownMenuItem>
                 ))}
@@ -198,19 +247,23 @@ function ConversationHeader({
 }) {
   const meta = useCwStore((s) => s.meta[conversation.id]);
   const muted = useCwStore((s) => Boolean(s.muted[conversation.id]));
+  const contact = useContactOf(conversation);
   const inbox = inboxOf(conversation);
   const convId = String(conversation.id);
   const id = conversation.id;
-  const assignee = agentName(meta.assigneeId);
-  const team = teamName(meta.teamId);
-  const priority = priorities.find((p) => p.value === meta.priority);
-  // The Studio status button (brown) shows Open/Snoozed/Resolved/Closed; "pending" shows as Open there.
-  const studioStatus: ConversationStatus = meta.status === "pending" ? "open" : meta.status;
+  const linkedActive = useLinkedAdapterStatus((s) => s.active);
+  const isLinked = linkedActive || linkedSession();
+  const callInfo = getCallChannelInfo(conversation, isLinked);
+  // T-130: the Studio status button (brown) shows Chatwoot's four statuses; a pending conversation reads Pending.
+  // Nothing sets "closed" any more; an old one reads Resolved, as everywhere else in the list.
+  const studioStatus: ConversationStatus = meta.status === "closed" ? "resolved" : meta.status;
 
   return (
-    <div className="flex flex-col gap-2 border-b px-3 pt-3 pb-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+    <div className="@container flex flex-col gap-2 border-b px-3 pt-3 pb-2">
+      {/* T-281: on a narrow pane the actions wrap under the name instead of sliding over it (basis-36 keeps the wrap
+          off for conversations without the call button). */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 basis-36 items-center gap-2.5">
           {showBackButton && (
             <Button
               variant="ghost"
@@ -239,6 +292,8 @@ function ConversationHeader({
                 </Hint>
               )}
             </div>
+            {/* Studio /chat: the contact's role under the name. */}
+            {contact.role && <div className="truncate text-muted-foreground text-xs leading-4">{contact.role}</div>}
             <div className="flex items-center gap-1 text-muted-foreground text-xs">
               <button
                 type="button"
@@ -263,19 +318,47 @@ function ConversationHeader({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5">
-          {(conversation.channel === "whatsapp" || conversation.channel === "phone") && (
-            <Hint label={conversation.channel === "whatsapp" ? "Start WhatsApp call" : "Start call"}>
+        <div className="ms-auto flex shrink-0 items-center gap-0.5">
+          {callInfo.canCall && (
+            <Hint label={callInfo.tooltip}>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Start call"
-                onClick={() => toast("Calling the contact…")}
+                data-call-button={callInfo.kind}
+                aria-label={callInfo.label}
+                onClick={() => startSimCall(id)}
               >
                 <PhoneCall />
               </Button>
             </Hint>
           )}
+          {callInfo.isInstagram && (
+            <Hint label={callInfo.tooltip}>
+              <span className="inline-flex" title={callInfo.tooltip}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled
+                  data-call-button="instagram-disabled"
+                  aria-label={callInfo.label}
+                  className="opacity-50"
+                >
+                  <PhoneCall />
+                </Button>
+              </span>
+            </Hint>
+          )}
+          {/* Studio /chat header icon: Snooze opens Chatwoot's snooze list for this conversation. */}
+          <Hint label="Snooze">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Snooze"
+              onClick={() => openDialog({ type: "command", convId: id, page: "snooze" })}
+            >
+              <AlarmClock />
+            </Button>
+          </Hint>
           <ResolveAction id={id} status={meta.status} />
           <DropdownMenu>
             <Hint label="More actions">
@@ -286,14 +369,39 @@ function ConversationHeader({
               </DropdownMenuTrigger>
             </Hint>
             <DropdownMenuContent align="end" className="w-52">
+              {/* Studio /chat More menu: View profile opens the Profile tab of the panel, Copy email copies it. */}
               <DropdownMenuItem
                 onSelect={() => {
-                  cw.toggleMute(id);
-                  toast.success(
-                    muted
-                      ? "This contact is unblocked successfully."
-                      : "This contact is blocked successfully. You will not be notified of any future conversations.",
-                  );
+                  openProfileTab();
+                  if (!panelOpen) onTogglePanel();
+                }}
+              >
+                <UserRound /> View profile
+              </DropdownMenuItem>
+              {/* M129-A (after the T-285 judge): a contact without an email (James writes only on WhatsApp) gets no
+                  Copy email, and "Copied" shows only when the browser really copied the text (plain http has no
+                  clipboard). */}
+              {contact.email && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!navigator.clipboard) {
+                      toast.error("Not copied: the browser allows copying only on a secure (https) page");
+                      return;
+                    }
+                    navigator.clipboard.writeText(contact.email).then(
+                      () => toast.success("Copied to clipboard successfully"),
+                      () => toast.error("Not copied: the browser refused access to the clipboard"),
+                    );
+                  }}
+                >
+                  <Copy /> Copy email
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  // F-5A (sim1 8.13e): kept as the contact's block in the preview; the toast comes once it is saved.
+                  toggleBlock(id);
                 }}
               >
                 {muted ? <Volume1 /> : <VolumeOff />}
@@ -344,57 +452,11 @@ function ConversationHeader({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* F161: one row under the name: Studio status (brown), SLA, Labels. The agent / team / priority pickers that
+          were repeated here (invented, F159 T2) are in the panel's Conversation Actions, as in Chatwoot. */}
+      <div className="flex min-h-7 flex-wrap items-center gap-1.5">
         <StatusMenu status={studioStatus} onChange={(value) => changeStatus(id, value)} />
         <SlaBadge sla={meta.sla} className="h-7 px-2 text-xs" />
-        <AgentPicker
-          align="start"
-          value={meta.assigneeId}
-          onChange={(agentId) => {
-            cw.assignAgent([id], agentId);
-            toast.success("Conversation Assignee changed");
-          }}
-          trigger={
-            <Button variant="outline" size="sm" className="max-w-44">
-              {assignee ? <AgentAvatar id={meta.assigneeId} size="sm" className="-ms-1 size-4.5" /> : <UserRound />}
-              <span className="truncate">{assignee ?? "Assign agent"}</span>
-              <ChevronDown data-icon="inline-end" />
-            </Button>
-          }
-        />
-        <TeamPicker
-          align="start"
-          value={meta.teamId}
-          onChange={(teamId) => {
-            cw.assignTeam([id], teamId);
-            toast.success("Conversation team changed");
-          }}
-          trigger={
-            <Button variant="outline" size="sm">
-              <UsersRound />
-              <span className="truncate">{team ?? "Assign team"}</span>
-              <ChevronDown data-icon="inline-end" />
-            </Button>
-          }
-        />
-        <PriorityPicker
-          align="start"
-          value={meta.priority}
-          onChange={(value) => {
-            cw.setPriority([id], value);
-            toast.success(`Changed priority of conversation id ${id} to ${value}`);
-          }}
-          trigger={
-            <Button variant="outline" size="sm">
-              {meta.priority === "none" ? <Flag /> : <PriorityIcon priority={meta.priority} />}
-              {meta.priority === "none" ? "Priority" : priority?.label}
-              <ChevronDown data-icon="inline-end" />
-            </Button>
-          }
-        />
-      </div>
-      {/* Labels keep a line of their own, so the header looks the same in every conversation. */}
-      <div className="flex min-h-7 flex-wrap items-center gap-1.5">
         <TagPicker convId={convId}>
           <Button variant="outline" size="sm" className={brown.line}>
             <Tag />
@@ -403,6 +465,7 @@ function ConversationHeader({
           </Button>
         </TagPicker>
         <TagChips convId={convId} />
+        <CustomerPathOption conversation={conversation} />
       </div>
     </div>
   );
@@ -515,8 +578,9 @@ function SamplePicture({ name }: { name: string }) {
   );
 }
 
-// Chatwoot GalleryView: sender and time, the file name, zoom, rotate, download and close.
-function GalleryView({
+// Chatwoot GalleryView: sender and time, the file name, zoom, rotate, download and close. M129-A: also opened from the
+// contact panel's Media (contact-panel.tsx), where a video shows the video bubble's player.
+export function GalleryView({
   file,
   sender,
   time,
@@ -573,9 +637,7 @@ function GalleryView({
             <Button variant="ghost" size="icon-sm" aria-label="Rotate right" onClick={() => setTurn((t) => t + 90)}>
               <RotateCw />
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Download" onClick={() => toast("Download started")}>
-              <Download />
-            </Button>
+            <SampleDownload name={file.name} size="icon-sm" />
             <DialogClose asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Close">
                 <X />
@@ -584,20 +646,73 @@ function GalleryView({
           </div>
         </div>
         <div className="flex h-[26rem] items-center justify-center overflow-hidden bg-muted/40">
-          <div
-            className="h-[180px] w-[320px] shrink-0 overflow-hidden rounded-md shadow-lg transition-transform"
-            style={{ transform: `scale(${1.9 * zoom}) rotate(${turn}deg)` }}
-          >
-            <SamplePicture name={file.name} />
-          </div>
+          {file.type === "video" ? (
+            <div className="transition-transform" style={{ transform: `scale(${1.5 * zoom}) rotate(${turn}deg)` }}>
+              <VideoAttachment file={file} />
+            </div>
+          ) : (
+            <div
+              className="h-[180px] w-[320px] shrink-0 overflow-hidden rounded-md shadow-lg transition-transform"
+              style={{ transform: `scale(${1.9 * zoom}) rotate(${turn}deg)` }}
+            >
+              <SamplePicture name={file.name} />
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
+// F-5A: a file attached to a reply or note in the preview is the real file, kept by api/preview-sim/upload: its picture,
+// a player for a recording, and a download of the same bytes. When it could not be kept, the reason shows.
+function KeptAttachment({ file }: { file: CwAttachment }) {
+  const url = file.uploadId ? `/api/preview-sim/upload?id=${encodeURIComponent(file.uploadId)}` : undefined;
+  const picture = file.type === "image" ? (url ?? file.previewUrl) : undefined;
+  return (
+    <div
+      data-kept-attachment={file.uploadId ?? "not-kept"}
+      className="w-64 overflow-hidden rounded-lg border bg-background"
+    >
+      {picture && (
+        // biome-ignore lint/performance/noImgElement: the preview's own saved file, not an optimisable site image.
+        <img src={picture} alt={file.name} className="block max-h-48 w-full bg-muted object-contain" />
+      )}
+      {url && file.type === "audio" && (
+        // biome-ignore lint/a11y/useMediaCaption: a recording made in the browser has no captions.
+        <audio controls preload="metadata" src={url} className="w-full px-2 pt-2" aria-label={file.name} />
+      )}
+      <div className="flex items-center gap-2 p-2">
+        {!picture && file.type !== "audio" && (
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-muted">
+            <FileText className="size-4 text-muted-foreground" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-xs">{file.name}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {[file.duration, file.size].filter(Boolean).join(" · ")}
+            {url ? ` · kept in the preview` : ""}
+          </div>
+        </div>
+        {url && (
+          <Hint label={`Download ${file.name} (the file kept in the preview)`}>
+            <Button variant="ghost" size="icon-xs" aria-label={`Download ${file.name}`} asChild>
+              <a href={url} download={file.name}>
+                <Download />
+              </a>
+            </Button>
+          </Hint>
+        )}
+      </div>
+      {file.notKept && <div className="border-t px-2 py-1 text-[11px] text-destructive">{file.notKept}</div>}
+    </div>
+  );
+}
+
 function AttachmentView({ file, sender, time }: { file: CwAttachment; sender?: string; time?: string }) {
   const [galleryOpen, setGalleryOpen] = useState(false);
+  if (file.uploadId || file.notKept || file.previewUrl || file.mime) return <KeptAttachment file={file} />;
   if (file.type === "image") {
     return (
       <div className="w-56 overflow-hidden rounded-lg border bg-background">
@@ -611,12 +726,10 @@ function AttachmentView({ file, sender, time }: { file: CwAttachment; sender?: s
             <SamplePicture name={file.name} />
           </span>
         </button>
-        <div className="flex items-center justify-between gap-2 border-t px-2 py-1.5 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-t px-2 py-1.5 text-xs">
           <span className="truncate">{file.name}</span>
           <span className="ms-auto shrink-0 text-muted-foreground">{file.size}</span>
-          <Button variant="ghost" size="icon-xs" aria-label="Download" onClick={() => toast("Download started")}>
-            <Download />
-          </Button>
+          <SampleDownload name={file.name} />
         </div>
         <GalleryView
           file={file}
@@ -633,7 +746,7 @@ function AttachmentView({ file, sender, time }: { file: CwAttachment; sender?: s
   if (file.type === "location") return <LocationAttachment file={file} sender={sender} />;
   if (file.type === "contact") return <ContactAttachment file={file} sender={sender} />;
   return (
-    <div className="flex w-64 items-center gap-2 rounded-lg border bg-background p-2">
+    <div className="flex w-64 flex-wrap items-center gap-2 rounded-lg border bg-background p-2">
       <div className="grid size-9 place-items-center rounded-md bg-muted">
         <FileText className="size-4 text-muted-foreground" />
       </div>
@@ -641,9 +754,7 @@ function AttachmentView({ file, sender, time }: { file: CwAttachment; sender?: s
         <div className="truncate font-medium text-xs">{file.name}</div>
         <div className="text-[11px] text-muted-foreground">{file.size}</div>
       </div>
-      <Button variant="ghost" size="icon-xs" aria-label="Download" onClick={() => toast("Download started")}>
-        <Download />
-      </Button>
+      <SampleDownload name={file.name} className="ms-auto" />
     </div>
   );
 }
@@ -655,30 +766,38 @@ function copyText(text: string) {
 
 // Chatwoot Message.vue contextMenuEnabledOptions: copy needs text; reply-to not on notes or failed messages;
 // translate not on failed ones; canned responses only from the agent's own replies; delete not while failed.
+// F-8: and, as there, no translate, canned response or delete on a deleted message (isMessageDeleted); no task from it.
 function messageActions(message: CwMessage, failed: boolean) {
   const hasText = message.text.trim().length > 0;
+  const deleted = Boolean(message.deleted);
   return {
     copy: hasText,
     replyTo: message.kind !== "note" && !failed,
-    translate: hasText && !failed,
-    canned: message.kind === "outgoing" && hasText && !message.csat,
+    translate: hasText && !failed && !deleted,
+    canned: message.kind === "outgoing" && hasText && !message.csat && !deleted,
+    task: hasText && !deleted,
     copyLink: !failed,
-    delete: !failed,
+    delete: !failed && !deleted,
   };
 }
 
 // Hover bar (Reply, Copy, Translate, more) next to the bubble; right-click on the bubble opens the same menu
 // (Chatwoot MessageContextMenu opens on contextmenu).
 function MessageMenu({
+  convId,
   message,
   failed,
   onReply,
+  onCreateTask,
   open,
   onOpenChange,
 }: {
+  convId: number;
   message: CwMessage;
   failed: boolean;
   onReply: (message: CwMessage) => void;
+  // M129-F: "Create task" (a Twenty task with this message, the conversation link and the contact).
+  onCreateTask?: (message: CwMessage) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -743,6 +862,11 @@ function MessageMenu({
               <MessageSquarePlus /> Add to canned responses
             </DropdownMenuItem>
           )}
+          {can.task && onCreateTask && (
+            <DropdownMenuItem onSelect={() => onCreateTask(message)}>
+              <ListTodo /> Create task
+            </DropdownMenuItem>
+          )}
           {can.copyLink && (
             <DropdownMenuItem
               onSelect={() => {
@@ -758,7 +882,7 @@ function MessageMenu({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                onSelect={() => openDialog({ type: "delete-message", messageId: message.id })}
+                onSelect={() => openDialog({ type: "delete-message", convId, messageId: message.id })}
               >
                 <Trash2 /> Delete
               </DropdownMenuItem>
@@ -827,8 +951,8 @@ function MessageError({ error, messageId }: { error?: string; messageId: string 
         variant="ghost"
         className="h-5 gap-1 bg-destructive/10 px-1.5 text-destructive hover:bg-destructive/20 hover:text-destructive dark:bg-destructive/20"
         onClick={() => {
-          cw.retryMessage(messageId);
-          toast.success("Message sent");
+          if (cw.retryMessage(messageId)) toast.success("Message sent");
+          else toast.error(`Message not sent. ${error ?? "The channel did not accept it."}`);
         }}
       >
         <RefreshCcw className="size-3" />
@@ -838,19 +962,50 @@ function MessageError({ error, messageId }: { error?: string; messageId: string 
   );
 }
 
+// F-8: a deleted message keeps its place in the thread with Chatwoot's text "This message was deleted".
+function DeletedText({ text }: { text: string }) {
+  return (
+    <span data-message-deleted="" className="italic opacity-75">
+      {text}
+    </span>
+  );
+}
+
+// F-5A (sim1 8.2: a reply showed one "Sent" tick though nothing was sent): a reply written in the preview says it was
+// not delivered, and whether the preview kept it.
+function SimulatedDelivery({ messageId }: { messageId: string }) {
+  const keep = useKeepState((state) => state[messageId]);
+  let label = NOT_DELIVERED;
+  if (keep === "saving") label = `${NOT_DELIVERED} · saving in the preview…`;
+  if (keep === "failed") label = `${NOT_DELIVERED} · not saved in the preview`;
+  return (
+    <span
+      data-slot="delivery-status"
+      data-delivery="simulated"
+      className={cn("ms-1 text-[11px] italic", keep === "failed" ? "text-destructive" : "text-muted-foreground")}
+    >
+      · {label}
+    </span>
+  );
+}
+
 function MessageRow({
+  convId,
   message,
   contactName,
   read,
   onReply,
+  onCreateTask,
 }: {
+  convId: number;
   message: CwMessage;
   contactName: string;
   read: boolean;
   onReply: (message: CwMessage) => void;
+  onCreateTask?: (message: CwMessage) => void;
 }) {
   const delivery = useCwStore((s) => s.delivery[message.id]);
-  // Chatwoot MESSAGE_STATUS.FAILED until "Retry" sends it again (cw-store retryMessage).
+  // Chatwoot MESSAGE_STATUS.FAILED; "Retry" cannot reach a provider here, so it stays failed (cw-store retryMessage).
   const failed = message.status === "failed" && !delivery;
   const [menuOpen, setMenuOpen] = useState(false);
   let bubbleVariant: "default" | "muted" | "destructive" = message.kind === "incoming" ? "muted" : "default";
@@ -882,6 +1037,7 @@ function MessageRow({
           )}
         </MessageAvatar>
         <MessageContent>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: right-click shortcut; the same menu opens from the message's menu button */}
           <div
             className={cn("flex items-start gap-1", outbound ? "flex-row-reverse" : "flex-row")}
             onContextMenu={(event) => {
@@ -907,7 +1063,7 @@ function MessageRow({
                   <Lock className="size-3" aria-hidden="true" />
                   Private Note · {sender}
                 </div>
-                {renderText(message.text)}
+                {message.deleted ? <DeletedText text={message.text} /> : renderText(message.text)}
                 {message.attachments && (
                   <div className="mt-2 flex flex-col gap-2">
                     {message.attachments.map((file) => (
@@ -956,7 +1112,7 @@ function MessageRow({
                           {message.replyTo}
                         </div>
                       )}
-                      {message.text}
+                      {message.deleted ? <DeletedText text={message.text} /> : message.text}
                     </BubbleContent>
                   )}
                   {message.reaction ? (
@@ -972,12 +1128,19 @@ function MessageRow({
                     ))}
                   </div>
                 )}
+                {/* T-264: a shared Instagram/Facebook post, its media loaded by the browser straight from Meta. */}
+                {(message.deleted ? undefined : sharedPostsByMessage[Number(message.id)])?.map((post, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a message's shared posts never reorder
+                  <SharedPostCard key={index} post={post} />
+                ))}
               </BubbleGroup>
             )}
             <MessageMenu
+              convId={convId}
               message={message}
               failed={failed}
               onReply={onReply}
+              onCreateTask={onCreateTask}
               open={menuOpen}
               onOpenChange={setMenuOpen}
             />
@@ -985,7 +1148,10 @@ function MessageRow({
           <MessageFooter>
             {outbound && message.kind === "outgoing" && <span className="me-1">{sender} ·</span>}
             {message.time}
-            {message.kind === "outgoing" && !failed && (
+            {message.kind === "outgoing" && !failed && message.simulated && (
+              <SimulatedDelivery messageId={message.id} />
+            )}
+            {message.kind === "outgoing" && !failed && !message.simulated && (
               <DeliveryTicks state={delivery ?? (read ? "read" : "delivered")} />
             )}
           </MessageFooter>
@@ -1213,11 +1379,21 @@ export function ConversationPane({
 }) {
   const meta = useCwStore((s) => s.meta[conversation.id]);
   const sent = useCwStore((s) => s.sent[conversation.id]);
-  const deletedMessages = useCwStore((s) => s.deletedMessages);
+  const deletedMessages = useCwStore((s) => s.deletedMessages); // F-8: cw-data.ts withDeletions
+  const taskContact = useContactOf(conversation);
   const [replyTo, setReplyTo] = useState<CwMessage | null>(null);
+  const paneRef = useRef<HTMLDivElement>(null);
+  const [emailAvailableHeight, setEmailAvailableHeight] = useState<number>();
+  const isEmail = inboxOf(conversation).id === "email";
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const thread = [...buildThread(conversation, meta), ...(sent ?? [])].filter((m) => !deletedMessages.includes(m.id));
+  // F-8: a deleted message stays in the thread as "This message was deleted" (Chatwoot), not taken out.
+  const thread = withDeletions(
+    conversation.id,
+    [...buildThread(conversation, meta, deletedMessages), ...(sent ?? [])],
+    deletedMessages,
+  );
+  const conversationAttrs = useCwStore((s) => s.conversationAttrs[conversation.id]);
   // The unread count is taken when the conversation opens and kept while it stays open, like Chatwoot's badge.
   const [opened, setOpened] = useState(() => ({ id: conversation.id, count: unreadOnOpen(conversation.id) }));
   if (opened.id !== conversation.id) setOpened({ id: conversation.id, count: unreadOnOpen(conversation.id) });
@@ -1233,8 +1409,33 @@ export function ConversationPane({
   // Chatwoot ReplyBoxBanner: a pending conversation is still with the bot (hand-off banner); otherwise offer
   // "Assign to me" when it belongs to someone else, only while the agent types a reply (not a private note).
   const botOwned = meta.status === "pending" && meta.assigneeId === null;
-  const notMine = !botOwned && meta.assigneeId !== CURRENT_AGENT_ID && meta.status !== "resolved";
+  // F-5A: "you" is the person the page is viewed as.
+  const me = useViewer().id;
+  const notMine = !botOwned && meta.assigneeId !== me && meta.status !== "resolved";
   const history = contactHistory(conversation);
+  useEffect(() => {
+    const pane = paneRef.current;
+    if (!isEmail || !pane) return;
+    // Like Chatwoot's ResizableEditorWrapper, subtract the fixed panels first.
+    // The reply box budgets the editor itself after measuring its surrounding controls.
+    const fixed = Array.from(pane.children).filter(
+      (child) => !child.matches('[data-slot="message-scroller"], [data-slot="chat-composer"]'),
+    );
+    const measure = () => {
+      const occupied = fixed.reduce((height, child) => {
+        const style = getComputedStyle(child);
+        return (
+          height + child.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom)
+        );
+      }, 0);
+      setEmailAvailableHeight(Math.max(0, pane.clientHeight - occupied));
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(pane);
+    for (const child of fixed) observer.observe(child);
+    measure();
+    return () => observer.disconnect();
+  }, [isEmail, conversation.id, botOwned]);
   const selfAssignBanner = (
     <div className="mb-2 flex items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
       <span>This conversation is not assigned to you. Would you like to assign this conversation to yourself?</span>
@@ -1243,7 +1444,7 @@ export function ConversationPane({
         variant="outline"
         className="shrink-0"
         onClick={() => {
-          cw.assignAgent([conversation.id], CURRENT_AGENT_ID);
+          cw.assignAgent([conversation.id], me);
           toast.success("Conversation Assignee changed");
         }}
       >
@@ -1253,7 +1454,7 @@ export function ConversationPane({
   );
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", className)}>
+    <div ref={paneRef} className={cn("flex h-full min-h-0 flex-col", className)}>
       <ConversationHeader
         conversation={conversation}
         showBackButton={showBackButton}
@@ -1268,17 +1469,25 @@ export function ConversationPane({
         {/* F159 final pass: a fixed fade at the top edge (1rem hidden, then 2.5rem fade) (mask on the non-scrolling root), so the bubble the
             edge cuts under the header or the 24h banner fades out instead of showing half cut; the content padding
             keeps the first item clear of the fade when the thread is at its top (pt-14). */}
-        <MessageScroller className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,transparent_1rem,#000_3.5rem)]">
+        <MessageScroller
+          className={cn(
+            "min-h-0 flex-1",
+            !isEmail && "[mask-image:linear-gradient(to_bottom,transparent,transparent_1rem,#000_3.5rem)]",
+          )}
+        >
           {/* The thread opens at the newest message, as in Chatwoot. A fade at the top, only while there is more
               above, says "scroll up for more" and softens whatever the top edge cuts (a bubble, a divider, a meta line). */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-linear-to-b from-card from-25% to-transparent opacity-0 transition-opacity group-data-[scrollable~=start]/message-scroller:opacity-100"
+            className={cn(
+              "pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b from-card from-25% to-transparent opacity-0 transition-opacity group-data-[scrollable~=start]/message-scroller:opacity-100",
+              isEmail ? "h-4" : "h-12",
+            )}
           />
           {/* scrollbar-none replaces the viewport's own scrollbar-thin (cn drops it). With "no-scrollbar" alone,
               scrollbar-thin stayed and won in the stylesheet, so Chrome drew its thin bar beside the custom thumb. */}
           <MessageScrollerViewport ref={viewportRef} className="scrollbar-none no-scrollbar">
-            <MessageScrollerContent ref={contentRef} className="gap-5 px-3 pt-14 pb-6">
+            <MessageScrollerContent ref={contentRef} className={cn("gap-5 px-3", isEmail ? "pt-6 pb-4" : "pt-14 pb-6")}>
               {history.older && <ContactConversationLink target={history.older} direction="older" />}
               {thread.map((message, index) => (
                 <Fragment key={message.id}>
@@ -1290,24 +1499,39 @@ export function ConversationPane({
                   {message.id === firstUnreadId && <UnreadDivider count={unreadCount} />}
                   <MessageScrollerItem messageId={message.id}>
                     <MessageRow
+                      convId={conversation.id}
                       message={message}
                       contactName={conversation.name}
                       read={thread.slice(index + 1).some((m) => m.kind === "incoming")}
                       onReply={setReplyTo}
+                      onCreateTask={(m) =>
+                        openCreateTask({
+                          conversationId: conversation.id,
+                          channel: inboxOf(conversation).id,
+                          // F-8 (sim3 8.12b): the task's Channel and Order number come from the conversation.
+                          channelType: inboxOf(conversation).channelType,
+                          inboxName: inboxOf(conversation).name,
+                          orderNumber: (conversationAttrs?.order_number || conversationAttrs?.order_id || "").trim(),
+                          contact: {
+                            name: taskContact.name,
+                            email: taskContact.email,
+                            phone: taskContact.phone,
+                            company: taskContact.company,
+                          },
+                          message: {
+                            id: m.id,
+                            text: m.text,
+                            sender: m.sender ?? (m.kind === "incoming" ? conversation.name : "Arham Khan"),
+                            time: m.time,
+                          },
+                        })
+                      }
                     />
                   </MessageScrollerItem>
                 </Fragment>
               ))}
-              {conversation.id === 1 && (
-                <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                  <span className="flex gap-0.5">
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:150ms]" />
-                    <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:300ms]" />
-                  </span>
-                  {conversation.name} is typing
-                </div>
-              )}
+              {/* F161: no sample typing indicator (it was shown on #1 forever). F-19: another agent typing in this
+                  conversation shows in the presence bar above the reply box (presence.tsx). */}
               {history.newer && <ContactConversationLink target={history.newer} direction="newer" />}
             </MessageScrollerContent>
           </MessageScrollerViewport>
@@ -1316,34 +1540,37 @@ export function ConversationPane({
         </MessageScroller>
       </MessageScrollerProvider>
 
-      {botOwned && (
-        <div className="mx-3 mb-2 flex items-center justify-between gap-3 rounded-md border bg-muted/50 px-3 py-2 text-xs">
-          <span className="flex items-center gap-1.5">
-            <Bot className="size-3.5 shrink-0 text-muted-foreground" />
-            This conversation is currently handled by a bot.
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="shrink-0"
-            onClick={() => {
-              cw.setStatus([conversation.id], "open");
-              cw.assignAgent([conversation.id], CURRENT_AGENT_ID);
-              toast.success("Conversation has been handed over to you");
-            }}
-          >
-            Take over
-          </Button>
-        </div>
-      )}
+      {/* F-25 (F-19's note): the notices above the reply box are one line each, in one wrapper (22 and 26 px, 4 px
+          apart), so a conversation the bot holds, with someone else viewing it, still leaves the messages 200 px or
+          more on a 768 px tall window at 1024 wide. F-19 (Fahad 82b): who else has this conversation open, and who is
+          typing; a notice, nothing is locked. F-19 (Fahad 82, 87): Chatwoot's hand-off banner with "Take over" and a
+          simulated bot reply that an agent's reply stops (bot-reply-sim.tsx). */}
+      <div data-chat-notices="" className="mx-3 mb-1 flex flex-col gap-1 empty:hidden">
+        <PresenceBar conversationId={conversation.id} />
+        <BotReplySim
+          convId={conversation.id}
+          botOwned={botOwned}
+          onTakeOver={() => {
+            cw.assignAgent([conversation.id], me);
+            // F-5A: the status change is kept in the preview like any other (sim-thread-persist.ts).
+            void keepStatus([conversation.id], "open", { quiet: true });
+            toast.success("Conversation has been handed over to you");
+          }}
+        />
+      </div>
 
-      <Separator className="mb-2" />
+      <Separator className="mb-1" />
       <ReplyBox
         conversation={conversation}
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}
         typingBanner={notMine && selfAssignBanner}
+        emailAvailableHeight={isEmail ? emailAvailableHeight : undefined}
       />
+      {/* M129-A: the simulated call screen for the header's and the contact panel's call buttons (portal). */}
+      <SimCallScreen />
+      {/* M129-F: the "Create task" dialog of the message menu (task saved in Twenty). */}
+      <CreateTaskDialog />
     </div>
   );
 }

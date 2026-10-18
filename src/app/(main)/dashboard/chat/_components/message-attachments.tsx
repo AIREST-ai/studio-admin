@@ -5,13 +5,20 @@
 // the detail line and one full-width action). Mock media: nothing is loaded, play runs a timer.
 import { type ReactNode, useEffect, useState } from "react";
 
+import { useRouter } from "next/navigation";
+
 import { cn } from "cn";
 import { Download, Navigation, Pause, Play, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
+import { useContactsStore } from "@/app/(main)/dashboard/contacts/_components/contacts-store";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SIMULATED } from "@/lib/cw/preview-sim";
+import { downloadSample, SimBadge } from "@/lib/cw/preview-sim-ui";
 
 import type { CwAttachment } from "./cw-data";
+import { simSaveContact } from "./sim-actions";
 
 // "0:42" -> 42 seconds.
 function seconds(duration?: string) {
@@ -100,15 +107,29 @@ export function VideoAttachment({ file }: { file: CwAttachment }) {
           {playing || position ? `${clock(position)} / ${file.duration}` : file.duration}
         </span>
         <span className="absolute inset-x-0 bottom-0 h-0.5 bg-white/20">
-          <span className="block h-full bg-primary transition-[width]" style={{ width: `${(position / length) * 100}%` }} />
+          <span
+            className="block h-full bg-primary transition-[width]"
+            style={{ width: `${(position / length) * 100}%` }}
+          />
         </span>
       </button>
-      <div className="flex items-center justify-between gap-2 border-t px-2 py-1.5 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-t px-2 py-1.5 text-xs">
         <span className="truncate">{file.name}</span>
         <span className="ms-auto shrink-0 text-muted-foreground">{file.size}</span>
-        <Button variant="ghost" size="icon-xs" aria-label="Download" onClick={() => toast("Download started")}>
-          <Download />
-        </Button>
+        {/* M129-A (Fahad 129.2, replaces T-281's disabled button): downloads the sample video kept with the preview. */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`Download ${file.name}`}
+              onClick={() => downloadSample(file.name)}
+            >
+              <Download />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download sample file — {SIMULATED}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
@@ -135,7 +156,7 @@ function SharedItem({
       <div className="grid gap-3">
         <div className={cn("grid size-8 place-content-center rounded-lg text-white", tile)}>{icon}</div>
         <div className="space-y-1 overflow-hidden">
-          <div className="truncate text-sm">{heading}</div>
+          <div className="text-sm leading-5">{heading}</div>
           {title && <div className="truncate text-sm">{title}</div>}
           {detail && <div className="truncate text-muted-foreground text-sm">{detail}</div>}
         </div>
@@ -152,19 +173,38 @@ export function LocationAttachment({ file, sender }: { file: CwAttachment; sende
       tile="bg-[#0D9B8A]"
       heading={`${sender ?? "Contact"} has shared a location`}
       detail={file.name}
-      action={
-        <Button variant="outline" size="sm" className="w-full" asChild>
-          <a href={`https://maps.google.com/?q=${encodeURIComponent(file.name)}`} target="_blank" rel="noreferrer">
-            See on map
-          </a>
-        </Button>
-      }
+      // F-16 (Fahad 15 Oct: no links that take the user to another site): "See on map" opened Google Maps; the place
+      // is shown here as text and the map view is said to be unavailable, honestly.
+      action={<p className="text-muted-foreground text-xs">A map view is not available on this page yet.</p>}
     />
   );
 }
 
 export function ContactAttachment({ file, sender }: { file: CwAttachment; sender?: string }) {
-  const [saved, setSaved] = useState(false);
+  const router = useRouter();
+  const open = (id: number) => router.push(`/dashboard/contacts/${id}`);
+  // M129-A (Fahad 129.2, replaces T-291's disabled button): Chatwoot's Contact.vue looks the number up and creates the
+  // contact when it is new, then opens it. Here it goes into the preview's Contacts (sim-actions.ts simSaveContact) and
+  // stays after a reload; the toast offers to open it.
+  // F-3: once the number is in Contacts (saved here, before a reload, or already there) the button is "View contact"
+  // and opens that contact's page, like the toast's action.
+  const digits = (file.phone ?? "").replace(/\D/g, "");
+  const inContacts = useContactsStore((s) =>
+    digits ? s.list.find((c) => c.phone.replace(/\D/g, "") === digits)?.id : undefined,
+  );
+  const [savedHere, setSavedHere] = useState<number | undefined>();
+  const contactId = inContacts ?? savedHere;
+  const save = () => {
+    const { id, existed } = simSaveContact(file.name, file.phone ?? "");
+    setSavedHere(id);
+    const action = { label: "Open contact", onClick: () => open(id) };
+    if (existed) toast.info(`${file.name} is already in Contacts`, { description: SIMULATED, action });
+    else
+      toast.success("Contact added to Contacts", {
+        description: `${SIMULATED}: saved in this preview's Contacts, not in the engine.`,
+        action,
+      });
+  };
   return (
     <SharedItem
       icon={<UserRound className="size-4" />}
@@ -173,18 +213,24 @@ export function ContactAttachment({ file, sender }: { file: CwAttachment; sender
       title={file.name}
       detail={file.phone}
       action={
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          disabled={saved}
-          onClick={() => {
-            setSaved(true);
-            toast.success("Contact saved successfully");
-          }}
-        >
-          {saved ? "Saved" : "Save Contact"}
-        </Button>
+        <div className="grid justify-items-center gap-1">
+          {contactId === undefined ? (
+            <Button variant="outline" size="sm" className="w-full" onClick={save}>
+              Save Contact
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => open(contactId)}
+              data-contact-saved=""
+            >
+              View contact
+            </Button>
+          )}
+          <SimBadge />
+        </div>
       }
     />
   );

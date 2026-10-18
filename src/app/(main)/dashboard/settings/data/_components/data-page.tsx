@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
 import {
-  Clock,
   Database,
   Download,
   Eye,
@@ -23,6 +22,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { agentName, baseConversations, inboxOf, teamName } from "@/app/(main)/dashboard/chat/_components/cw-data";
+import { contactKeyOf, useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
+import { ImportContactsDialog } from "@/app/(main)/dashboard/contacts/_components/contact-dialogs";
+import { useContactsStore } from "@/app/(main)/dashboard/contacts/_components/contacts-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +51,9 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { downloadCsv, SimBadge } from "@/lib/cw/preview-sim-ui";
 
+import { createSavedList, SAVED_IN_PREVIEW, useSavedList } from "../../_components/settings-preview-client";
 import { CountTabs, PageHeader } from "../../labels/_shared/settings-shell";
 import {
   type DataImport,
@@ -60,6 +65,141 @@ import {
   statusMeta,
   typeLabel,
 } from "./data";
+
+export const dataImportsStore = createSavedList<DataImport>("dataImports", dataImports);
+export const useDataImports = () => useSavedList(dataImportsStore);
+export const IMPORT_SAVED_NOTE = `${SAVED_IN_PREVIEW} Preview — simulated: no Intercom or Freshdesk import runs in this preview.`;
+
+// M129-A (Fahad 129.2, replaces "Exports are on the way / Coming soon"): Export downloads a CSV built in the browser
+// from the preview's own data, including what was added, deleted or merged in the preview. Contacts use Chatwoot's
+// default export columns (id, name, email, phone_number, labels: app/jobs/account/contacts_export_job.rb, v4.18.0).
+function ExportPanel() {
+  const contacts = useContactsStore((s) => s.list);
+  const meta = useCwStore((s) => s.meta);
+  const deleted = useCwStore((s) => s.deleted);
+  const edits = useCwStore((s) => s.contactEdits);
+  const conversations = baseConversations.filter((c) => !deleted.includes(c.id));
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  const exportContacts = () =>
+    downloadCsv(`AIREST_Studio_contacts_${stamp}.csv`, [
+      ["id", "name", "email", "phone_number", "labels"],
+      ...contacts.map((c) => [c.id, c.name, c.email, c.phone, c.labels.join(",")]),
+    ]);
+  const exportConversations = () =>
+    downloadCsv(`AIREST_Studio_conversations_${stamp}.csv`, [
+      [
+        "id",
+        "inbox",
+        "contact_name",
+        "contact_email",
+        "status",
+        "priority",
+        "assignee",
+        "team",
+        "created_at",
+        "subject",
+      ],
+      ...conversations.map((c) => {
+        const m = meta[c.id];
+        const contact = { ...c.contact, ...edits[contactKeyOf(c)] };
+        return [
+          c.id,
+          inboxOf(c).name,
+          contact.name,
+          contact.email,
+          m?.status ?? "",
+          m?.priority ?? "",
+          agentName(m?.assigneeId) ?? "",
+          teamName(m?.teamId) ?? "",
+          m?.createdAt ?? "",
+          c.subject,
+        ];
+      }),
+    ]);
+
+  const rows = [
+    {
+      title: "Contacts",
+      detail: `${contacts.length} contacts · id, name, email, phone number, labels`,
+      onExport: exportContacts,
+    },
+    {
+      title: "Conversations",
+      detail: `${conversations.length} conversations · inbox, contact, status, priority, assignee, team, created, subject`,
+      onExport: exportConversations,
+    },
+  ];
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="text-xl leading-none">Export</CardTitle>
+        <CardDescription>Download your contacts or conversations as a CSV file.</CardDescription>
+        <CardAction>
+          <SimBadge />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {rows.map((row) => (
+          <div key={row.title} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Upload className="size-4 text-muted-foreground" />
+              </span>
+              <div className="grid min-w-0 gap-0.5">
+                <span className="font-medium">{row.title}</span>
+                <span className="text-muted-foreground text-sm">{row.detail}</span>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={row.onExport}>
+              <Download /> Export CSV
+            </Button>
+          </div>
+        ))}
+        <p className="text-muted-foreground text-xs">
+          The file is built in your browser from this preview's sample data, with the changes made in the preview.
+          Nothing is exported from the engine.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// T-290 (Fahad 128.5, 128.6): the contacts CSV import that was on the Contacts page lives here, beside Export, so
+// importing and exporting are in one place, as HubSpot (Settings > Data Management > Import & Export), Intercom
+// (Settings > Data > Imports & exports), Zoho CRM (Setup > Data Administration) and Pipedrive (Tools and apps). It is
+// the same dialog (contacts/_components/contact-dialogs.tsx): the rows are added to the Contacts list at once.
+function CsvImportPanel() {
+  const contacts = useContactsStore((s) => s.list);
+  const [open, setOpen] = React.useState(false);
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="text-xl leading-none">Import a CSV file</CardTitle>
+        <CardDescription>Add contacts from a spreadsheet saved as CSV.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+              <FileText className="size-4 text-muted-foreground" />
+            </span>
+            <div className="grid min-w-0 gap-0.5">
+              <span className="font-medium">Contacts</span>
+              <span className="text-muted-foreground text-sm">
+                {contacts.length} contacts now · name, email, phone number, city, country, company
+              </span>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            <Upload /> Import CSV
+          </Button>
+        </div>
+      </CardContent>
+      <ImportContactsDialog open={open} onOpenChange={setOpen} />
+    </Card>
+  );
+}
 
 export function SourceIcon({ source, className }: { source: ImportSource; className?: string }) {
   const Icon = source === "intercom" ? MessageSquare : source === "freshdesk" ? LifeBuoy : FileText;
@@ -101,7 +241,7 @@ function NewImportDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (item: DataImport) => void;
+  onCreate: (item: Omit<DataImport, "id">) => Promise<void>;
   blocked: boolean;
 }) {
   const [source, setSource] = React.useState<"intercom" | "freshdesk">("intercom");
@@ -111,6 +251,8 @@ function NewImportDialog({
   const [keyState, setKeyState] = React.useState<"idle" | "validating" | "valid" | "invalid">("idle");
   const [types, setTypes] = React.useState<("contacts" | "conversations")[]>(["contacts", "conversations"]);
   const [errors, setErrors] = React.useState<{ domain?: string; key?: string; types?: string }>({});
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (open) {
@@ -121,6 +263,8 @@ function NewImportDialog({
       setKeyState("idle");
       setTypes(["contacts", "conversations"]);
       setErrors({});
+      setSaving(false);
+      setSaveError(null);
     }
   }, [open]);
 
@@ -135,7 +279,7 @@ function NewImportDialog({
     return () => window.clearTimeout(t);
   }, [key]);
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     const next: typeof errors = {};
     if (source === "freshdesk" && !/^[a-z0-9-]+\.freshdesk\.com$/i.test(domain.trim()))
@@ -143,31 +287,40 @@ function NewImportDialog({
     if (keyState !== "valid") next.key = "Could not validate this access key.";
     if (!types.length) next.types = "Select at least one type";
     setErrors(next);
-    if (Object.keys(next).length) return;
-    onCreate({
-      id: Date.now(),
-      name: name.trim() || (source === "intercom" ? "Intercom import" : "Freshdesk import"),
-      source,
-      types,
-      status: "pending",
-      stage: "queued",
-      imported: 0,
-      total: 0,
-      created: "Just now",
-      duration: "-",
-      startedBy: "Arham Khan",
-      errors: [],
-      skipLogs: [],
-    });
-    onOpenChange(false);
-    toast.success("Import has started.");
+    if (Object.keys(next).length || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onCreate({
+        name: name.trim() || (source === "intercom" ? "Intercom import" : "Freshdesk import"),
+        source,
+        types,
+        status: "pending",
+        stage: "queued",
+        imported: 0,
+        total: 0,
+        created: "Just now",
+        duration: "-",
+        startedBy: "Arham Khan",
+        errors: [],
+        skipLogs: [],
+      });
+      onOpenChange(false);
+      toast.success("Import has started.", { description: IMPORT_SAVED_NOTE });
+    } catch (error) {
+      const msg = (error as Error).message;
+      setSaveError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const keyLabel = source === "intercom" ? "Intercom access key" : "Freshdesk API key";
   const keyPlaceholder = source === "intercom" ? "Paste your Intercom access key" : "Paste your Freshdesk API key";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
@@ -259,14 +412,19 @@ function NewImportDialog({
               Wait for the active import to finish before starting another one.
             </p>
           ) : null}
+          {saveError ? (
+            <p role="alert" data-import-save-error="" className="text-destructive text-sm">
+              {saveError}
+            </p>
+          ) : null}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={saving}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={blocked}>
-              Import
+            <Button type="submit" disabled={blocked || saving}>
+              {saving ? "Saving…" : "Import"}
             </Button>
           </DialogFooter>
         </form>
@@ -278,7 +436,7 @@ function NewImportDialog({
 export function DataPage() {
   const router = useRouter();
   const [tab, setTab] = React.useState("import");
-  const [rows, setRows] = React.useState<DataImport[]>(dataImports);
+  const rows = useDataImports();
   const [open, setOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const activeImport = rows.some(isActive);
@@ -289,24 +447,24 @@ export function DataPage() {
   }
 
   function abandon(item: DataImport) {
-    setRows((prev) =>
-      prev.map((r): DataImport => (r.id === item.id ? { ...r, status: "abandoned", stage: "abandoned" } : r)),
+    void dataImportsStore.update(item.id, { status: "abandoned", stage: "abandoned" }).then(
+      () => toast.success("Import has been abandoned.", { description: IMPORT_SAVED_NOTE }),
+      (error: Error) => toast.error(error.message),
     );
-    toast.success("Import has been abandoned.");
   }
 
   function retry(item: DataImport) {
-    setRows((prev) =>
-      prev.map((r): DataImport => (r.id === item.id ? { ...r, status: "pending", stage: "queued" } : r)),
+    void dataImportsStore.update(item.id, { status: "pending", stage: "queued" }).then(
+      () => toast.success("Import has been queued to resume.", { description: IMPORT_SAVED_NOTE }),
+      (error: Error) => toast.error(error.message),
     );
-    toast.success("Import has been queued to resume.");
   }
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Data"
-        description="Bring your existing contacts and past conversations into this account from another support tool. Each import runs in the background, so you can keep working while it finishes, track its progress, and review anything that was skipped along the way."
+        title="Import & Export"
+        description="Import contacts from a CSV file, or bring your existing contacts and past conversations from another support tool, and download your account data as CSV files. Each import runs in the background, so you can keep working while it finishes, track its progress, and review anything that was skipped along the way."
         actions={
           tab === "import" ? (
             <Button onClick={() => setOpen(true)}>
@@ -324,21 +482,9 @@ export function DataPage() {
         ]}
       />
 
+      {tab === "import" ? <CsvImportPanel /> : null}
       {tab === "export" ? (
-        <Card className="items-center py-16 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-muted">
-            <Upload className="size-5 text-muted-foreground" />
-          </span>
-          <div className="grid gap-1">
-            <h3 className="font-medium text-lg">Exports are on the way</h3>
-            <p className="max-w-sm text-muted-foreground text-sm">
-              Export your contacts and conversations out of this account. This workflow is coming soon.
-            </p>
-          </div>
-          <Badge variant="secondary" className="gap-1.5">
-            <Clock className="size-3.5" /> Coming soon
-          </Badge>
-        </Card>
+        <ExportPanel />
       ) : (
         <Card>
           <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
@@ -405,7 +551,9 @@ export function DataPage() {
                         <div className="flex min-w-0 items-center gap-3">
                           <SourceIcon source={item.source} />
                           <div className="grid min-w-0 gap-0.5">
-                            <span className="line-clamp-2 font-medium whitespace-normal">{item.name || "Untitled import"}</span>
+                            <span className="line-clamp-2 font-medium whitespace-normal">
+                              {item.name || "Untitled import"}
+                            </span>
                             <span className="text-muted-foreground text-xs">{sourceLabel[item.source]}</span>
                           </div>
                         </div>
@@ -464,7 +612,10 @@ export function DataPage() {
       <NewImportDialog
         open={open}
         onOpenChange={setOpen}
-        onCreate={(item) => setRows((prev) => [item, ...prev])}
+        onCreate={async (item) => {
+          const next: DataImport = { ...item, id: dataImportsStore.nextId() };
+          await dataImportsStore.apply((items) => [next, ...items]);
+        }}
         blocked={rows.some((r) => isActive(r) && r.source !== "file")}
       />
     </div>

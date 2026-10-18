@@ -3,6 +3,8 @@
 // pattern: big title and main button outside the card, table in a card, "…" menu per row.
 import * as React from "react";
 
+import Link from "next/link";
+
 import { Copy, Eye, EyeOff, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,11 +32,24 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+import { copyText } from "../../_components/copy-text";
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
-import { type Webhook, webhookEvents, webhooks as seed } from "./data";
+import { webhookEvents } from "./data";
 import { BackToIntegrations, ConfirmAction } from "./integration-ui";
+import { INTEGRATION_NOTE, useWebhooks, useWebhooksLoaded, type WebhookRow, webhooksStore } from "./integrations-store";
 
-type WebhookRow = Webhook & { secret: string };
+// F-6A: the webhooks are saved in this preview (integrations-store.ts); each message shows after the save, and no
+// event is sent to their URLs from the preview.
+async function saved(saving: Promise<void>, message: string) {
+  try {
+    await saving;
+    toast.success(message, { description: INTEGRATION_NOTE });
+    return true;
+  } catch (error) {
+    toast.error("Not saved", { description: (error as Error).message });
+    return false;
+  }
+}
 
 function makeSecret() {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -43,18 +58,14 @@ function makeSecret() {
   return out;
 }
 
-const seedRows: WebhookRow[] = seed.map((w, i) => ({
-  ...w,
-  secret: ["k3v9q2x8m1p7z4t6w0r5y8u2e1a9s3d7", "h8j2k4l6m9n1b3v5c7x0z2q4w6e8r1t3", "p0o9i8u7y6t5r4e3w2q1a2s3d4f5g6h7", "z9x8c7v6b5n4m3l2k1j0h9g8f7d6s5a4"][i] ?? makeSecret(),
-}));
-
 function eventLabel(value: string) {
   return webhookEvents.find((e) => e.value === value)?.label ?? value;
 }
 
+// F-12: it said "copied" even when the browser copied nothing (the preview is plain http, where navigator.clipboard
+// is missing); copyText says so only when the text was taken.
 function copy(text: string, message: string) {
-  void navigator.clipboard?.writeText(text).catch(() => undefined);
-  toast.success(message);
+  void copyText(text, message);
 }
 
 function SecretField({ secret }: { secret: string }) {
@@ -204,7 +215,8 @@ function WebhookDialog({
 }
 
 export function WebhooksPage() {
-  const [rows, setRows] = React.useState<WebhookRow[]>(seedRows);
+  const rows = useWebhooks();
+  const loaded = useWebhooksLoaded();
   const [query, setQuery] = React.useState("");
   const [dialog, setDialog] = React.useState<{ open: boolean; webhook: WebhookRow | null }>({
     open: false,
@@ -216,23 +228,23 @@ export function WebhooksPage() {
   const q = query.trim().toLowerCase();
   const visible = q ? rows.filter((w) => `${w.name} ${w.url}`.toLowerCase().includes(q)) : rows;
 
-  function save(values: { name: string; url: string; events: string[] }) {
+  async function save(values: { name: string; url: string; events: string[] }) {
     const editing = dialog.webhook;
     if (editing) {
-      setRows((prev) => prev.map((w) => (w.id === editing.id ? { ...w, ...values } : w)));
-      toast.success("Webhook configuration updated successfully");
-    } else {
-      const next: WebhookRow = { id: Date.now(), secret: makeSecret(), ...values };
-      setRows((prev) => [...prev, next]);
-      setCreated(next);
-      toast.success("Webhook configuration added successfully");
+      if (await saved(webhooksStore.update(editing.id, values), "Webhook configuration updated successfully"))
+        setDialog({ open: false, webhook: null });
+      return;
     }
-    setDialog({ open: false, webhook: null });
+    const next: WebhookRow = { id: webhooksStore.nextId(), secret: makeSecret(), ...values };
+    if (await saved(webhooksStore.save(next), "Webhook configuration added successfully")) {
+      setCreated(next);
+      setDialog({ open: false, webhook: null });
+    }
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <BackToIntegrations />
+      <BackToIntegrations current="Webhooks" />
       <SettingsShell
         title="Webhooks"
         description="Webhook events provide you the realtime information about what's happening in your Weblabs Studio account. Please enter a valid URL to configure a callback."
@@ -247,7 +259,26 @@ export function WebhooksPage() {
         count={`${rows.length} ${rows.length === 1 ? "webhook" : "webhooks"}`}
         search={{ placeholder: "Search webhooks...", value: query, onChange: setQuery }}
       >
-        {rows.length === 0 ? (
+        {/* F-12 (Fahad ل4 and 129.2): the page says on itself that no event leaves the preview, and where the API
+            token, base URL and docs are (Profile Settings > Access Token, as Chatwoot keeps the token in Profile). */}
+        <div className="flex flex-col gap-1 px-6 text-muted-foreground text-xs">
+          <p data-preview-note>
+            Preview — simulated: webhooks are saved in this preview, not in the engine. No event is sent to these URLs.
+          </p>
+          <p>
+            Building with the API? Your access token, the API base URL and the API documentation are in{" "}
+            <Link
+              href="/dashboard/settings/profile?tab=token"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              Profile Settings › Access Token
+            </Link>
+            .
+          </p>
+        </div>
+        {!loaded ? (
+          <NoResults>Loading saved webhooks…</NoResults>
+        ) : rows.length === 0 ? (
           <NoResults>There are no webhooks configured for this account.</NoResults>
         ) : (
           <Table className="**:data-[slot='table-cell']:px-6 **:data-[slot='table-head']:px-6">
@@ -273,7 +304,11 @@ export function WebhooksPage() {
                     <TableCell className="py-4 whitespace-normal align-top">
                       <div className="flex flex-wrap gap-1.5">
                         {webhook.events.map((ev) => (
-                          <Badge key={ev} variant="outline" className="border-sky-500/20 bg-sky-500/10 font-medium text-sky-600 dark:text-sky-400">
+                          <Badge
+                            key={ev}
+                            variant="outline"
+                            className="border-sky-500/20 bg-sky-500/10 font-medium text-sky-600 dark:text-sky-400"
+                          >
                             {eventLabel(ev)}
                           </Badge>
                         ))}
@@ -331,8 +366,8 @@ export function WebhooksPage() {
           <DialogHeader>
             <DialogTitle>Webhook created</DialogTitle>
             <DialogDescription>
-              Your webhook has been created. Use the secret below to verify webhook signatures. Please copy it now —
-              you can also find it later in the webhook edit form.
+              Your webhook has been created. Use the secret below to verify webhook signatures. Please copy it now — you
+              can also find it later in the webhook edit form.
             </DialogDescription>
           </DialogHeader>
           {created ? <SecretField secret={created.secret} /> : null}
@@ -348,8 +383,7 @@ export function WebhooksPage() {
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(null)}
         onConfirm={() => {
-          setRows((prev) => prev.filter((w) => w.id !== deleting?.id));
-          toast.success("Webhook deleted successfully");
+          if (deleting) void saved(webhooksStore.remove(deleting.id), "Webhook deleted successfully");
         }}
         title="Confirm Deletion"
         message={`Are you sure to delete the webhook? (${deleting?.url ?? ""})`}

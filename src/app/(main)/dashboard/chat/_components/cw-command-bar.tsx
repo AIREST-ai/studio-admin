@@ -9,7 +9,7 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { addHours, addMonths, format, startOfMonth } from "date-fns";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,21 +39,15 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useVisibleMacros } from "@/lib/cw/macro-visibility";
 
-import { agents, macros, priorities, teams } from "./cw-data";
-import { openDialog, runMacro } from "./cw-dialogs";
+import { priorities, useLiveAgents, useLiveTeams } from "./cw-data";
+import { type CommandPage, openDialog, resolveConversation, runMacro } from "./cw-dialog-store";
 import { cw, useCwStore } from "./cw-store";
 import { AgentAvatar, PriorityIcon } from "./cw-ui";
+import { changeStatus, type SnoozeKind, snoozeTime, toggleBlock } from "./sim-thread-persist";
 
-export type CommandPage =
-  | "root"
-  | "snooze"
-  | "assign-agent"
-  | "assign-team"
-  | "priority"
-  | "add-label"
-  | "remove-label"
-  | "macro";
+export type { CommandPage } from "./cw-dialog-store";
 
 const pageTitles: Record<Exclude<CommandPage, "root">, string> = {
   snooze: "Snooze Conversation",
@@ -92,26 +86,27 @@ const goTo: { label: string; href: string }[] = [
   { label: "Go to Canned Response Settings", href: "/dashboard/settings/canned-responses" },
   { label: "Go to SLA Settings", href: "/dashboard/settings/sla" },
   { label: "Go to Application Settings", href: "/dashboard/settings/integrations" },
-  { label: "Go to Data", href: "/dashboard/settings/data" },
+  { label: "Go to Import & Export", href: "/dashboard/settings/data" },
   { label: "Go to Audit Logs", href: "/dashboard/settings/audit-logs" },
   { label: "Go to Billing", href: "/dashboard/settings/billing" },
   { label: "Go to Account Settings", href: "/dashboard/settings/account" },
   { label: "Go to Profile Settings", href: "/dashboard/settings/profile" },
 ];
 
-// Chatwoot snoozeHelpers.js: an hour from now, tomorrow 9 AM, next week Monday 9 AM, the 1st of next month 9 AM.
-function snoozePresets(): { label: string; display: string | null; custom?: boolean }[] {
-  const now = new Date();
+// Chatwoot snoozeHelpers.js findSnoozeTime: an hour from now, tomorrow 9 AM, next week's Monday 9 AM, the first Monday
+// of next month 9 AM (sim-thread-persist.ts snoozeTime). F-5A: the snooze is kept with that time.
+function snoozePresets(): { label: string; kind: SnoozeKind | null; custom?: boolean }[] {
+  const at = (kind: SnoozeKind) => {
+    const when = snoozeTime(kind);
+    return when ? ` (${format(when, "EEE d MMM, h:mm a")})` : "";
+  };
   return [
-    { label: "Until next reply", display: "Snoozed until next reply" },
-    { label: "Until an hour from now", display: `Snoozed until ${format(addHours(now, 1), "h:mm a")}` },
-    { label: "Until tomorrow", display: "Snoozed until tomorrow" },
-    { label: "Until next week", display: "Snoozed until next week" },
-    {
-      label: "Until next month",
-      display: `Snoozed until ${format(startOfMonth(addMonths(now, 1)), "MMM d")}, 9:00 AM`,
-    },
-    { label: "Custom...", display: null, custom: true },
+    { label: "Until next reply", kind: "next_reply" },
+    { label: `Until an hour from now${at("an_hour_from_now")}`, kind: "an_hour_from_now" },
+    { label: `Until tomorrow${at("tomorrow")}`, kind: "tomorrow" },
+    { label: `Until next week${at("next_week")}`, kind: "next_week" },
+    { label: `Until next month${at("next_month")}`, kind: "next_month" },
+    { label: "Custom...", kind: null, custom: true },
   ];
 }
 
@@ -128,6 +123,11 @@ export function CommandBarDialog({
   const [page, setPage] = useState<CommandPage>(initialPage);
   const [search, setSearch] = useState("");
   const meta = useCwStore((s) => (convId ? s.meta[convId] : undefined));
+  const agents = useLiveAgents();
+  const teams = useLiveTeams();
+  // F-19 (F-8's note): "Execute Macro" lists the macros Settings > Macros saved, not the sample copy.
+  // F-24 (F-19's note): without other people's private macros (Chatwoot Macro.with_visibility), also under View as.
+  const macros = useVisibleMacros();
   const muted = useCwStore((s) => (convId ? Boolean(s.muted[convId]) : false));
   const { tags, byConv } = useChatTags();
   const convTags = convId ? (byConv[String(convId)] ?? []) : [];
@@ -191,8 +191,9 @@ export function CommandBarDialog({
                 {meta.status === "resolved" ? (
                   <CommandItem
                     onSelect={() => {
-                      cw.setStatus([convId], "open");
-                      done("Conversation status changed");
+                      // F-5A: kept in the preview; its toast says so once saved.
+                      void changeStatus([convId], "open");
+                      close();
                     }}
                   >
                     <RotateCcw /> Reopen conversation
@@ -200,8 +201,8 @@ export function CommandBarDialog({
                 ) : (
                   <CommandItem
                     onSelect={() => {
-                      cw.setStatus([convId], "resolved");
-                      done("Conversation status changed");
+                      // F161: with required attributes missing, the "Resolve conversation" dialog replaces this one.
+                      if (resolveConversation(convId)) close();
                     }}
                   >
                     <CircleCheck /> Resolve conversation
@@ -209,12 +210,9 @@ export function CommandBarDialog({
                 )}
                 <CommandItem
                   onSelect={() => {
-                    cw.toggleMute(convId);
-                    done(
-                      muted
-                        ? "This contact is unblocked successfully."
-                        : "This contact is blocked successfully. You will not be notified of any future conversations.",
-                    );
+                    // F-5A: kept as the contact's block in the preview; the toast comes once it is saved.
+                    toggleBlock(convId);
+                    close();
                   }}
                 >
                   {muted ? <Volume1 /> : <VolumeOff />}
@@ -273,12 +271,12 @@ export function CommandBarDialog({
                 <CommandItem
                   key={option.label}
                   onSelect={() => {
-                    if (option.custom) {
+                    if (option.custom || !option.kind) {
                       openDialog({ type: "snooze", ids: [convId] });
                       return;
                     }
-                    cw.setStatus([convId], "snoozed", option.display);
-                    done("Conversation status changed");
+                    void changeStatus([convId], "snoozed", { snooze: option.kind });
+                    close();
                   }}
                 >
                   <Clock /> {option.label}

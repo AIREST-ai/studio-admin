@@ -1,5 +1,7 @@
 "use client";
 
+import type * as React from "react";
+
 import { cn } from "cn";
 import { ArrowUpRight, BadgeCheck, CalendarDays, Sparkles } from "lucide-react";
 
@@ -8,20 +10,27 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getInitials } from "@/lib/utils";
 
-import { channelTones } from "./data";
+import { personToneClass } from "../../contacts/_components/studio-ui";
+import { formatDueDate } from "./board";
+import { channelTone } from "./data";
 import type { ColumnId, Task } from "./types";
 
 export function TaskCard({
   task,
   columnId,
   isOverlay = false,
+  menu,
 }: {
   task: Task;
   columnId?: ColumnId;
   isOverlay?: boolean;
+  menu?: React.ReactNode;
 }) {
   const isSolved = columnId === "solved";
   const owner = task.owner;
+  // F-9: every card is a dodge in a preview conversation, opened by its link.
+  const href = task.conversationHref;
+  const hasConversation = href.startsWith("/") || href.startsWith("https://");
 
   return (
     <article
@@ -31,11 +40,14 @@ export function TaskCard({
       )}
     >
       <div className="min-w-0 space-y-2">
-        <h3 className="truncate font-medium text-sm leading-none">{task.customer}</h3>
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <h3 className="truncate font-medium text-sm leading-none">{task.customer}</h3>
+          {menu}
+        </div>
         <div className="flex min-w-0 items-center gap-2">
           <Badge
             variant="secondary"
-            className={cn("shrink-0 rounded-md border-transparent px-1.5 font-medium", channelTones[task.channel])}
+            className={cn("shrink-0 rounded-md border-transparent px-1.5 font-medium", channelTone(task.channel))}
           >
             {task.channel}
           </Badge>
@@ -55,13 +67,17 @@ export function TaskCard({
             <Sparkles className="size-3" />
             Better reply
           </p>
-          <p className="line-clamp-4 text-foreground/80 text-sm leading-5">{task.betterReply}</p>
+          {task.betterReply ? (
+            <p className="line-clamp-4 text-foreground/80 text-sm leading-5">{task.betterReply}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm italic leading-5">Not written yet</p>
+          )}
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-1.5">
-          <Avatar className={cn("size-5 after:rounded-sm", owner.tone)}>
+          <Avatar className={cn("size-5 after:rounded-sm", owner.tone || personToneClass(owner.name))}>
             <AvatarFallback className="rounded-sm text-[10px]">{getInitials(owner.name)}</AvatarFallback>
           </Avatar>
           <span className="truncate text-muted-foreground text-sm">{owner.name}</span>
@@ -69,7 +85,7 @@ export function TaskCard({
 
         <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground" title="Due date">
           <CalendarDays className="size-3" />
-          <span className="text-sm">{task.dueDate}</span>
+          <span className="text-sm">{formatDueDate(task.dueDate)}</span>
         </div>
       </div>
 
@@ -82,14 +98,19 @@ export function TaskCard({
             Solved
           </span>
         ) : null}
-        <a
-          href={task.conversationHref}
-          draggable={false}
-          className="ml-auto inline-flex items-center gap-1 whitespace-nowrap font-medium text-primary text-sm underline-offset-4 hover:underline"
-        >
-          Open conversation
-          <ArrowUpRight className="size-3.5" />
-        </a>
+        {hasConversation ? (
+          <a
+            href={href}
+            draggable={false}
+            data-conversation-link={task.conversationId}
+            className="ml-auto inline-flex items-center gap-1 whitespace-nowrap font-medium text-primary text-sm underline-offset-4 hover:underline"
+          >
+            Open conversation #{task.conversationId}
+            <ArrowUpRight className="size-3.5" />
+          </a>
+        ) : (
+          <span className="ml-auto whitespace-nowrap text-muted-foreground text-xs">No conversation linked</span>
+        )}
       </div>
     </article>
   );

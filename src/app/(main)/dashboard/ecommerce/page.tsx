@@ -23,6 +23,8 @@ export const metadata: Metadata = {
   },
 };
 
+// T-53 / F-17: shown or hidden by the owner (Owner console, /super_admin; default off in src/config/features.ts). While
+// it is hidden a direct visit shows "E-commerce is hidden by the site owner" (dashboard/_components/view-as.tsx).
 export default function Page() {
   const formattedDate = format(new Date(), "EEEE, do MMMM yyyy");
 

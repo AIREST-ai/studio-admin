@@ -1,0 +1,4 @@
+# F161 contacts-notifications channel
+BUILDER 18:43: started. Plan: contacts store (add/update/delete/merge/block/labels/notes/segments persist across tabs), working filter + segments, per-label + active routes, bulk bar, import/export toasts, notifications back button + contact link + defaults.
+BUILDER 18:43: SHARED-REQUEST sidebar (foundation): Contacts group children "All Contacts" /dashboard/contacts, "Active" /dashboard/contacts/active, "Segments" -> /dashboard/contacts/segments/<id> (list from useContactsStore segments in src/app/(main)/dashboard/contacts/_components/contacts-store.ts), "Tagged With" -> /dashboard/contacts/labels/<label>. Notifications: label "My Inbox", first in sidebar, unread badge (I will export a hook useUnreadNotifications from notifications/_components). 
+BUILDER 18:43: SHARED-REQUEST src/lib/cw labels list: until it exists contacts keep labels vip/billing/lead/partner/support (studio-ui.tsx labelTones).

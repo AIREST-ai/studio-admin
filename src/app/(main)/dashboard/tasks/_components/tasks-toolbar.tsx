@@ -1,8 +1,9 @@
 "use client";
 import type { ReactTable, RowData } from "@tanstack/react-table";
 import { cn } from "cn";
-import { Settings2, X } from "lucide-react";
+import { Plus, Settings2, X } from "lucide-react";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import type { DataTableFeatures } from "@/lib/data-table-features";
 
 import { TaskPriorityFilter } from "./task-priority-filter";
@@ -21,9 +21,10 @@ import { TaskStatusFilter } from "./task-status-filter";
 
 interface TasksToolbarProps<TData extends RowData> {
   table: ReactTable<DataTableFeatures, TData>;
+  onAddTask?: () => void;
 }
 
-export function TasksToolbar<TData extends RowData>({ table }: TasksToolbarProps<TData>) {
+export function TasksToolbar<TData extends RowData>({ table, onAddTask }: TasksToolbarProps<TData>) {
   const isFiltered = table.state.columnFilters.length > 0;
   const searchValue = (table.getColumn("title")?.getFilterValue() as string | undefined) ?? "";
   const hideableColumns = table
@@ -34,14 +35,18 @@ export function TasksToolbar<TData extends RowData>({ table }: TasksToolbarProps
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex flex-1 flex-wrap items-center gap-2">
-        <Input
+        {/* F-13 round 2 (Fahad 125.4): a lens only; a click opens the box, closing it brings back the lens. */}
+        <ExpandingSearch
+          name="tasks-sample"
+          label="Filter tasks"
           placeholder="Filter tasks..."
+          size="default"
+          className="w-full sm:w-64"
           value={searchValue}
-          onChange={(event) => {
-            table.getColumn("title")?.setFilterValue(event.target.value);
+          onChange={(value) => {
+            table.getColumn("title")?.setFilterValue(value);
             table.setPageIndex(0);
           }}
-          className="w-full bg-background text-foreground placeholder:text-muted-foreground sm:w-64"
         />
         <TaskStatusFilter table={table} />
         <TaskPriorityFilter table={table} />
@@ -58,7 +63,7 @@ export function TasksToolbar<TData extends RowData>({ table }: TasksToolbarProps
           </Button>
         )}
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -87,6 +92,12 @@ export function TasksToolbar<TData extends RowData>({ table }: TasksToolbarProps
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+        {onAddTask && (
+          <Button size="sm" onClick={onAddTask}>
+            <Plus data-icon="inline-start" />
+            Add task
+          </Button>
+        )}
       </div>
     </div>
   );

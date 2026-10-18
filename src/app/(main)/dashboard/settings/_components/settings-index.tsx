@@ -1,78 +1,129 @@
 "use client";
 // Settings home in the Studio pattern: big title and description outside, then one card per settings group with a
 // row per page (icon, name, one line). Chatwoot itself opens Account Settings at /settings; this page lists them all.
+// م137 (Fahad 137): the seven parts of the Settings inner bar, in its order; each card has the part's title, its
+// one-line description and its page count, and the cards run down two columns so the reading order is the bar's.
+// م137 round 2 item 8 (user simulation): the search reads each page's content words (settings-nav.ts keywords), not only
+// its name; while searching, the person's own settings (Profile Settings tabs) are found too, marked as living in the
+// account menu (never listed otherwise, item 54); Automation is listed as a pointer to its own place (item 88).
 import * as React from "react";
 
 import Link from "next/link";
 
-import { ChevronRight, Search } from "lucide-react";
+import { ArrowUpRight, ChevronRight } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { canOpen, useViewer } from "@/lib/cw/view-as";
+import { isShown, sectionOfUrl } from "@/lib/owner/site-sections";
+import { useSiteSections } from "@/lib/owner/site-sections-context";
 
 import { PageHeader } from "../labels/_shared/settings-shell";
-import { settingsGroups } from "./settings-nav";
+import { personalLinks, type SettingsLink, settingsGroups } from "./settings-nav";
+
+// Every word of the search starts a word of the page's name, line, content words or part name ("tag" finds Labels,
+// not the "stages" of Customer Path).
+function matches(item: SettingsLink, part: string, words: string[]) {
+  const text = `${item.title} ${item.description} ${item.keywords ?? ""} ${part}`.toLowerCase();
+  return words.every((word) => new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(text));
+}
+
+// A pointer to a page that lives elsewhere (Automation) is listed but not counted as one of the part's pages.
+const pageCount = (items: SettingsLink[]) => items.filter((item) => !item.elsewhere).length;
 
 export function SettingsIndex() {
   const [query, setQuery] = React.useState("");
   const q = query.trim().toLowerCase();
-  const groups = settingsGroups
+  // F-5A "View as": only the settings the viewed person may open (Chatwoot route permissions, src/lib/cw/view-as.ts).
+  const viewer = useViewer();
+  // F-17 (T-91): a link to a section the owner hid (Settings > Captain while Captain is hidden, the Automation pointer)
+  // is not listed, as in the Settings bar (nav-main.tsx withLiveLists).
+  const siteSections = useSiteSections();
+  const sectionShown = (url: string) => {
+    const section = sectionOfUrl(url);
+    return !section || isShown(siteSections, section.id);
+  };
+  const words = q.split(/\s+/).filter(Boolean);
+  const personal = {
+    label: "Personal",
+    description: "Your own settings. They live in the account menu (your picture, then Account).",
+    items: personalLinks,
+  };
+  const groups = [...settingsGroups, ...(words.length ? [personal] : [])]
     .map((group) => ({
       ...group,
       items: group.items.filter(
-        (item) => !q || item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
+        (item) =>
+          canOpen(viewer, item.url.split("?")[0]) &&
+          sectionShown(item.url) &&
+          (!words.length || matches(item, group.label, words)),
       ),
     }))
     .filter((group) => group.items.length);
 
   return (
     <div className="flex flex-col gap-4">
+      {/* م137 round 2 (judge M137): the title is the page's name in the Settings bar, All Settings. */}
       <PageHeader
-        title="Settings"
+        title="All Settings"
         description="Manage your account, channels, team and the rules your conversations follow."
         actions={
-          <InputGroup className="h-8 w-full md:w-72">
-            <InputGroupAddon align="inline-start">
-              <Search className="size-3.5" />
-            </InputGroupAddon>
-            <InputGroupInput
-              className="h-8"
-              type="search"
-              placeholder="Search settings..."
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </InputGroup>
+          <ExpandingSearch
+            name="settings"
+            label="Search settings"
+            placeholder="Search settings..."
+            size="default"
+            className="w-full md:w-72"
+            value={query}
+            onChange={setQuery}
+          />
         }
       />
       {groups.length ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div data-settings-parts className="gap-4 lg:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
           {groups.map((group) => (
-            <Card key={group.label} className="gap-0 pb-0">
+            <Card key={group.label} data-settings-part={group.label} className="gap-0 pb-0">
               <CardHeader className="border-b pb-4">
                 <CardTitle className="text-xl leading-none">{group.label}</CardTitle>
-                <CardDescription>
-                  {group.items.length} {group.items.length === 1 ? "page" : "pages"}
-                </CardDescription>
+                <CardDescription>{group.description}</CardDescription>
+                <CardAction>
+                  <Badge variant="secondary" className="tabular-nums">
+                    {pageCount(group.items)} {pageCount(group.items) === 1 ? "page" : "pages"}
+                  </Badge>
+                </CardAction>
               </CardHeader>
               <CardContent className="px-0">
                 <ul className="divide-y">
                   {group.items.map((item) => {
                     const Icon = item.icon;
+                    const away = item.elsewhere ?? (group.label === "Personal" ? "In your account menu" : undefined);
                     return (
                       <li key={item.url}>
                         <Link
                           href={item.url}
+                          data-settings-elsewhere={away ? "" : undefined}
                           className="group flex items-center gap-3 px-6 py-3.5 transition-colors hover:bg-muted/40"
                         >
                           <div className="grid size-9 shrink-0 place-items-center rounded-lg border bg-muted/50">
                             <Icon className="size-4 text-muted-foreground group-hover:text-foreground" />
                           </div>
                           <div className="grid min-w-0 flex-1 gap-0.5">
-                            <span className="font-medium text-sm">{item.title}</span>
+                            <span className="flex items-center gap-2 font-medium text-sm">
+                              {item.title}
+                              {away ? (
+                                <Badge variant="outline" className="font-normal text-muted-foreground">
+                                  {away}
+                                </Badge>
+                              ) : null}
+                            </span>
                             <span className="truncate text-muted-foreground text-xs">{item.description}</span>
                           </div>
-                          <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                          {away ? (
+                            <ArrowUpRight className="size-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                          )}
                         </Link>
                       </li>
                     );

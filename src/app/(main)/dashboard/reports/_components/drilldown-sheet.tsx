@@ -9,12 +9,6 @@ import { cn } from "cn";
 import { addDays, addMinutes, format } from "date-fns";
 import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, UserRound, UsersRound } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getInitials } from "@/lib/utils";
-
 import {
   agentName,
   baseConversations,
@@ -24,6 +18,12 @@ import {
 } from "@/app/(main)/dashboard/chat/_components/cw-data";
 import { ChannelIcon } from "@/app/(main)/dashboard/chat/_components/cw-ui";
 import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { CeUnavailableNotice } from "@/lib/chatwoot/settings-adapter";
+import { getInitials } from "@/lib/utils";
 
 import type { EntityKind, SummaryRow } from "./data";
 
@@ -128,9 +128,7 @@ export function DrilldownSheet({
         <SheetHeader className="border-b pr-28">
           <SheetTitle className="truncate">{request ? `${request.metricName} details` : ""}</SheetTitle>
           {point?.display ? <p className="font-semibold text-xl tabular-nums">{point.display}</p> : null}
-          <SheetDescription>
-            {point ? `${point.long} · ${countLabel}` : ""}
-          </SheetDescription>
+          <SheetDescription>{point ? `${point.long} · ${countLabel}` : ""}</SheetDescription>
           <div className="absolute top-3 right-12 flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -163,6 +161,12 @@ export function DrilldownSheet({
           </div>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-4">
+          {request ? (
+            <CeUnavailableNotice
+              area="reporting_events"
+              title="Granular reporting events (/reporting_events) are unavailable in Chatwoot Community Edition (501)"
+            />
+          ) : null}
           {!records.length ? (
             <div className="flex h-40 items-center justify-center text-muted-foreground text-sm">
               No records found for this bar.
@@ -175,10 +179,13 @@ export function DrilldownSheet({
               const inbox = inboxOf(c);
               const incoming = request?.metricKey === "incoming" || (isMessage ? false : i % 2 === 0);
               const msg = isMessage
-                ? (c.messages.filter((m) => (request?.metricKey === "incoming" ? m.align === "start" : m.align === "end"))[0] ??
-                  c.messages[0])
+                ? (c.messages.filter((m) =>
+                    request?.metricKey === "incoming" ? m.align === "start" : m.align === "end",
+                  )[0] ?? c.messages[0])
                 : null;
-              const perValue = request?.isAverage ? minutesText((point?.value ?? 5) * (0.5 + ((i * 37) % 10) / 10)) : null;
+              const perValue = request?.isAverage
+                ? minutesText((point?.value ?? 5) * (0.5 + ((i * 37) % 10) / 10))
+                : null;
               return (
                 <button
                   key={c.id}
@@ -208,7 +215,9 @@ export function DrilldownSheet({
                         <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground text-xs">{perValue}</span>
                       ) : null}
                     </div>
-                    <span className="shrink-0 text-muted-foreground text-xs">{point ? recordTime(point, i, c.id) : c.time}</span>
+                    <span className="shrink-0 text-muted-foreground text-xs">
+                      {point ? recordTime(point, i, c.id) : c.time}
+                    </span>
                   </div>
                   <p className="line-clamp-1 text-sm">{msg?.text || c.subject || c.preview || "No message content"}</p>
                   <div className="grid grid-cols-3 gap-2 text-muted-foreground text-xs">

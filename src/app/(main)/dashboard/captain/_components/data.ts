@@ -7,6 +7,8 @@ export interface Assistant {
   documents: number;
   faqs: number;
   updatedAt: string;
+  // Chatwoot AssistantForm "Features" checkboxes (feature_faq, feature_memory, feature_citation).
+  features?: { faq: boolean; memory: boolean; citation: boolean };
 }
 
 export const assistants: Assistant[] = [
@@ -23,7 +25,8 @@ export const assistants: Assistant[] = [
   {
     id: 2,
     name: "Salma",
-    description: "Answers plan, invoice and refund questions for Weblabs Studio customers and hands disputes to the Billing team.",
+    description:
+      "Answers plan, invoice and refund questions for Weblabs Studio customers and hands disputes to the Billing team.",
     productName: "Weblabs Studio Billing",
     inboxes: 2,
     documents: 8,
@@ -268,7 +271,7 @@ export interface Tool {
   id: number;
   title: string;
   description: string;
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   endpoint: string;
   auth: string;
   enabled: boolean;

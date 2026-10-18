@@ -1,8 +1,11 @@
 "use client";
 // F159: Studio Roles columns carrying Chatwoot v4.18 Custom Roles fields (CustomRoleTableBody.vue):
 // Name, Description, Permissions, and Edit / Delete in the row "…" menu.
+// F161: Studio-before columns Last review / Owner / Status and its row menu items are back (Fahad: restore what was
+// removed without a decision). Review changes, View details, Duplicate, Review permissions are wired on the mock store.
 import type { ColumnDef } from "@tanstack/react-table";
-import { MoreVertical, Pencil, Trash2, Users } from "lucide-react";
+import { cn } from "cn";
+import { CheckCheck, Copy, Eye, ListChecks, MoreVertical, Pencil, Trash2, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,11 +26,19 @@ export function makeRolesColumns({
   onEdit,
   onDelete,
   onViewAgents,
+  onReview,
+  onViewDetails,
+  onDuplicate,
+  onReviewPermissions,
 }: {
   agentCount: (role: Role) => number;
   onEdit: (role: Role) => void;
   onDelete: (role: Role) => void;
   onViewAgents: (role: Role) => void;
+  onReview: (role: Role) => void;
+  onViewDetails: (role: Role) => void;
+  onDuplicate: (role: Role) => void;
+  onReviewPermissions: (role: Role) => void;
 }): ColumnDef<DataTableFeatures, Role>[] {
   return [
     {
@@ -102,11 +113,47 @@ export function makeRolesColumns({
       },
     },
     {
+      id: "lastReview",
+      accessorKey: "lastReview",
+      header: "Last review",
+      size: 120,
+      cell: ({ row }) => <span className="text-sm">{row.original.lastReview}</span>,
+    },
+    {
+      id: "owner",
+      accessorKey: "owner",
+      header: "Owner",
+      size: 120,
+      filterFn: "equalsString",
+      cell: ({ row }) => <span className="text-sm">{row.original.owner}</span>,
+    },
+    {
+      id: "status",
+      accessorKey: "status",
+      header: "Status",
+      size: 130,
+      filterFn: "equalsString",
+      cell: ({ row }) => (
+        <Badge
+          className={cn(
+            "rounded-sm",
+            row.original.status === "Needs review"
+              ? "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+          )}
+          variant="outline"
+        >
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
       id: "actions",
       header: "Actions",
       size: 80,
       cell: ({ row }) => {
         const isSystemRole = row.original.group === "System roles";
+        const needsReview = row.original.status === "Needs review";
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -116,8 +163,25 @@ export function makeRolesColumns({
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48" align="end">
               <DropdownMenuGroup>
+                {needsReview ? (
+                  <DropdownMenuItem onSelect={() => onReview(row.original)}>
+                    <CheckCheck /> Review changes
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem onSelect={() => onViewDetails(row.original)}>
+                  <Eye /> View details
+                </DropdownMenuItem>
                 <DropdownMenuItem disabled={isSystemRole} onSelect={() => onEdit(row.original)}>
                   <Pencil /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={isSystemRole} onSelect={() => onDuplicate(row.original)}>
+                  <Copy /> Duplicate role
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem onSelect={() => onReviewPermissions(row.original)}>
+                  <ListChecks /> Review permissions
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onViewAgents(row.original)}>
                   <Users /> View agents

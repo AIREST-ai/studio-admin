@@ -1,17 +1,82 @@
 [
-  { "conversation": 1, "message": 102, "quote": "I'm checking the deploy logs and upstream gateway config now.", "status": "Solved" },
-  { "conversation": 5, "message": 504, "quote": "I'll send the executive summary, Scope 3 CSV, and the methodology note in one bundle.", "status": "Solved" },
-  { "conversation": 6, "message": 604, "quote": "I'll queue it as an async export and email the download link once it finishes.", "status": "In progress" },
-  { "conversation": 7, "message": 702, "quote": "Can you send the transfer reference so I can match it against our payment processor records?", "status": "Solved" },
-  { "conversation": 9, "message": 904, "quote": "I'll send the date and feature impact summary.", "status": "In progress" },
-  { "conversation": 10, "message": 1004, "quote": "I can raise the limit for those keys for seven days while we review your long-term quota.", "status": "Dodge detected" },
-  { "conversation": 11, "message": 1104, "quote": "I've reissued the certificate manually and it's propagating.", "status": "Waiting on customer" },
-  { "conversation": 13, "message": 1304, "quote": "I'll attach your CSV export to the bug ticket.", "status": "Dodge detected" },
-  { "conversation": 14, "message": 1404, "quote": "We're increasing worker capacity and replaying the failed deliveries.", "status": "In progress" },
-  { "conversation": 17, "message": 1704, "quote": "I'll introduce you to our partnerships lead and share the reseller tier overview before Friday.", "status": "Solved" },
-  { "conversation": 18, "message": 1804, "quote": "I'll prepare the May export with UTC timestamps and send it through the secure file link.", "status": "Solved" },
-  { "conversation": 19, "message": 1904, "quote": "I'll send the partner tier doc and a sample branded report template.", "status": "Waiting on customer" },
+  {
+    "conversation": 1,
+    "message": 102,
+    "quote": "I'm checking the deploy logs and upstream gateway config now.",
+    "status": "Solved"
+  },
+  {
+    "conversation": 5,
+    "message": 504,
+    "quote": "I'll send the executive summary, Scope 3 CSV, and the methodology note in one bundle.",
+    "status": "Solved"
+  },
+  {
+    "conversation": 6,
+    "message": 604,
+    "quote": "I'll queue it as an async export and email the download link once it finishes.",
+    "status": "In progress"
+  },
+  {
+    "conversation": 7,
+    "message": 702,
+    "quote": "Can you send the transfer reference so I can match it against our payment processor records?",
+    "status": "Solved"
+  },
+  {
+    "conversation": 9,
+    "message": 904,
+    "quote": "I'll send the date and feature impact summary.",
+    "status": "In progress"
+  },
+  {
+    "conversation": 10,
+    "message": 1004,
+    "quote": "I can raise the limit for those keys for seven days while we review your long-term quota.",
+    "status": "Dodge detected"
+  },
+  {
+    "conversation": 11,
+    "message": 1104,
+    "quote": "I've reissued the certificate manually and it's propagating.",
+    "status": "Waiting on customer"
+  },
+  {
+    "conversation": 13,
+    "message": 1304,
+    "quote": "I'll attach your CSV export to the bug ticket.",
+    "status": "Dodge detected"
+  },
+  {
+    "conversation": 14,
+    "message": 1404,
+    "quote": "We're increasing worker capacity and replaying the failed deliveries.",
+    "status": "In progress"
+  },
+  {
+    "conversation": 17,
+    "message": 1704,
+    "quote": "I'll introduce you to our partnerships lead and share the reseller tier overview before Friday.",
+    "status": "Solved"
+  },
+  {
+    "conversation": 18,
+    "message": 1804,
+    "quote": "I'll prepare the May export with UTC timestamps and send it through the secure file link.",
+    "status": "Solved"
+  },
+  {
+    "conversation": 19,
+    "message": 1904,
+    "quote": "I'll send the partner tier doc and a sample branded report template.",
+    "status": "Waiting on customer"
+  },
   { "conversation": 20, "message": 2004, "quote": "I'll send the policy setup steps.", "status": "Dodge detected" },
-  { "conversation": 23, "message": 2304, "quote": "I'll send the Azure AD checklist and rollout plan.", "status": "Solved" },
+  {
+    "conversation": 23,
+    "message": 2304,
+    "quote": "I'll send the Azure AD checklist and rollout plan.",
+    "status": "Solved"
+  },
   { "conversation": 24, "message": 2404, "quote": "It takes about 2 hours to propagate.", "status": "In progress" }
 ]

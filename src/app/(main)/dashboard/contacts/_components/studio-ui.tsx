@@ -4,7 +4,6 @@
 import type { ReactNode } from "react";
 
 import { cn } from "cn";
-import { Check, Clock, X } from "lucide-react";
 
 import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,27 +11,10 @@ import { getInitials } from "@/lib/utils";
 
 import type { Contact } from "./data";
 
-export type ContactStatus = "Active" | "Idle" | "Inactive" | "Blocked";
-
-export function contactStatus(contact: Contact): ContactStatus {
-  if (contact.lastActivityMinutes < 24 * 60) return "Active";
-  if (contact.lastActivityMinutes < 7 * 24 * 60) return "Idle";
-  return "Inactive";
-}
+// T-94/T-95 (Fahad 21:21): no customer presence and no "Unknown"; the only contact state shown is Blocked.
+export type ContactStatus = "Blocked";
 
 export const statusMeta: Record<ContactStatus, { badgeClass: string; dotClass: string }> = {
-  Active: {
-    badgeClass: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    dotClass: "bg-emerald-500",
-  },
-  Idle: {
-    badgeClass: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    dotClass: "bg-amber-500",
-  },
-  Inactive: {
-    badgeClass: "border-border bg-muted/50 text-muted-foreground",
-    dotClass: "bg-muted-foreground",
-  },
   Blocked: {
     badgeClass: "border-destructive/20 bg-destructive/10 text-destructive",
     dotClass: "bg-destructive",
@@ -58,12 +40,15 @@ const labelTones: Record<string, string> = {
   support: "border-pink-500/20 bg-pink-500/10 text-pink-600 dark:text-pink-400",
 };
 
+// B-3 (Fahad 2 + 124.3: «أشرطة Labels: طلب مراراً تخفيفها» + «بدون ابتذال»): the label pill is lighter and
+// narrower, the same standard as the conversation chips (chat-tags.tsx), so a row of labels no longer crowds
+// the Contacts columns or the Contact details at 1440 and 1024.
 export function LabelBadge({ label }: { label: string }) {
   return (
     <Badge
       variant="outline"
       className={cn(
-        "gap-1.5 border px-2 py-1 font-medium",
+        "h-4.5 gap-1 border px-1.5 py-0 text-[10px] font-normal",
         labelTones[label] ?? "border-border bg-muted/50 text-muted-foreground",
       )}
     >
@@ -153,31 +138,28 @@ export function personToneClass(name: string): string {
   return avatarTones[fallbackTones[sum % fallbackTones.length]];
 }
 
-// The avatar dot follows the Status badge (contactStatus), so a contact marked Active never shows an away dot.
-const statusAvatarBadge: Record<ContactStatus, { className: string; icon: typeof Check | null }> = {
-  Active: { className: "bg-green-600 text-green-950 [&>svg]:text-white", icon: Check },
-  Idle: { className: "bg-amber-500 text-amber-950", icon: Clock },
-  Inactive: { className: "bg-muted-foreground text-muted", icon: X },
-  Blocked: { className: "bg-destructive", icon: null },
-};
-
+// Only the application block state has an avatar badge; customer presence is unknown.
 export function ContactAvatar({
   contact,
   size = "lg",
   className,
   status,
+  online,
 }: {
   contact: Contact;
   size?: "default" | "sm" | "lg";
   className?: string;
   status?: ContactStatus;
+  // T-268: true only for a Website contact with a live widget heartbeat (isContactOnline); same dot as PersonAvatar.
+  online?: boolean | null;
 }) {
-  const badge = statusAvatarBadge[status ?? contactStatus(contact)];
-  const BadgeIcon = badge.icon;
   return (
     <Avatar size={size} className={cn("font-medium", personToneClass(contact.name), className)}>
       <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-      <AvatarBadge className={badge.className}>{BadgeIcon ? <BadgeIcon /> : null}</AvatarBadge>
+      {status === "Blocked" && <AvatarBadge className="bg-destructive" />}
+      {status !== "Blocked" && online === true && (
+        <AvatarBadge data-presence="online" aria-label="Online" className="bg-green-600 dark:bg-green-700" />
+      )}
     </Avatar>
   );
 }

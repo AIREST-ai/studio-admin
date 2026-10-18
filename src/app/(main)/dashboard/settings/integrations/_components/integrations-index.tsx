@@ -7,6 +7,7 @@ import Link from "next/link";
 
 import { MoreHorizontal, Settings } from "lucide-react";
 
+import { ChatwootLinkCard } from "@/app/(main)/dashboard/_components/chatwoot-link/link-card";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
 import { integrations } from "./data";
 import { EnabledBadge, IntegrationMark } from "./integration-ui";
+import { useEnabledIntegrations } from "./integrations-store";
 
 type View = "all" | "enabled" | "disabled";
 
@@ -30,11 +32,14 @@ const views: { value: View; label: string; match: (enabled: boolean) => boolean 
 export function IntegrationsIndex() {
   const [query, setQuery] = React.useState("");
   const [view, setView] = React.useState<View>("all");
+  // F-6A (sim2 problem 13: Slack and OpenAI "Enabled" though nobody connected them): "Enabled" comes from what is saved
+  // in this preview, by Chatwoot's rule (integrations-store.ts), not from a fixed list.
+  const enabled = useEnabledIntegrations();
+  const all = integrations.map((i) => ({ ...i, enabled: enabled?.[i.id] ?? false }));
   const q = query.trim().toLowerCase();
   const match = views.find((v) => v.value === view)?.match ?? (() => true);
-  const rows = integrations.filter(
-    (i) =>
-      match(i.enabled) && (!q || i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)),
+  const rows = all.filter(
+    (i) => match(i.enabled) && (!q || i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)),
   );
 
   return (
@@ -48,7 +53,7 @@ export function IntegrationsIndex() {
         items: views.map((v) => ({
           value: v.value,
           label: v.label,
-          count: integrations.filter((i) => v.match(i.enabled)).length,
+          count: all.filter((i) => v.match(i.enabled)).length,
         })),
       }}
       cardTitle="Applications"
@@ -56,7 +61,15 @@ export function IntegrationsIndex() {
       count={`${rows.length} ${rows.length === 1 ? "integration" : "integrations"}`}
       search={{ placeholder: "Search integrations...", value: query, onChange: setQuery }}
     >
-      {rows.length ? (
+      <p className="px-6 text-muted-foreground text-xs" data-preview-note>
+        Preview — simulated: an integration is "Enabled" when it is set up in this preview. Nothing is sent to these
+        apps from the preview.
+      </p>
+      {/* L-2 (Chatwoot link phase 1): the switch between the preview data and the Chatwoot test copy (read-only). */}
+      <ChatwootLinkCard />
+      {!enabled ? (
+        <NoResults>Loading saved integrations…</NoResults>
+      ) : rows.length ? (
         <div className="grid grid-cols-1 gap-4 px-6 py-2 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((item) => (
             <div key={item.id} className="flex flex-col gap-3 rounded-xl border p-4">
@@ -80,11 +93,6 @@ export function IntegrationsIndex() {
                         <Link href={item.href}>
                           <Settings /> Configure
                         </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <a href="https://www.chatwoot.com/hc/user-guide/en" target="_blank" rel="noreferrer">
-                          Learn more
-                        </a>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

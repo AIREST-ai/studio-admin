@@ -5,9 +5,10 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { FileText, MoreHorizontal, Pencil, Plus, Search, Shapes, Trash2 } from "lucide-react";
+import { FileText, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -18,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import type { Category } from "./data";
@@ -59,18 +59,14 @@ export function CategoriesList() {
               {rows.length} {rows.length === 1 ? "category" : "categories"} in {activeLocale?.name}
             </CardDescription>
             <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap items-center justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
-              <InputGroup className="h-7 w-full md:w-64">
-                <InputGroupAddon align="inline-start">
-                  <Search className="size-3.5" />
-                </InputGroupAddon>
-                <InputGroupInput
-                  className="h-7"
-                  type="search"
-                  placeholder="Search categories..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </InputGroup>
+              <ExpandingSearch
+                name="categories"
+                label="Search categories"
+                placeholder="Search categories..."
+                className="w-full md:w-64"
+                value={query}
+                onChange={setQuery}
+              />
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 px-0">
@@ -89,7 +85,7 @@ export function CategoriesList() {
                     <TableHead className="py-4 font-normal">Category</TableHead>
                     <TableHead className="py-4 font-normal">Description</TableHead>
                     <TableHead className="py-4 font-normal">Articles</TableHead>
-                    <TableHead className="py-4 font-normal">
+                    <TableHead className="sticky right-0 bg-card py-4 font-normal">
                       <div className="text-right">Actions</div>
                     </TableHead>
                   </TableRow>
@@ -133,7 +129,7 @@ export function CategoriesList() {
                             ) : null}
                           </div>
                         </TableCell>
-                        <TableCell className="py-4 align-middle">
+                        <TableCell className="sticky right-0 bg-card py-4 align-middle">
                           <div className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

@@ -70,7 +70,8 @@ export function LayoutControls() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="icon">
+        {/* T-146 (item 51): unfilled like the rest of the header; named for screen readers. */}
+        <Button variant="ghost" size="icon" aria-label="Preferences">
           <Settings />
         </Button>
       </PopoverTrigger>

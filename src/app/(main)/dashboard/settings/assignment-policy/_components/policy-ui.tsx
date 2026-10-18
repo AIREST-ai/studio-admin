@@ -50,6 +50,8 @@ export function PolicyFormShell({
   crumbs,
   backHref,
   submit,
+  saving = false,
+  saveError = null,
   onSubmit,
   children,
 }: {
@@ -58,6 +60,8 @@ export function PolicyFormShell({
   crumbs: { label: string; href?: string }[];
   backHref: string;
   submit: string;
+  saving?: boolean;
+  saveError?: string | null;
   onSubmit: () => void;
   children: React.ReactNode;
 }) {
@@ -66,7 +70,7 @@ export function PolicyFormShell({
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit();
+        if (!saving) onSubmit();
       }}
     >
       <PolicyBreadcrumb items={crumbs} />
@@ -78,18 +82,25 @@ export function PolicyFormShell({
             <Button type="button" variant="outline" size="sm" asChild>
               <Link href={backHref}>Cancel</Link>
             </Button>
-            <Button type="submit" size="sm">
-              {submit}
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Saving…" : submit}
             </Button>
           </>
         }
       />
       <div className="grid gap-4">{children}</div>
+      {saveError ? (
+        <p role="alert" data-policy-save-error="" className="text-destructive text-sm">
+          Not saved ({saveError})
+        </p>
+      ) : null}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" asChild>
           <Link href={backHref}>Cancel</Link>
         </Button>
-        <Button type="submit">{submit}</Button>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Saving…" : submit}
+        </Button>
       </div>
     </form>
   );
@@ -125,7 +136,11 @@ export function AddDropdown({
             <CommandEmpty>{empty}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
-                <CommandItem key={option.value} value={`${option.label} ${option.hint ?? ""}`} onSelect={() => onPick(option.value)}>
+                <CommandItem
+                  key={option.value}
+                  value={`${option.label} ${option.hint ?? ""}`}
+                  onSelect={() => onPick(option.value)}
+                >
                   {option.icon}
                   <span className="flex-1 truncate">{option.label}</span>
                   {option.hint ? <span className="text-muted-foreground text-xs">{option.hint}</span> : null}

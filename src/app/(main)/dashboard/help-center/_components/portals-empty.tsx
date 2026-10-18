@@ -3,12 +3,11 @@ import * as React from "react";
 
 import { Eye, Plus } from "lucide-react";
 
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getInitials } from "@/lib/utils";
-
-import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 
 import { articles, authorOf, categoryOf, statusLabel, statusTone } from "./data";
 import { CreatePortalDialog } from "./help-center-dialogs";
@@ -28,7 +27,9 @@ export function PortalsEmpty() {
               <div key={article.id} className="grid gap-2 rounded-xl border px-4 py-3.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="line-clamp-1 font-medium text-sm">{article.title}</span>
-                  <span className={`inline-flex h-6 items-center rounded-md bg-muted px-2 text-xs ${statusTone[article.status]}`}>
+                  <span
+                    className={`inline-flex h-6 items-center rounded-md bg-muted px-2 text-xs ${statusTone[article.status]}`}
+                  >
                     {statusLabel[article.status]}
                   </span>
                 </div>

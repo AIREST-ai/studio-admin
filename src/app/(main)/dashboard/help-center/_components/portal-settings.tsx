@@ -12,7 +12,12 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
@@ -115,7 +120,10 @@ function GeneralSettings({ portal }: { portal: Portal }) {
           <div className="flex flex-wrap items-center gap-3">
             <Avatar className="size-12 rounded-xl">
               {logo ? <AvatarImage src={logo} alt="" className="object-cover" /> : null}
-              <AvatarFallback className="rounded-xl font-semibold text-lg text-white" style={{ background: form.color }}>
+              <AvatarFallback
+                className="rounded-xl font-semibold text-lg text-white"
+                style={{ background: form.color }}
+              >
                 {getInitials(form.name || "P").slice(0, 2)}
               </AvatarFallback>
             </Avatar>
@@ -225,7 +233,10 @@ function GeneralSettings({ portal }: { portal: Portal }) {
       </div>
       <Separator />
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-        <SectionHeading title="Delete portal" description="Permanently delete this portal. This action is irreversible" />
+        <SectionHeading
+          title="Delete portal"
+          description="Permanently delete this portal. This action is irreversible"
+        />
         <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
           <Trash2 /> Delete {portal.name}
         </Button>
@@ -257,7 +268,9 @@ function DomainSettings({ portal }: { portal: Portal }) {
               </Button>
             </div>
           </div>
-          <p className="text-muted-foreground text-sm">Your custom portal will start working as soon as it is verified.</p>
+          <p className="text-muted-foreground text-sm">
+            Your custom portal will start working as soon as it is verified.
+          </p>
           <Button variant="link" size="sm" className="w-fit px-0" onClick={() => setDialog("dns")}>
             Edit configuration
           </Button>

@@ -1,12 +1,13 @@
 import { ArrowDown, ArrowRight, ArrowUp, CheckCircle, Circle, CircleOff, HelpCircle, Timer } from "lucide-react";
 import { z } from "zod";
 
-const taskSchema = z.object({
+export const taskSchema = z.object({
   id: z.string(),
   title: z.string(),
   status: z.string(),
   label: z.string(),
   priority: z.string(),
+  favorite: z.boolean().optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;

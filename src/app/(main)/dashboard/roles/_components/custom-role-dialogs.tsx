@@ -27,10 +27,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSet, FieldLegend } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+import { SAVED_IN_PREVIEW } from "./roles-store";
 import {
   AVAILABLE_CUSTOM_ROLE_PERMISSIONS,
   CONVERSATION_PARTICIPATING_PERMISSIONS,
@@ -64,12 +65,14 @@ export function CustomRoleDialog({
   state: CustomRoleDialogState;
   onOpenChange: (open: boolean) => void;
   roles: Role[];
-  onSubmit: (role: Role) => void;
+  onSubmit: (role: Role) => Promise<void>;
 }) {
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [permissions, setPermissions] = React.useState<Permission[]>([]);
   const [touched, setTouched] = React.useState({ name: false, description: false, permissions: false });
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!state) return;
@@ -83,6 +86,8 @@ export function CustomRoleDialog({
       setPermissions([]);
     }
     setTouched({ name: false, description: false, permissions: false });
+    setSaving(false);
+    setSaveError(null);
   }, [state]);
 
   const isEdit = state?.mode === "edit";
@@ -91,23 +96,33 @@ export function CustomRoleDialog({
   const permissionsInvalid = permissions.length < 1;
   const invalid = nameInvalid || descriptionInvalid || permissionsInvalid;
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     setTouched({ name: true, description: true, permissions: true });
-    if (invalid || !state) return;
-    if (state.mode === "edit") {
-      onSubmit({ ...state.role, name: name.trim(), description: description.trim(), permissions });
-      toast.success("Custom role updated successfully.");
-    } else {
-      const nextId = Math.max(0, ...roles.map((r) => r.customRoleId ?? 0)) + 1;
-      onSubmit(customRole(nextId, name.trim(), description.trim(), permissions));
-      toast.success("Custom role added successfully.");
+    if (invalid || !state || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      if (state.mode === "edit") {
+        await onSubmit({ ...state.role, name: name.trim(), description: description.trim(), permissions });
+        toast.success("Custom role updated successfully.", { description: SAVED_IN_PREVIEW });
+      } else {
+        const nextId = Math.max(0, ...roles.map((r) => r.customRoleId ?? 0)) + 1;
+        await onSubmit(customRole(nextId, name.trim(), description.trim(), permissions));
+        toast.success("Custom role added successfully.", { description: SAVED_IN_PREVIEW });
+      }
+      onOpenChange(false);
+    } catch (error) {
+      const msg = (error as Error).message;
+      setSaveError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
     }
-    onOpenChange(false);
   }
 
   return (
-    <Dialog open={!!state} onOpenChange={onOpenChange}>
+    <Dialog open={!!state} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-xl">
         <form onSubmit={submit} className="grid gap-6" noValidate>
           <DialogHeader>
@@ -171,14 +186,19 @@ export function CustomRoleDialog({
               {touched.permissions && permissionsInvalid ? <FieldError>Permissions are required.</FieldError> : null}
             </FieldSet>
           </FieldGroup>
+          {saveError ? (
+            <p role="alert" data-role-save-error="" className="text-destructive text-sm">
+              {saveError}
+            </p>
+          ) : null}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={saving}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={invalid}>
-              {isEdit ? "Update" : "Submit"}
+            <Button type="submit" disabled={invalid || saving}>
+              {saving ? "Saving…" : isEdit ? "Update" : "Submit"}
             </Button>
           </DialogFooter>
         </form>
@@ -194,7 +214,7 @@ export function DeleteCustomRoleDialog({
 }: {
   role: Role | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (role: Role) => void;
+  onConfirm: (role: Role) => Promise<void>;
 }) {
   return (
     <AlertDialog open={!!role} onOpenChange={onOpenChange}>
@@ -209,8 +229,10 @@ export function DeleteCustomRoleDialog({
             variant="destructive"
             onClick={() => {
               if (!role) return;
-              onConfirm(role);
-              toast.success("Custom role deleted successfully.");
+              void onConfirm(role).then(
+                () => toast.success("Custom role deleted successfully.", { description: SAVED_IN_PREVIEW }),
+                (error: Error) => toast.error(error.message),
+              );
             }}
           >
             Yes, delete {role?.name}

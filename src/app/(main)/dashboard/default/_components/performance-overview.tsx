@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
 import { addHours, endOfToday, format, parseISO, subHours } from "date-fns";
+import { Download } from "lucide-react";
 import { Area, CartesianGrid, ComposedChart, Line, XAxis } from "recharts";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +16,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -22,8 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { downloadCsv, SimBadge } from "@/lib/cw/preview-sim-ui";
 
-import { channelBreakdown } from "./channel-breakdown";
+import { channelBreakdown, DODGES_30_DAYS } from "./channel-breakdown";
 
 // One point per day: dodges detected and dodges solved (sample data).
 const chartValues = [
@@ -139,7 +145,83 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+const rate = (solved: number, dodges: number) => (dodges ? `${Math.round((solved / dodges) * 100)}%` : "—");
+
+// M129-A (Fahad 129.2): "View report" opens the report behind the chart: the same daily numbers as a table, the
+// totals, the dodges by channel, and a CSV download. All of it is the page's sample data, and it says so.
+function DodgesReport({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const totalDodges = chartData.reduce((sum, point) => sum + point.dodges, 0);
+  const totalSolved = chartData.reduce((sum, point) => sum + point.solved, 0);
+  const download = () =>
+    downloadCsv(`dodges-report-${new Date().toISOString().slice(0, 10)}.csv`, [
+      ["date", "dodges_detected", "solved", "solved_rate"],
+      ...chartData.map((point) => [point.date, point.dodges, point.solved, rate(point.solved, point.dodges)]),
+      ["total", totalDodges, totalSolved, rate(totalSolved, totalDodges)],
+    ]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Dodges report</DialogTitle>
+          <DialogDescription>
+            Dodges detected and solved per day, {format(parseISO(chartData[0].date), "MMM d")} to{" "}
+            {format(parseISO(chartData[chartData.length - 1].date), "MMM d, yyyy")}.
+          </DialogDescription>
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+            <SimBadge />
+            <span>Sample data, the same as the chart. No conversations were evaluated.</span>
+          </div>
+        </DialogHeader>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Dodges detected</TableHead>
+              <TableHead className="text-right">Solved</TableHead>
+              <TableHead className="text-right">Solved rate</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {chartData.map((point) => (
+              <TableRow key={point.date}>
+                <TableCell>{format(parseISO(point.date), "EEE, MMM d")}</TableCell>
+                <TableCell className="text-right tabular-nums">{point.dodges}</TableCell>
+                <TableCell className="text-right tabular-nums">{point.solved}</TableCell>
+                <TableCell className="text-right tabular-nums">{rate(point.solved, point.dodges)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell>Total</TableCell>
+              <TableCell className="text-right tabular-nums">{totalDodges}</TableCell>
+              <TableCell className="text-right tabular-nums">{totalSolved}</TableCell>
+              <TableCell className="text-right tabular-nums">{rate(totalSolved, totalDodges)}</TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+        <div className="grid gap-2">
+          <span className="font-medium text-sm">Dodges by channel, last 30 days ({DODGES_30_DAYS})</span>
+          <div className="flex flex-wrap gap-2 text-sm">
+            {channelBreakdown.map((item) => (
+              <span key={item.id} className="rounded-md border px-2 py-1">
+                {item.title} <span className="text-muted-foreground tabular-nums">{item.count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={download}>
+            <Download /> Download CSV
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function PerformanceOverview() {
+  const [reportOpen, setReportOpen] = useState(false);
   return (
     <Card className="@container/card">
       <CardHeader>
@@ -179,9 +261,10 @@ export function PerformanceOverview() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => setReportOpen(true)}>
             View report
           </Button>
+          <DodgesReport open={reportOpen} onOpenChange={setReportOpen} />
         </CardAction>
       </CardHeader>
 

@@ -27,15 +27,7 @@ export interface FilterGroup {
 
 export type FilterValues = Record<string, string | undefined>;
 
-function OptionList({
-  group,
-  value,
-  onPick,
-}: {
-  group: FilterGroup;
-  value?: string;
-  onPick: (value: string) => void;
-}) {
+function OptionList({ group, value, onPick }: { group: FilterGroup; value?: string; onPick: (value: string) => void }) {
   return (
     <Command>
       <CommandInput placeholder={group.placeholder} />
@@ -72,9 +64,16 @@ function ActiveChip({
     <div className="inline-flex h-8 items-center rounded-md border bg-muted/40 text-sm">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button type="button" className="inline-flex h-full items-center gap-1 rounded-l-md pr-1 pl-2.5 hover:bg-muted">
+          <button
+            type="button"
+            className="inline-flex h-full items-center gap-1 rounded-l-md pr-1 pl-2.5 hover:bg-muted"
+          >
             <span className="text-muted-foreground">{group.label}</span>
-            {joiner ? <span className="text-muted-foreground">{joiner}</span> : <span className="text-muted-foreground">:</span>}
+            {joiner ? (
+              <span className="text-muted-foreground">{joiner}</span>
+            ) : (
+              <span className="text-muted-foreground">:</span>
+            )}
             <span className="max-w-40 truncate font-medium">{value}</span>
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </button>

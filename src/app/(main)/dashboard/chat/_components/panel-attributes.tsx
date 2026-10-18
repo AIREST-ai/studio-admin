@@ -6,28 +6,48 @@
 // order while all are shown. Studio look: zebra rows, ghost icon buttons, shadcn inputs.
 import { type DragEvent, type ReactNode, useState } from "react";
 
+import { cn } from "cn";
 import { format, isValid, parseISO } from "date-fns";
 import { Check, ChevronDown, ChevronUp, Copy, GripVertical, PenLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SIMULATED } from "@/lib/cw/preview-sim";
 
 import { applyOrder, moveKey, usePanelSetting } from "./panel-settings";
+import { panelEditsSaving } from "./sim-panel-persist";
 
 export type AttributeDef = { key: string; label: string; type: string; options?: readonly string[] };
 export type StaticRow = { key: string; label: string; value: string; href?: string };
 
 type AttrElement = ({ kind: "static" } & StaticRow) | ({ kind: "custom" } & AttributeDef);
 
+// T-277 said "preview only, lost on refresh" (in Arabic). M129-A round 2 (Fahad 124.8, 129.2): the panel edits are
+// now kept in the preview's saved copy (sim-panel-persist.ts) and come back after a reload, so the message says that,
+// in English, and says plainly when this page could not load the saved copy and therefore does not save.
+export const PREVIEW_ONLY = `${SIMULATED}: saved in this preview, not in the engine`;
+export function previewOnly(what: string) {
+  if (panelEditsSaving() === "off")
+    toast.warning(what, {
+      description: `${SIMULATED}: not saved, the preview's saved copy could not be loaded. Gone after a reload.`,
+    });
+  else toast.success(what, { description: `${PREVIEW_ONLY}.` });
+}
+// On plain http (the preview address) the browser gives no clipboard, so say it was not copied instead of "copied".
 export function copyToClipboard(value: string) {
-  void navigator.clipboard?.writeText(value);
-  toast.success("Copied to clipboard successfully");
+  if (!navigator.clipboard) {
+    toast.error("Not copied: the browser allows copying only on a secure (https) page");
+    return;
+  }
+  navigator.clipboard.writeText(value).then(
+    () => toast.success("Copied to clipboard successfully"),
+    () => toast.error("Not copied: the browser refused access to the clipboard"),
+  );
 }
 
 // Dates are stored as ISO (yyyy-MM-dd) or as "Oct 3, 2026" in the mock data; both display as "Oct 3, 2026".
@@ -129,7 +149,7 @@ function CustomAttributeRow({
 
   const update = (next: string) => {
     onSet(def.key, next);
-    toast.success("Attribute updated successfully");
+    previewOnly("Attribute updated");
   };
   const save = () => {
     const stored = def.type === "Date" ? toIsoDate(draft) || draft : draft.trim();
@@ -168,7 +188,7 @@ function CustomAttributeRow({
               onClick={() => {
                 onSet(def.key, null);
                 setEditing(false);
-                toast.success("Attribute deleted successfully");
+                previewOnly("Attribute deleted");
               }}
             >
               <Trash2 />
@@ -195,7 +215,9 @@ function CustomAttributeRow({
                 aria-label={def.label}
                 aria-invalid={Boolean(error)}
                 className="h-8 rounded-e-none"
-                type={def.type === "Link" ? "url" : def.type === "Number" ? "number" : def.type === "Date" ? "date" : "text"}
+                type={
+                  def.type === "Link" ? "url" : def.type === "Number" ? "number" : def.type === "Date" ? "date" : "text"
+                }
                 value={draft}
                 placeholder={def.type === "Link" ? "https://" : undefined}
                 onChange={(event) => {
@@ -316,6 +338,7 @@ export function CustomAttributes({
     <div className="flex flex-col">
       <div className="overflow-hidden rounded-md border">
         {displayed.map((element) => (
+          // biome-ignore lint/a11y/noStaticElementInteractions: drop target for mouse reordering of attributes; the row is not a control
           <div
             key={element.key}
             draggable={canDrag}

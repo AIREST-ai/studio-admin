@@ -28,14 +28,15 @@ export const assignmentPolicies: AssignmentPolicy[] = [
   {
     id: 1,
     name: "Front desk",
-    description: "Even split of email, website chat and phone across the whole support team.",
+    description: "Even split of website chat across the whole support team.",
     active: true,
     order: "round_robin",
     priority: "earliest_created",
     maxPerAgent: 100,
     window: 60,
     staleDays: 7,
-    inboxes: [1, 2, 6],
+    // F161: only Website Chat — Support Email and Phone have auto assignment off, so they cannot sit in a policy.
+    inboxes: [2],
   },
   {
     id: 2,

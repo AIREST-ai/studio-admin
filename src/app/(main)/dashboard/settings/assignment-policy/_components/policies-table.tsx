@@ -19,15 +19,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CeUnavailableNotice } from "@/lib/chatwoot/settings-adapter";
 
-import { agents, channelFor, inboxes } from "../../inboxes/_components/data";
+import { SAVED_IN_PREVIEW } from "../../_components/settings-preview-client";
+import { channelFor } from "../../inboxes/_components/data";
+import { useAgentRoster, useInboxes } from "../../inboxes/_components/inboxes-store";
 import { AgentAvatar } from "../../inboxes/_components/settings-ui";
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
-import { assignmentPolicies, capacityPolicies, orderLabel, priorityLabel } from "./data";
+import { orderLabel, priorityLabel } from "./data";
+import {
+  assignmentPoliciesStore,
+  capacityPoliciesStore,
+  useAssignmentPolicies,
+  useCapacityPolicies,
+} from "./policies-store";
 import { ConfirmDialog, POLICY_HOME, PolicyBreadcrumb } from "./policy-ui";
 
 function CountPopover({ kind, ids }: { kind: "assignment" | "capacity"; ids: number[] }) {
   const isInbox = kind === "assignment";
+  const inboxes = useInboxes();
+  const agents = useAgentRoster(); // F-6B: a policy's agents include an invited agent
   const Icon = isInbox ? Inbox : Users;
   return (
     <Popover>
@@ -106,25 +117,25 @@ type View = "all" | "active" | "inactive";
 export function PoliciesTable({ kind }: { kind: "assignment" | "capacity" }) {
   const isAssignment = kind === "assignment";
   const base = `${POLICY_HOME}/${kind}`;
-  const [rows, setRows] = React.useState<Row[]>(() =>
-    isAssignment
-      ? assignmentPolicies.map((p) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          ids: p.inboxes,
-          active: p.active,
-          order: orderLabel[p.order],
-          priority: priorityLabel[p.priority],
-        }))
-      : capacityPolicies.map((p) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          ids: p.agents,
-          limits: p.limits.length,
-        })),
-  );
+  const assignmentPolicies = useAssignmentPolicies();
+  const capacityPolicies = useCapacityPolicies();
+  const rows: Row[] = isAssignment
+    ? assignmentPolicies.map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        ids: p.inboxes,
+        active: p.active,
+        order: orderLabel[p.order],
+        priority: priorityLabel[p.priority],
+      }))
+    : capacityPolicies.map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        ids: p.agents,
+        limits: p.limits.length,
+      }));
   const [query, setQuery] = React.useState("");
   const [view, setView] = React.useState<View>("all");
   const [toDelete, setToDelete] = React.useState<Row | null>(null);
@@ -139,14 +150,10 @@ export function PoliciesTable({ kind }: { kind: "assignment" | "capacity" }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <PolicyBreadcrumb items={[{ label: "Agent assignment", href: POLICY_HOME }, { label: title }]} />
+      <PolicyBreadcrumb items={[{ label: "Agent Assignment", href: POLICY_HOME }, { label: title }]} />
       <SettingsShell
         title={title}
-        description={
-          isAssignment
-            ? "Manage how conversations get assigned in inboxes."
-            : "Manage workload for agents."
-        }
+        description={isAssignment ? "Manage how conversations get assigned in inboxes." : "Manage workload for agents."}
         count={`${visible.length} ${visible.length === 1 ? "policy" : "policies"}`}
         search={{ placeholder: "Search policies...", value: query, onChange: setQuery }}
         actions={
@@ -176,6 +183,11 @@ export function PoliciesTable({ kind }: { kind: "assignment" | "capacity" }) {
             : "One policy per agent. The policy caps how many open conversations each agent holds."
         }
       >
+        <CeUnavailableNotice
+          area="agent_capacity_policies"
+          title="Agent capacity & assignment policies are unavailable in Chatwoot Community Edition (501)"
+          className="mx-6 mt-4 mb-2"
+        />
         {visible.length ? (
           <Table className="**:data-[slot='table-cell']:px-6 **:data-[slot='table-head']:px-6">
             <TableHeader>
@@ -252,9 +264,7 @@ export function PoliciesTable({ kind }: { kind: "assignment" | "capacity" }) {
             </TableBody>
           </Table>
         ) : (
-          <NoResults>
-            {isAssignment ? "No assignment policies found" : "No agent capacity policies found"}
-          </NoResults>
+          <NoResults>{isAssignment ? "No assignment policies found" : "No agent capacity policies found"}</NoResults>
         )}
       </SettingsShell>
 
@@ -265,11 +275,24 @@ export function PoliciesTable({ kind }: { kind: "assignment" | "capacity" }) {
         description="Are you sure you want to delete this policy? This action cannot be undone."
         confirm="Delete"
         destructive
-        onConfirm={() => {
-          if (toDelete) setRows((list) => list.filter((r) => r.id !== toDelete.id));
-          toast.success(
-            isAssignment ? "Assignment policy deleted successfully" : "Agent capacity policy deleted successfully",
-          );
+        onConfirm={async () => {
+          if (!toDelete) return;
+          if (!isAssignment) {
+            try {
+              await capacityPoliciesStore.remove(toDelete.id);
+              toast.success("Agent capacity policy deleted successfully", { description: SAVED_IN_PREVIEW });
+            } catch (error) {
+              toast.error(`Not saved (${(error as Error).message})`);
+            }
+            return;
+          }
+          // F-6A: an assignment policy is deleted in this preview's saved list; the message waits for the save.
+          try {
+            await assignmentPoliciesStore.remove(toDelete.id);
+            toast.success("Assignment policy deleted successfully", { description: SAVED_IN_PREVIEW });
+          } catch (error) {
+            toast.error("Not deleted", { description: (error as Error).message });
+          }
         }}
       />
     </div>

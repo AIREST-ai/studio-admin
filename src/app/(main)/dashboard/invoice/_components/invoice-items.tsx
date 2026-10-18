@@ -8,9 +8,8 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCurrency } from "@/lib/utils";
 
-import { getLineAmount, type InvoiceFormValues, type InvoiceLineItem } from "./data";
+import { formatInvoiceMoney, getLineAmount, type InvoiceFormValues, type InvoiceLineItem } from "./data";
 
 export function InvoiceItems() {
   const { control, register } = useFormContext<InvoiceFormValues>();
@@ -86,6 +85,7 @@ function SortableInvoiceItemRow({
   register: UseFormRegister<InvoiceFormValues>;
   onRemove: () => void;
 }) {
+  const currency = useWatch<InvoiceFormValues, "currency">({ name: "currency" });
   const { handleRef, isDragging, ref } = useSortable({
     id,
     index,
@@ -134,7 +134,7 @@ function SortableInvoiceItemRow({
       />
       <div className="min-w-0 text-right font-medium text-sm max-md:col-span-3 max-md:col-start-2 max-md:row-start-3 max-md:flex max-md:items-center max-md:justify-between max-md:text-left">
         <span className="hidden text-muted-foreground max-md:inline">Line total</span>
-        <span>{formatInvoiceCurrency(getLineAmount(item))}</span>
+        <span>{formatInvoiceMoney(getLineAmount(item), currency)}</span>
       </div>
       <Button
         type="button"
@@ -148,11 +148,4 @@ function SortableInvoiceItemRow({
       </Button>
     </div>
   );
-}
-
-function formatInvoiceCurrency(value: number) {
-  return formatCurrency(Number.isFinite(value) ? value : 0, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }

@@ -1,48 +1,15 @@
-import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-import type { Metadata } from "next";
+import { PREVIEW_SIGNIN_COOKIE } from "@/lib/preview-signin/shared";
 
-import { Separator } from "@/components/ui/separator";
+// F-6A (sim2 problem 17, task item 6): the first page is no longer the template's marketing page (its title, GitHub
+// stars and Radix / Base UI links). As in Chatwoot, "/" opens the product: the login page for a visitor who has not
+// entered the preview in this browser, the dashboard for one who has (Live demo, Login or Register set that, Log out
+// clears it; lib/preview-signin/shared.ts). The old landing parts stay in ./_components, unused.
+export const dynamic = "force-dynamic";
 
-import { Footer } from "./_components/footer";
-import { Intro } from "./_components/intro";
-import { LandingThemeSwitcher } from "./_components/landing-theme-switcher";
-import { Overview } from "./_components/overview";
-import { Showcase } from "./_components/showcase";
-import styles from "./landing.module.css";
-
-export const metadata: Metadata = {
-  title: "Studio Admin: Open Source Admin Dashboard with shadcn/ui",
-  description:
-    "A polished open source shadcn/ui admin dashboard with 25+ screens and editions for Radix UI, Base UI, React Aria, and TanStack Start.",
-  alternates: {
-    canonical: "/",
-  },
-};
-
-export default function Home() {
-  // Keeps landing-page colors independent from saved dashboard theme presets.
-  return (
-    <main className={`${styles.landing} min-h-screen bg-background text-foreground`} data-landing-page>
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 sm:gap-8 sm:p-6 md:p-8">
-        <header className="flex items-start justify-between gap-4 sm:items-center sm:gap-6">
-          <Link
-            className="font-medium text-base tracking-tight"
-            href="/"
-            aria-label="Studio Admin home"
-            prefetch={false}
-          >
-            Studio Admin
-          </Link>
-          <LandingThemeSwitcher />
-        </header>
-        <Intro />
-        <Showcase />
-        <Separator />
-        <Overview />
-        <Separator />
-        <Footer />
-      </div>
-    </main>
-  );
+export default async function Home() {
+  const entered = (await cookies()).get(PREVIEW_SIGNIN_COOKIE)?.value;
+  redirect(entered ? "/dashboard/default" : "/auth/v2/login");
 }

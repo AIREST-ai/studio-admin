@@ -2,7 +2,8 @@
 import * as React from "react";
 
 import { cn } from "cn";
-import { Check, ChevronsUpDown, ExternalLink, Search, X } from "lucide-react";
+import { Check, ChevronsUpDown, Copy, ExternalLink, Search, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,7 +23,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getInitials } from "@/lib/utils";
 
-import { agents } from "./data";
+import { useAgentRoster } from "./inboxes-store";
 
 /** Chatwoot BaseSettingsHeader, rebuilt with Studio components. */
 export function SettingsHeader({
@@ -122,16 +123,16 @@ export function Section({
   );
 }
 
-/** Chatwoot woot-confirm-delete-modal: type the name to confirm. */
+/**
+ * Chatwoot woot-confirm-delete-modal: type the name to confirm.
+ * 128.2: the word to type is shown once as selectable text with a copy button; buttons are just Cancel and Delete.
+ */
 export function ConfirmDeleteDialog({
   open,
   onOpenChange,
   title,
   message,
   confirmValue,
-  placeholder,
-  confirmText,
-  rejectText,
   onConfirm,
 }: {
   open: boolean;
@@ -139,12 +140,10 @@ export function ConfirmDeleteDialog({
   title: string;
   message: string;
   confirmValue: string;
-  placeholder: string;
-  confirmText: string;
-  rejectText: string;
   onConfirm?: () => void;
 }) {
   const [value, setValue] = React.useState("");
+  const wordRef = React.useRef<HTMLElement>(null);
   React.useEffect(() => {
     if (!open) setValue("");
   }, [open]);
@@ -155,14 +154,56 @@ export function ConfirmDeleteDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{message}</DialogDescription>
         </DialogHeader>
-        <Input placeholder={placeholder} value={value} onChange={(event) => setValue(event.target.value)} />
+        <div className="grid gap-2">
+          <p className="flex flex-wrap items-center gap-1.5 text-sm">
+            To confirm, type
+            <code
+              ref={wordRef}
+              data-slot="confirm-word"
+              className="select-all rounded bg-muted px-1.5 py-0.5 font-mono text-sm"
+            >
+              {confirmValue}
+            </code>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Copy"
+              onClick={async () => {
+                // navigator.clipboard is missing on plain http (e.g. the Tailscale address): select the word and copy it.
+                const selectAndCopy = () => {
+                  const word = wordRef.current;
+                  const selection = window.getSelection();
+                  if (!word || !selection) return false;
+                  selection.selectAllChildren(word);
+                  try {
+                    return document.execCommand("copy");
+                  } catch {
+                    return false;
+                  }
+                };
+                const copied = navigator.clipboard
+                  ? await navigator.clipboard.writeText(confirmValue).then(
+                      () => true,
+                      () => selectAndCopy(),
+                    )
+                  : selectAndCopy();
+                if (copied) toast.success("Copied to clipboard successfully");
+                else toast.error("Couldn't copy. The word is selected, copy it with Ctrl+C or Cmd+C.");
+              }}
+            >
+              <Copy />
+            </Button>
+          </p>
+          <Input aria-label="Confirmation" value={value} onChange={(event) => setValue(event.target.value)} />
+        </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">{rejectText}</Button>
+            <Button variant="outline">Cancel</Button>
           </DialogClose>
           <DialogClose asChild>
             <Button variant="destructive" disabled={value !== confirmValue} onClick={onConfirm}>
-              {confirmText}
+              Delete
             </Button>
           </DialogClose>
         </DialogFooter>
@@ -223,6 +264,7 @@ export function AgentMultiSelect({
   placeholder?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const agents = useAgentRoster(); // F-6B: the live agents (an invited agent too), not the seed
   const selected = agents.filter((a) => value.includes(a.id));
   return (
     <Popover open={open} onOpenChange={setOpen}>

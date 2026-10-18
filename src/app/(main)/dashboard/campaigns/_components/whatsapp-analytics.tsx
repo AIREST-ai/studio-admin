@@ -54,8 +54,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/utils";
 
+import { useContactsStore } from "../../contacts/_components/contacts-store";
 import { PageHeading, personToneClass } from "../../contacts/_components/studio-ui";
-import { analyticsState, type DeliveryStatus, deliveriesFor, metricsFor, whatsappCampaigns } from "./data";
+import { analyticsState, type DeliveryStatus, deliveriesFor, metricsFor } from "./data";
+import { useCampaignList } from "./store";
 
 const PAGE_SIZE = 25;
 
@@ -127,10 +129,12 @@ function pageWindow(current: number, count: number): (number | "gap")[] {
 }
 
 export function WhatsAppCampaignAnalytics({ id }: { id: number }) {
-  const campaign = whatsappCampaigns.find((c) => c.id === id);
-  const state = analyticsState(id);
+  const [campaigns] = useCampaignList("whatsapp");
+  const contactBook = useContactsStore((s) => s.list);
+  const campaign = campaigns.find((c) => c.id === id);
+  const state = analyticsState(id, campaign?.status);
   const m = metricsFor(id);
-  const all = deliveriesFor(id);
+  const all = deliveriesFor(id, contactBook);
   const [filter, setFilter] = React.useState<Filter>("all");
   const [page, setPage] = React.useState(0);
 
@@ -249,11 +253,11 @@ export function WhatsAppCampaignAnalytics({ id }: { id: number }) {
     <div className="flex flex-col gap-4">
       {header}
 
-      {campaign?.status === "processing" ? (
+      {campaign?.status === "running" ? (
         <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-700 text-sm dark:text-amber-300">
           <LoaderCircle className="mt-0.5 size-4 shrink-0 animate-spin" />
           <span>
-            This campaign is still processing. {m.queued} messages are queued, and {m.awaiting} are awaiting a delivery
+            This campaign is still running. {m.queued} messages are queued, and {m.awaiting} are awaiting a delivery
             update from WhatsApp.
           </span>
         </div>
@@ -351,7 +355,7 @@ export function WhatsAppCampaignAnalytics({ id }: { id: number }) {
                 <TableHead className="py-4 font-normal">Status</TableHead>
                 <TableHead className="py-4 font-normal">Message</TableHead>
                 <TableHead className="py-4 font-normal">Reason</TableHead>
-                <TableHead className="py-4 font-normal">
+                <TableHead className="sticky right-0 bg-card py-4 font-normal">
                   <div className="text-right">Actions</div>
                 </TableHead>
               </TableRow>
@@ -366,7 +370,17 @@ export function WhatsAppCampaignAnalytics({ id }: { id: number }) {
                           <AvatarFallback>{getInitials(d.name)}</AvatarFallback>
                         </Avatar>
                         <div className="grid gap-0.5">
-                          <span className="whitespace-nowrap font-medium text-sm">{d.name}</span>
+                          {d.contactId ? (
+                            <Link
+                              href={`/dashboard/contacts/${d.contactId}`}
+                              target="_blank"
+                              className="whitespace-nowrap font-medium text-sm hover:underline"
+                            >
+                              {d.name}
+                            </Link>
+                          ) : (
+                            <span className="whitespace-nowrap font-medium text-sm">{d.name}</span>
+                          )}
                           <span className="text-muted-foreground text-xs tabular-nums">{d.phone || "---"}</span>
                         </div>
                       </div>
@@ -395,7 +409,7 @@ export function WhatsAppCampaignAnalytics({ id }: { id: number }) {
                         <span className="text-muted-foreground">---</span>
                       )}
                     </TableCell>
-                    <TableCell className="align-middle">
+                    <TableCell className="sticky right-0 bg-card align-middle">
                       <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -409,9 +423,15 @@ export function WhatsAppCampaignAnalytics({ id }: { id: number }) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href="/dashboard/contacts">View details</Link>
-                            </DropdownMenuItem>
+                            {d.contactId ? (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/contacts/${d.contactId}`} target="_blank">
+                                  View details
+                                </Link>
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem disabled>Not in your contacts</DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

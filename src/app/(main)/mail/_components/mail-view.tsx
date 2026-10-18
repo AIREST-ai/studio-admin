@@ -1,5 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
+import { useRouter } from "next/navigation";
+
 import { cn } from "cn";
 import { format } from "date-fns/format";
 import {
@@ -20,7 +24,12 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { create } from "zustand";
 
+import { NotSpamBar, ReportSpamItem, StarToggle } from "@/app/(main)/chat/_components/chat-mail-actions";
+import { cw } from "@/app/(main)/dashboard/chat/_components/cw-store";
+import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { SimpleIcon } from "@/components/simple-icon";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -36,9 +45,8 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { downloadSample, hasSampleFile } from "@/lib/cw/preview-sim-ui";
 import { getInitials } from "@/lib/utils";
-import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
-import { NotSpamBar, ReportSpamItem, StarToggle } from "@/app/(main)/chat/_components/chat-mail-actions";
 
 import type { Mail } from "./data";
 import { useMail } from "./use-mail";
@@ -115,6 +123,16 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
             </TooltipTrigger>
             <TooltipContent>Reply</TooltipContent>
           </Tooltip>
+          <Separator className="h-4 data-vertical:self-center" orientation="vertical" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Move to trash">
+                <Trash2 className="text-destructive" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Move to trash</TooltipContent>
+          </Tooltip>
+          {/* T-282 (item 123): the overflow menu sits last, at the trailing edge (Gmail, Outlook; Material 3 app bars). */}
           <Tooltip>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -150,15 +168,6 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
               </DropdownMenuContent>
             </DropdownMenu>
             <TooltipContent>More actions</TooltipContent>
-          </Tooltip>
-          <Separator className="h-4 data-vertical:self-center" orientation="vertical" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Move to trash">
-                <Trash2 className="text-destructive" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Move to trash</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -228,7 +237,15 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
                   <CollapsibleContent>
                     <div className="flex flex-wrap gap-2">
                       {mail.attachments.map((attachment) => (
-                        <Button size="xs" variant="secondary" key={attachment.id}>
+                        // M129-A round 2: an attachment of a Support Email conversation downloads its sample file
+                        // (lib/cw/preview-sim-ui.tsx); the template mails of /mail keep their plain chips.
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          key={attachment.id}
+                          aria-label={hasSampleFile(attachment.name) ? `Download ${attachment.name}` : undefined}
+                          onClick={hasSampleFile(attachment.name) ? () => downloadSample(attachment.name) : undefined}
+                        >
                           <SimpleIcon icon={attachment.icon} className="size-3 fill-current" />
                           <span className="font-normal">{attachment.name}</span>
                           <span className="font-normal text-muted-foreground">{attachment.size}</span>
@@ -242,27 +259,14 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
               </>
             ) : null}
 
-            <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm">{mail.body}</div>
+            <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm">
+              {mail.body}
+              <MailReplies mailId={mail.id} />
+            </div>
 
             <div className="mt-auto flex flex-col gap-3">
               <Separator />
-              <InputGroup>
-                <InputGroupAddon align="inline-start">
-                  <Reply />
-                </InputGroupAddon>
-                <InputGroupInput className="text-xs" placeholder={`Reply ${mail.from.name}...`} />
-                <InputGroupAddon className="gap-1" align="inline-end">
-                  <InputGroupButton variant="ghost">
-                    <Smile />
-                  </InputGroupButton>
-                  <InputGroupButton variant="ghost">
-                    <Paperclip />
-                  </InputGroupButton>
-                  <InputGroupButton variant="ghost">
-                    <Send />
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
+              <MailReplyBox mail={mail} />
             </div>
           </div>
         ) : (
@@ -270,5 +274,87 @@ export function MailView({ mail, onClose }: MailDisplayProps) {
         )}
       </div>
     </div>
+  );
+}
+
+// Replies typed under a mail. A mail that is a Support Email conversation ("cw-<id>") also adds the reply to that
+// conversation's thread on /dashboard/chat (cw-store send), so both views show it. Nothing leaves the browser.
+const useMailReplies = create<{ replies: Record<string, { text: string; at: string }[]> }>(() => ({ replies: {} }));
+
+function conversationIdOf(mailId: string): number | null {
+  const match = /^cw-(\d+)$/.exec(mailId);
+  return match ? Number(match[1]) : null;
+}
+
+function MailReplies({ mailId }: { mailId: string }) {
+  const replies = useMailReplies((s) => s.replies[mailId]);
+  if (!replies?.length) return null;
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      {replies.map((reply, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: replies are only appended
+        <div key={index} className="rounded-md border bg-muted/40 p-3">
+          <div className="mb-1 text-muted-foreground text-xs">You replied · {reply.at}</div>
+          {reply.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MailReplyBox({ mail }: { mail: Mail }) {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const conversationId = conversationIdOf(mail.id);
+
+  function send() {
+    const body = text.trim();
+    if (!body) {
+      toast.error("Message can not be empty");
+      return;
+    }
+    useMailReplies.setState((s) => ({
+      replies: { ...s.replies, [mail.id]: [...(s.replies[mail.id] ?? []), { text: body, at: "Just now" }] },
+    }));
+    setText("");
+    if (conversationId !== null) {
+      cw.send(conversationId, { kind: "outgoing", text: body });
+      toast.success(`Reply added to conversation #${conversationId}`, {
+        action: { label: "View", onClick: () => router.push(`/dashboard/chat?conversation=${conversationId}`) },
+      });
+    } else {
+      toast.success(`Reply to ${mail.from.name} saved under the mail`);
+    }
+  }
+
+  return (
+    <InputGroup>
+      <InputGroupAddon align="inline-start">
+        <Reply />
+      </InputGroupAddon>
+      <InputGroupInput
+        className="text-xs"
+        placeholder={`Reply ${mail.from.name}...`}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            send();
+          }
+        }}
+      />
+      <InputGroupAddon className="gap-1" align="inline-end">
+        <InputGroupButton variant="ghost" aria-label="Emoji">
+          <Smile />
+        </InputGroupButton>
+        <InputGroupButton variant="ghost" aria-label="Attach file">
+          <Paperclip />
+        </InputGroupButton>
+        <InputGroupButton variant="ghost" aria-label="Send" onClick={send}>
+          <Send />
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
   );
 }

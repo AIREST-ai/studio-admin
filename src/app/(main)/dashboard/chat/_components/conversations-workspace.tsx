@@ -1,33 +1,33 @@
 "use client";
 
-// Chatwoot conversations area inside the Studio dashboard (F159): page heading, then one card holding the
-// conversation list, the open conversation and the contact panel. Every sidebar view under "Conversations"
-// renders this with its own view.
+// Chatwoot conversations area inside the Studio dashboard (F159): one card holding the conversation list, the open
+// conversation and the contact panel. Every sidebar view under "Conversations" renders this with its own view.
 import { useEffect, useRef, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
-import { Inbox, Mail, MessagesSquare, SquarePen } from "lucide-react";
+import { Inbox, Mail, MessagesSquare } from "lucide-react";
 
 import { ChatEmailView } from "@/app/(main)/chat/_components/chat-email-view";
 import { setTagFilter, useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
 import { brown } from "@/app/(main)/chat/_components/chat-thread-extras";
 import { useChat } from "@/app/(main)/chat/_components/use-chat";
-import { PageHeading } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Kbd } from "@/components/ui/kbd";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { enableLinkedStoreAdapter, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
+import { currentViewer } from "@/lib/cw/view-as";
 
 import { ContactPanel } from "./contact-panel";
 import { ConversationList } from "./conversation-list";
 import { ConversationPane } from "./conversation-pane";
-import { type AssigneeTab, baseConversations, CURRENT_AGENT_ID, inboxes, teams } from "./cw-data";
+import { type AssigneeTab, baseConversations } from "./cw-data";
 import { CwDialogs, openDialog } from "./cw-dialogs";
-import { useConversationList, type ViewSpec, viewTitle } from "./cw-filter";
-import { cw, useCwStore } from "./cw-store";
+import { useConversationList, type ViewSpec } from "./cw-filter";
+import { cw, useCwStore, useFolderPersistence } from "./cw-store";
 import { ViewNotFound } from "./view-not-found";
 
 // Tab the list had before Participating switched it to All (put back when another view opens).
@@ -45,31 +45,6 @@ function useMinWidth(px: number) {
   return matches;
 }
 
-function subtitleFor(view: ViewSpec, tagLabel?: string): string {
-  switch (view.kind) {
-    case "mentions":
-      return "Conversations where a teammate @mentioned you in a private note.";
-    case "participating":
-      return "Conversations you are taking part in.";
-    case "unattended":
-      return "Conversations still waiting for a first reply from your team.";
-    case "folder":
-      return "A saved folder of filtered conversations. Edit the filters or delete the folder from the list header.";
-    case "team": {
-      const team = teams.find((t) => t.id === view.id);
-      return `Conversations assigned to the ${team?.name ?? ""} team. ${team?.description ? `${team.description}.` : ""}`.trim();
-    }
-    case "inbox": {
-      const inbox = inboxes.find((i) => i.id === view.id);
-      return `Conversations coming in through ${inbox?.name ?? "this inbox"} (${inbox?.address ?? ""}).`;
-    }
-    case "label":
-      return `Conversations labelled ${tagLabel ?? "with this label"}.`;
-    default:
-      return "Every conversation across your inboxes, assigned to you, unassigned or with your team.";
-  }
-}
-
 function EmptyPane() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
@@ -77,10 +52,10 @@ function EmptyPane() {
         <MessagesSquare className="size-5 text-muted-foreground" />
       </div>
       <p className="font-medium text-sm">Please select a conversation from left pane</p>
-      {/* Studio's command menu opens with ⌘ J (header search); ⌘ / opens the keyboard shortcuts dialog. */}
+      {/* Chatwoot's command bar opens with ⌘ K here (cw-dialogs.tsx); ⌘ / opens the keyboard shortcuts dialog. */}
       <div className="flex flex-col gap-1 text-muted-foreground text-xs">
         <span>
-          <Kbd>⌘</Kbd> <Kbd>J</Kbd> to open command menu
+          <Kbd>⌘</Kbd> <Kbd>K</Kbd> to open command menu
         </span>
         <button type="button" className="hover:text-foreground" onClick={() => openDialog({ type: "shortcuts" })}>
           <Kbd>⌘</Kbd> <Kbd>/</Kbd> to view keyboard shortcuts
@@ -90,7 +65,29 @@ function EmptyPane() {
   );
 }
 
+// U-2 (item 159, Condition 7): Always render the full Studio PreviewConversationsWorkspace UI in both preview and
+// linked modes. When linked mode is active and the Chatwoot gateway reports an error, show an honest error banner.
 export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
+  const linkedStatus = useLinkedAdapterStatus();
+  return (
+    <div className="flex h-full flex-col gap-2">
+      {linkedStatus.active && linkedStatus.error ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive text-xs"
+        >
+          <span>Linked Chatwoot connection error: {linkedStatus.error}</span>
+          <Button size="sm" variant="outline" onClick={() => void enableLinkedStoreAdapter()}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
+      <PreviewConversationsWorkspace view={view} />
+    </div>
+  );
+}
+
+function PreviewConversationsWorkspace({ view }: { view: ViewSpec }) {
   const router = useRouter();
   const [chat, setChat] = useChat();
   const { filter, tags } = useChatTags();
@@ -101,12 +98,14 @@ export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
   const list = useConversationList(view);
   const wide = useMinWidth(1440);
   const twoPane = useMinWidth(1024);
-  const [panelOpen, setPanelOpen] = useState(true);
+  // Item 72 (Fahad 13:51:32): the contact panel stays closed until its button is pressed, at every width.
+  const [panelOpen, setPanelOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showThread, setShowThread] = useState(false);
   const isEmailInbox = view.kind === "inbox" && view.id === "email";
-  // Studio's Email UI (brown, F146) stays the first thing the Email channel shows; Chatwoot's list is one click away.
-  const [mailView, setMailView] = useState(isEmailInbox);
+  // The Email channel opens on its conversations like every Chatwoot inbox; Studio's Email UI (brown, F146) is one
+  // click away in the heading.
+  const [mailView, setMailView] = useState(false);
   const viewKey = `${view.kind}:${"id" in view ? view.id : ""}`;
   const labelSeen = useRef(false);
   // Set when ?conversation= opened a conversation in this pass, so the list check below does not replace it.
@@ -140,7 +139,8 @@ export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
       if (m) {
         const status = m.status === "closed" ? "resolved" : m.status;
         if (statusFilter !== "all" && statusFilter !== status) cw.setStatusFilter(status);
-        cw.setAssigneeTab(m.assigneeId === CURRENT_AGENT_ID ? "me" : m.assigneeId === null ? "unassigned" : "all");
+        const me = currentViewer().id;
+        cw.setAssigneeTab(m.assigneeId === me ? "me" : m.assigneeId === null ? "unassigned" : "all");
       }
       cw.focus(id);
       setChat({ selected: id });
@@ -195,7 +195,7 @@ export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
       if (assigneeTab !== "all") return;
       pickJoined.current = false;
       const { meta } = useCwStore.getState();
-      const joined = list.rows.find((c) => meta[c.id]?.assigneeId !== CURRENT_AGENT_ID) ?? list.rows[0];
+      const joined = list.rows.find((c) => meta[c.id]?.assigneeId !== currentViewer().id) ?? list.rows[0];
       if (joined) {
         setChat({ selected: joined.id });
         return;
@@ -215,26 +215,32 @@ export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
   // F159: a saved folder that is gone (deleted, or saved before a reload) goes back to All Conversations (Chatwoot
   // returns to the conversations home after deleting the open folder) instead of an empty page titled "Folder".
   // Ids that cannot be a folder at all get the "Folder not found" page (folders/[id]/page.tsx renders view-not-found.tsx).
-  const folderMissing = view.kind === "folder" && !folders.some((f) => f.id === view.id);
+  // T-124: a folder link opened directly or reloaded waits for the saved folders (cw-store, T-109) before deciding.
+  const foldersLoading = useFolderPersistence((s) => s.status === "loading");
+  const folderUnknown = view.kind === "folder" && !folders.some((f) => f.id === view.id);
+  const folderMissing = folderUnknown && !foldersLoading;
   useEffect(() => {
     if (folderMissing) router.replace("/dashboard/chat");
   }, [folderMissing, router]);
 
   const active =
     list.rows.find((c) => c.id === chat.selected) ?? focused ?? (list.rows.length > 0 ? list.rows[0] : undefined);
-  const title = viewTitle(view, folders, list.tagLabel);
   const togglePanel = () => (wide ? setPanelOpen((v) => !v) : setSheetOpen((v) => !v));
 
-  if (folderMissing) return null;
+  if (folderUnknown) return null;
   // F159: an unknown label id gets the same "not found" page as an unknown folder, team or inbox. Checked here on the
   // client, because labels created with "Add tag…" exist only in this session's state.
   if (view.kind === "label" && !tags.some((t) => t.id === view.id)) return <ViewNotFound kind="label" />;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeading title={title} subtitle={subtitleFor(view, list.tagLabel)} />
-        <div className="flex items-center gap-2">
+    // T-99: the page fills the screen below the header and the card takes the height left, so the page itself never
+    // scrolls (it did at 1024 px and on phones). 5rem on phones = the shell's padding (2rem) and its Inbox button row
+    // (3rem, section-subnav.tsx); 3rem from md = the padding only.
+    <div className="flex h-[calc(100svh-var(--dashboard-header-height)-5rem)] flex-col gap-4 md:h-[calc(100svh-var(--dashboard-header-height)-3rem)]">
+      {/* T-134 (T-99, 17-a): no page title or description above the conversations (Fahad: a repeat of the sidebar
+          and header). The view's own buttons stay, right-aligned, only when there is one. */}
+      {isEmailInbox && (
+        <div className="flex items-center justify-end gap-2">
           {isEmailInbox && (
             <ToggleGroup
               type="single"
@@ -252,13 +258,16 @@ export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
               </ToggleGroupItem>
             </ToggleGroup>
           )}
-          <Button size="sm" onClick={() => openDialog({ type: "new-conversation" })}>
-            <SquarePen /> New conversation
-          </Button>
+          {/* T-100: no "New conversation" button here: it opened the same empty dialog as Quick Create at the top of
+              the Inbox bar (T-62, Fahad: one entry, not two). The contact panel's New message (prefilled) stays. */}
+          {/* T-258: no Notifications bell here: it was a plain link to My Inbox, the same page as the header bell
+              (which has the count and the list). Chatwoot's list header has no bell either (judge 02:00). */}
+          {/* T-99: no Settings gear here: it was the same link as Settings in the sidebar (Fahad: not right above the
+              conversations; respond.io keeps Settings in the main rail only). */}
         </div>
-      </div>
+      )}
 
-      <Card className="h-[calc(100svh-11rem)] min-h-[34rem] gap-0 overflow-hidden p-0">
+      <Card className="min-h-[24rem] flex-1 gap-0 overflow-hidden p-0">
         {isEmailInbox && mailView ? (
           // F159: the Studio look of the Email UI: same list header, count pills and Mine / Unassigned / All tabs as
           // the other channel pages, neutral lines, no brown frame (the brown mark stays on the Mail view toggle).

@@ -1,0 +1,130 @@
+// T-139: the eight sample rules the Automation list has shown since F159, moved here unchanged so the list, the
+// visual editor and the round-trip tests read the same ones. They show only while nothing was saved yet; once the
+// "automation" section is saved, the saved rules are the list and the sample is never written over them.
+import type { Rule } from "./catalog";
+
+export const initialRules: Rule[] = [
+  {
+    id: 1,
+    name: "Route Arabic chats to Support",
+    description: "Assign conversations with browser language Arabic to the Support team",
+    active: true,
+    createdOn: "Sep 14, 2026",
+    runType: "instant",
+    event: "conversation_created",
+    conditions: [
+      { attribute: "browser_language", operator: "Equal to", values: ["Arabic (ar)"], join: "and" },
+      { attribute: "inbox_id", operator: "Equal to", values: ["Website Chat"], join: "and" },
+    ],
+    actions: [
+      { action: "assign_team", values: ["Support"] },
+      { action: "add_label", values: ["support"] },
+    ],
+  },
+  {
+    id: 2,
+    name: "Tag billing questions",
+    description: "Add label billing when message content contains invoice, refund or payment",
+    active: true,
+    createdOn: "Sep 02, 2026",
+    runType: "instant",
+    event: "message_created",
+    conditions: [
+      { attribute: "message_type", operator: "Equal to", values: ["Incoming Message"], join: "and" },
+      { attribute: "content", operator: "Contains", values: ["invoice", "refund", "payment"], join: "and" },
+    ],
+    actions: [
+      { action: "add_label", values: ["billing"] },
+      { action: "assign_team", values: ["Billing"] },
+    ],
+  },
+  {
+    id: 3,
+    name: "VIP priority",
+    description: "Set priority to urgent for contacts with label vip",
+    active: true,
+    createdOn: "Aug 21, 2026",
+    runType: "instant",
+    event: "conversation_updated",
+    conditions: [{ attribute: "labels", operator: "Equal to", values: ["vip"], join: "and" }],
+    actions: [
+      { action: "change_priority", values: ["Urgent"] },
+      { action: "add_sla", values: ["VIP Doha"] },
+    ],
+  },
+  {
+    id: 4,
+    name: "UAE leads to Sales",
+    description: "Assign the Sales team and add label lead when country is United Arab Emirates",
+    active: false,
+    createdOn: "Aug 10, 2026",
+    runType: "instant",
+    event: "conversation_created",
+    conditions: [{ attribute: "country_code", operator: "Equal to", values: ["United Arab Emirates"], join: "and" }],
+    actions: [
+      { action: "assign_team", values: ["Sales"] },
+      { action: "add_label", values: ["lead"] },
+    ],
+  },
+  {
+    id: 5,
+    name: "Transcript on resolve",
+    description: "Email the conversation transcript to the customer when it is resolved",
+    active: true,
+    createdOn: "Jul 29, 2026",
+    runType: "instant",
+    event: "conversation_resolved",
+    conditions: [{ attribute: "inbox_id", operator: "Equal to", values: ["Support Email"], join: "and" }],
+    actions: [{ action: "send_email_transcript", values: ["{{contact.email}}"] }],
+  },
+  {
+    id: 6,
+    name: "Follow up after silence",
+    description: "Send a reminder when the customer hasn't replied",
+    active: true,
+    createdOn: "Sep 20, 2026",
+    runType: "delayed",
+    event: "message_created",
+    conditions: [],
+    actions: [
+      {
+        action: "send_message",
+        values: ["Hi {{contact.first_name}}, just checking in. Is there anything else we can help you with?"],
+      },
+    ],
+    wait: {
+      trigger: "customer_unresponsive",
+      status: "Open",
+      amount: 24,
+      unit: "hours",
+      inboxes: ["WhatsApp Business"],
+    },
+  },
+  {
+    id: 7,
+    name: "Escalate unanswered chats",
+    description: "Assign the shift lead when no teammate has replied",
+    active: true,
+    createdOn: "Sep 18, 2026",
+    runType: "delayed",
+    event: "message_created",
+    conditions: [],
+    actions: [
+      { action: "assign_agent", values: ["Arham Khan"] },
+      { action: "change_priority", values: ["High"] },
+    ],
+    wait: { trigger: "agent_unresponsive", status: "Open", amount: 30, unit: "minutes", inboxes: [] },
+  },
+  {
+    id: 8,
+    name: "Close stale pending",
+    description: "Resolve conversations that stay pending",
+    active: false,
+    createdOn: "Aug 30, 2026",
+    runType: "delayed",
+    event: "conversation_updated",
+    conditions: [],
+    actions: [{ action: "resolve_conversation", values: [] }],
+    wait: { trigger: "conversation_status", status: "Pending", amount: 3, unit: "days", inboxes: [] },
+  },
+];

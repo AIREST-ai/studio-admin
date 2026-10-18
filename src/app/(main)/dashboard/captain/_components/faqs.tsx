@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Check, FileText, MessageSquare, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,14 +31,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
-import { type Faq, faqs, type Suggestion, suggestions } from "./data";
+import type { Faq, Suggestion } from "./data";
 import { ConfirmDialog, FaqDialog } from "./dialogs";
 import { CaptainShell, ChipSelect, RowMenuTrigger, ToneBadge } from "./shared";
+import { nextId, setCaptainList, useCaptainState } from "./store";
 
 const statusOptions = [
   { value: "all", label: "All" },
@@ -60,23 +61,22 @@ function SearchBox({
   placeholder: string;
 }) {
   return (
-    <InputGroup className="h-7 w-full md:w-64">
-      <InputGroupAddon align="inline-start">
-        <Search className="size-3.5" />
-      </InputGroupAddon>
-      <InputGroupInput
-        className="h-7"
-        type="search"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </InputGroup>
+    <ExpandingSearch
+      name="faqs"
+      label={placeholder.replace(/(\.\.\.|…)$/, "")}
+      placeholder={placeholder}
+      className="w-full md:w-64"
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 
+// "Conversation #6" -> 6, opened at Chatwoot's conversation URL (/dashboard/chat/conversations/<id>).
+const conversationId = (source: string) => source.match(/^Conversation #(\d+)$/)?.[1];
+
 export function FaqsPage() {
-  const [items, setItems] = React.useState(faqs);
+  const [items, setItems] = useCaptainState("faqs");
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [source, setSource] = React.useState("all");
@@ -207,7 +207,16 @@ export function FaqsPage() {
                           ) : (
                             <FileText className="size-3.5" />
                           )}
-                          <span className="max-w-48 truncate">{f.source}</span>
+                          {conversationId(f.source) ? (
+                            <Link
+                              href={`/dashboard/chat/conversations/${conversationId(f.source)}`}
+                              className="max-w-48 truncate text-primary hover:underline"
+                            >
+                              {f.source}
+                            </Link>
+                          ) : (
+                            <span className="max-w-48 truncate">{f.source}</span>
+                          )}
                         </span>
                       </TableCell>
                       <TableCell className="py-4">
@@ -327,6 +336,9 @@ function ReviewDialog({
   onDismiss: (s: Suggestion) => void;
 }) {
   const [visible, setVisible] = React.useState(3);
+  // The question and answer can be edited before approving; the approved FAQ keeps the edited text.
+  const [question, setQuestion] = React.useState(s?.question ?? "");
+  const [answer, setAnswer] = React.useState(s?.answer ?? "");
   return (
     <Dialog open={s !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
@@ -343,11 +355,11 @@ function ReviewDialog({
               <div className="grid content-start gap-3">
                 <div className="grid gap-2">
                   <Label>Question</Label>
-                  <Input defaultValue={s.question} />
+                  <Input value={question} onChange={(e) => setQuestion(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                   <Label>Answer</Label>
-                  <Textarea defaultValue={s.answer} className="min-h-32" />
+                  <Textarea value={answer} onChange={(e) => setAnswer(e.target.value)} className="min-h-32" />
                 </div>
               </div>
               <div className="grid content-start gap-2">
@@ -389,7 +401,12 @@ function ReviewDialog({
                     Save changes
                   </Button>
                 </DialogClose>
-                <Button onClick={() => onApprove(s)}>Approve FAQ</Button>
+                <Button
+                  disabled={!question.trim() || !answer.trim()}
+                  onClick={() => onApprove({ ...s, question: question.trim(), answer: answer.trim() })}
+                >
+                  Approve FAQ
+                </Button>
               </div>
             </DialogFooter>
           </>
@@ -400,13 +417,25 @@ function ReviewDialog({
 }
 
 export function FaqSuggestionsPage() {
-  const [items, setItems] = React.useState(suggestions);
+  const [items, setItems] = useCaptainState("suggestions");
   const [query, setQuery] = React.useState("");
   const [reviewing, setReviewing] = React.useState<Suggestion | null>(null);
   const q = query.trim().toLowerCase();
   const rows = items.filter((s) => !q || `${s.question} ${s.answer}`.toLowerCase().includes(q));
 
+  // Approving adds the suggestion to the FAQs list (approved, sourced from the first conversation in its review).
   function approve(s: Suggestion) {
+    setCaptainList("faqs", (list) => [
+      {
+        id: nextId(list),
+        question: s.question,
+        answer: s.answer,
+        status: "approved",
+        source: `Conversation ${sourceConversations[0].id}`,
+        createdAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      },
+      ...list,
+    ]);
     setItems((list) => list.filter((x) => x.id !== s.id));
     setReviewing(null);
     toast.success("FAQ approved and added to Captain's knowledge.");

@@ -6,8 +6,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Building2, Check, Link2, MoreHorizontal, Plus, Search, Settings2, Trash2 } from "lucide-react";
+import { Building2, Check, Link2, MoreHorizontal, Plus, Settings2, Trash2 } from "lucide-react";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { PageHeading } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import type { Portal } from "./data";
@@ -65,18 +65,14 @@ export function PortalsList({ forceEmpty }: { forceEmpty?: boolean }) {
             {portals.length} {portals.length === 1 ? "portal" : "portals"} · the checked one is open in the Help Center
           </CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap items-center justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                <Search className="size-3.5" />
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
-                type="search"
-                placeholder="Portal name"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </InputGroup>
+            <ExpandingSearch
+              name="portals"
+              label="Search portals"
+              placeholder="Portal name"
+              className="w-full md:w-64"
+              value={query}
+              onChange={setQuery}
+            />
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
@@ -87,7 +83,7 @@ export function PortalsList({ forceEmpty }: { forceEmpty?: boolean }) {
                 <TableHead className="py-4 font-normal">Domain</TableHead>
                 <TableHead className="py-4 font-normal">Articles</TableHead>
                 <TableHead className="py-4 font-normal">Status</TableHead>
-                <TableHead className="py-4 font-normal">
+                <TableHead className="sticky right-0 bg-card py-4 font-normal">
                   <div className="text-right">Actions</div>
                 </TableHead>
               </TableRow>
@@ -114,7 +110,9 @@ export function PortalsList({ forceEmpty }: { forceEmpty?: boolean }) {
                           </Avatar>
                           <div className="min-w-0">
                             <div className="truncate font-medium text-sm hover:underline">{portal.name}</div>
-                            <div className="truncate text-muted-foreground text-xs">app.weblabs.studio/hc/{portal.slug}</div>
+                            <div className="truncate text-muted-foreground text-xs">
+                              app.weblabs.studio/hc/{portal.slug}
+                            </div>
                           </div>
                         </button>
                       </TableCell>
@@ -130,9 +128,7 @@ export function PortalsList({ forceEmpty }: { forceEmpty?: boolean }) {
                       </TableCell>
                       <TableCell className="py-4 align-middle text-sm tabular-nums">
                         {countOf(portal)} articles
-                        {active ? (
-                          <span className="text-muted-foreground"> · {locales.length} locales</span>
-                        ) : null}
+                        {active ? <span className="text-muted-foreground"> · {locales.length} locales</span> : null}
                       </TableCell>
                       <TableCell className="py-4 align-middle">
                         {active ? (
@@ -145,7 +141,7 @@ export function PortalsList({ forceEmpty }: { forceEmpty?: boolean }) {
                           </ToneBadge>
                         )}
                       </TableCell>
-                      <TableCell className="py-4 align-middle">
+                      <TableCell className="sticky right-0 bg-card py-4 align-middle">
                         <div className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

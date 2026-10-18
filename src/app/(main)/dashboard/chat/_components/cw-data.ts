@@ -10,13 +10,26 @@ import {
 } from "@/app/(main)/chat/_components/data";
 import { categoryOf, articles as helpCenterArticles } from "@/app/(main)/dashboard/help-center/_components/data";
 import {
+  evaluateSla,
+  formatSlaTime,
+  initialSlas,
+  type Sla,
+  type WorkingHours,
+} from "@/app/(main)/dashboard/settings/sla/_components/sla-data";
+import {
   CURRENT_USER_ID,
+  type Agent as SharedAgent,
+  type Inbox as SharedInbox,
+  type Team as SharedTeam,
+  type WhatsAppTemplate as SharedWhatsAppTemplate,
   sendableTemplates,
   agents as sharedAgents,
   cannedResponses as sharedCanned,
   inboxes as sharedInboxes,
   teams as sharedTeams,
 } from "@/lib/cw/data";
+import { linkedSession } from "@/lib/cw/persistence/client";
+import { useCwShared } from "@/lib/cw/store";
 
 export { contactIdOf, currentUser, isPersonOnline } from "@/app/(main)/chat/_components/data";
 export { macros } from "@/app/(main)/dashboard/settings/macros/_components/data";
@@ -70,6 +83,7 @@ export type FilterAttribute =
   | "display_id"
   | "campaign_id"
   | "labels"
+  | "customer_path"
   | "browser_language"
   | "priority"
   | "country_code"
@@ -111,6 +125,12 @@ export interface CwAttachment {
   duration?: string;
   // Contact card: the shared phone number (Chatwoot attachment fallback_title).
   phone?: string;
+  // F-5A: a file attached in the preview: its bytes kept by api/preview-sim/upload (`uploadId`), its type, why it could
+  // not be kept, and the browser's own preview of a picture before the page reloads.
+  uploadId?: string;
+  mime?: string;
+  notKept?: string;
+  previewUrl?: string;
 }
 
 export type CwMessageKind = "incoming" | "outgoing" | "note" | "activity";
@@ -132,6 +152,49 @@ export interface CwMessage {
   csat?: { rating: number; feedback: string };
   // F159 thread: Chatwoot form message (bubbles/Form.vue): the bot's question and the visitor's submitted values.
   form?: { label: string; value: string }[];
+  // F-5A: written in the preview: never delivered, so the footer says so instead of showing a tick.
+  simulated?: boolean;
+  // F-5A: when it was written (ISO), for lines kept in the preview (the thread is put back in this order).
+  at?: string;
+  // F-8: deleted (Chatwoot content_attributes.deleted): the line shows DELETED_MESSAGE_TEXT, without its files.
+  deleted?: boolean;
+}
+
+// F-8 (sim3: a deleted message came back after a reload): the messages deleted in the preview, as
+// "<conversation id>:<message id>" (sim-thread-persist.ts keeps and replays them). Chatwoot keeps a deleted message in
+// the thread, with its content replaced by "This message was deleted" and its attachments destroyed
+// (messages_controller.rb#destroy and config/locales/en.yml conversations.messages.deleted, v4.18.0).
+export const DELETED_MESSAGE_TEXT = "This message was deleted";
+const deletedKeys = new Set<string>();
+export const deletedMessageKey = (convId: number, messageId: string) => `${convId}:${messageId}`;
+/** Called by the store whenever its list of deleted messages changes. */
+export function setDeletedMessageKeys(keys: readonly string[]) {
+  deletedKeys.clear();
+  for (const key of keys) deletedKeys.add(key);
+}
+function asDeleted(message: CwMessage): CwMessage {
+  return {
+    id: message.id,
+    kind: message.kind,
+    time: message.time,
+    sender: message.sender,
+    text: DELETED_MESSAGE_TEXT,
+    deleted: true,
+    ...(message.simulated ? { simulated: true } : {}),
+    ...(message.at ? { at: message.at } : {}),
+  };
+}
+/**
+ * The lines of conversation `convId` with every deleted one shown as deleted. `deleted`: the store's list
+ * (useCwStore deletedMessages); a component passes it so its output changes with it (the React Compiler memoizes on
+ * the inputs). Without it, the list the store last set is used.
+ */
+export function withDeletions(convId: number, lines: CwMessage[], deleted?: readonly string[]): CwMessage[] {
+  const keys = deleted ? new Set(deleted) : deletedKeys;
+  if (!keys.size) return lines;
+  return lines.map((line) =>
+    !line.deleted && line.kind !== "activity" && keys.has(deletedMessageKey(convId, line.id)) ? asDeleted(line) : line,
+  );
 }
 
 export interface ConversationMeta {
@@ -143,36 +206,84 @@ export interface ConversationMeta {
   mentioned: boolean;
   participants: number[];
   snoozedUntil: string | null;
-  sla: { kind: "FRT" | "NRT" | "RT"; state: "due" | "missed"; time: string } | null;
+  // T-134: policy = the Settings > SLA policy applied, target = its threshold in minutes for this kind.
+  sla: { kind: "FRT" | "NRT" | "RT"; state: "due" | "missed"; time: string; policy: string; target: number } | null;
   createdRank: number; // smaller = created earlier
   createdAt: string;
+  // F-5A: when the status was last changed in the preview (sim-thread-persist.ts); unset for the sample status.
+  statusAt?: string;
 }
 
 // F161: agents, teams and inboxes come from the shared layer (src/lib/cw/data.ts), the same ones as Users & Roles,
 // Settings and Reports. Teams and inboxes keep their URL ids (slugs) here, as the conversation views use them.
-export const agents: Agent[] = sharedAgents.map((agent) => ({
+const toAgent = (agent: SharedAgent): Agent => ({
   id: agent.id,
   name: agent.name,
   email: agent.email,
   role: agent.role === "administrator" ? "Administrator" : "Agent",
   availability: agent.availability,
-}));
+});
 
-export const CURRENT_AGENT_ID = CURRENT_USER_ID;
-
-export const teams: Team[] = sharedTeams.map((team) => ({
+const toTeam = (team: SharedTeam): Team => ({
   id: team.slug,
   name: team.name,
   description: team.description,
   members: team.members,
-}));
+});
 
-export const inboxes: Inbox[] = sharedInboxes.map((inbox) => ({
+const toInbox = (inbox: SharedInbox): Inbox => ({
   id: inbox.slug,
   name: inbox.name,
   channelType: inbox.channelType,
   address: inbox.identifier,
-}));
+});
+
+// The start lists, copied once at load. Pickers and filters use the live ones below.
+export const agents: Agent[] = sharedAgents.map(toAgent);
+
+export const CURRENT_AGENT_ID = CURRENT_USER_ID;
+
+export const teams: Team[] = sharedTeams.map(toTeam);
+
+export const inboxes: Inbox[] = sharedInboxes.map(toInbox);
+
+// T-64: the live lists, read from the shared store Settings writes (src/lib/cw/store.ts), so an agent, team or inbox
+// added, renamed or removed there shows up in the assignment pickers and filters at once. Same session only: the
+// shared store resets on reload. Each list is mapped once per change, so a hook returns the same array until then.
+function mapOnChange<S, T>(map: (item: S) => T): (list: S[]) => T[] {
+  let source: S[] | undefined;
+  let mapped: T[] = [];
+  return (list) => {
+    if (list !== source) {
+      source = list;
+      mapped = list.map(map);
+    }
+    return mapped;
+  };
+}
+
+let linkedRealAgentIds: Set<number> | null = null;
+
+export function setLinkedAgentIds(ids: number[] | null): void {
+  linkedRealAgentIds = ids ? new Set(ids) : null;
+}
+
+const agentsOf = mapOnChange((agent: SharedAgent) => toAgent(agent));
+const teamsOf = mapOnChange(toTeam);
+const inboxesOf = mapOnChange(toInbox);
+
+const filterRealAgents = (list: Agent[]): Agent[] =>
+  linkedRealAgentIds ? list.filter((a) => linkedRealAgentIds!.has(a.id)) : list;
+
+/** For components: re-renders when the list changes. */
+export const useLiveAgents = () => filterRealAgents(agentsOf(useCwShared((state) => state.agents)));
+export const useLiveTeams = () => teamsOf(useCwShared((state) => state.teams));
+export const useLiveInboxes = () => inboxesOf(useCwShared((state) => state.inboxes));
+
+/** For plain functions (store actions, labels): the list as it is now. */
+export const liveAgents = () => filterRealAgents(agentsOf(useCwShared.getState().agents));
+export const liveTeams = () => teamsOf(useCwShared.getState().teams);
+export const liveInboxes = () => inboxesOf(useCwShared.getState().inboxes);
 
 export const priorities: { value: Priority; label: string; rank: number }[] = [
   { value: "none", label: "None", rank: 0 },
@@ -182,12 +293,14 @@ export const priorities: { value: Priority; label: string; rank: number }[] = [
   { value: "urgent", label: "Urgent", rank: 4 },
 ];
 
+// T-282 (item 123): All first, then the ticket lifecycle order (Zendesk Open → Pending → On-hold → Solved; Intercom
+// Open → Snoozed → Closed). Order only: the default stays "open" (cw-store.ts) and every value is unchanged.
 export const statusFilterItems: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "open", label: "Open" },
-  { value: "resolved", label: "Resolved" },
   { value: "pending", label: "Pending" },
   { value: "snoozed", label: "Snoozed" },
-  { value: "all", label: "All" },
+  { value: "resolved", label: "Resolved" },
 ];
 
 export const sortItems: { value: SortKey; label: string }[] = [
@@ -203,10 +316,12 @@ export const sortItems: { value: SortKey; label: string }[] = [
   { value: "unread", label: "Unread Count: Highest first" },
 ];
 
+// T-282 (item 123): All first, then Mine before Unassigned (Intercom: Your inbox … Unassigned; Zendesk: Your unsolved
+// tickets, Unassigned tickets). Order only: the selected tab stays "me" (cw-store.ts).
 export const assigneeTabs: { value: AssigneeTab; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "me", label: "Mine" },
   { value: "unassigned", label: "Unassigned" },
-  { value: "all", label: "All" },
 ];
 
 export const filterAttributes: { value: FilterAttribute; label: string; group: string }[] = [
@@ -218,6 +333,7 @@ export const filterAttributes: { value: FilterAttribute; label: string; group: s
   { value: "display_id", label: "Conversation identifier", group: "Standard filters" },
   { value: "campaign_id", label: "Campaign name", group: "Standard filters" },
   { value: "labels", label: "Labels", group: "Standard filters" },
+  { value: "customer_path", label: "Customer Path", group: "Standard filters" },
   { value: "priority", label: "Priority", group: "Standard filters" },
   { value: "browser_language", label: "Browser language", group: "Additional filters" },
   { value: "country_code", label: "Country name", group: "Additional filters" },
@@ -240,28 +356,8 @@ export const filterOperators: { value: FilterOperator; label: string }[] = [
   { value: "days_before", label: "Is x days before" },
 ];
 
-// Same three folders the Studio chat sidebar shows under "Views".
-export const initialFolders: Folder[] = [
-  {
-    id: "vip",
-    name: "VIP Customers",
-    filters: [{ attribute: "labels", operator: "equal_to", value: "vip", join: "and" }],
-  },
-  {
-    id: "orders",
-    name: "Orders & Returns",
-    filters: [
-      { attribute: "team_id", operator: "equal_to", value: "billing", join: "and" },
-      { attribute: "labels", operator: "equal_to", value: "billing", join: "or" },
-    ],
-  },
-  {
-    id: "feedback",
-    name: "Product Feedback",
-    // Bug reports and feature requests, tagged with the "Feedback type" conversation attribute.
-    filters: [{ attribute: "feedback_type", operator: "is_present", value: "", join: "and" }],
-  },
-];
+// T-74: the preview starts with no folders; the admin saves them from a filter (cw-store addFolder).
+export const initialFolders: Folder[] = [];
 
 type Seed = [
   id: number,
@@ -337,16 +433,78 @@ function noteWriters(id: number): number[] {
   return (notesByConversation[id] ?? []).map((note) => agents.find((agent) => agent.name === note.sender)?.id ?? 0);
 }
 
-// SLA badge from how long the customer's last message has waited (the row's last activity), with a one hour
-// target: "NRT due 59m" a minute after the customer wrote, "FRT missed 2h" when a first reply is two hours late.
-const SLA_TARGET_MINUTES = 60;
+// T-134 (T-99, item 5): the SLA badge follows the policies of Settings > SLA (sla-data.ts), with no fixed target.
+// Chatwoot shows the badge only on a conversation with an applied SLA. The policy applied here is the one whose own
+// description names the inbox: Standard, "Default promise for all website and WhatsApp chats". Any other inbox has no
+// policy, so no badge.
+// T-261 (buried 6): the policy is held by id, as Chatwoot's applied_sla holds sla_policy_id, so an edited Standard
+// still applies and a deleted one leaves no badge. The badge is counted as Chatwoot counts it (sla-data.ts
+// evaluateSla): FRT and RT from the conversation's first message, NRT from the customer's first message after the
+// last agent reply, in the inbox's working hours when the policy says so. The saved policies and the clock are applied
+// in the browser by settings/sla/_components/sla-store.ts (startSlaBadgeSync, started at the end of this file).
+const SLA_POLICY_BY_INBOX_TYPE: Record<string, number> = { Website: 5, WhatsApp: 5 };
 
-function slaFor(kind: "FRT" | "NRT", waiting: number | undefined): ConversationMeta["sla"] {
-  const left = SLA_TARGET_MINUTES - (waiting ?? 0);
-  if (left > 0) return { kind, state: "due", time: `${left}m` };
-  const late = -left;
-  return { kind, state: "missed", time: late < 60 ? `${Math.max(late, 1)}m` : `${Math.floor(late / 60)}h` };
+/** An applied SLA: its policy and how many minutes ago the times Chatwoot counts from were. */
+export interface AppliedSla {
+  policyId: number;
+  inbox: string;
+  createdAgo: number;
+  firstReplyAgo: number | null;
+  waitingAgo: number | null;
 }
+
+function appliedSlaOf(conversation: Conversation | undefined): AppliedSla | null {
+  const type = inboxes.find((inbox) => inbox.id === conversation?.channel)?.channelType ?? "";
+  const policyId = SLA_POLICY_BY_INBOX_TYPE[type];
+  if (!conversation || !policyId) return null;
+  const ago = conversation.messages.map((message) => message.ago ?? conversation.ago ?? 0);
+  const firstReply = conversation.messages.findIndex((message) => message.align === "end");
+  const lastReply = conversation.messages.findLastIndex((message) => message.align === "end");
+  const waiting = firstReply < 0 ? -1 : conversation.messages.findIndex((m, i) => i > lastReply && m.align === "start");
+  return {
+    policyId,
+    inbox: conversation.channel,
+    createdAgo: Math.max(conversation.ago ?? 0, ...ago),
+    firstReplyAgo: firstReply < 0 ? null : ago[firstReply],
+    waitingAgo: waiting < 0 ? null : ago[waiting],
+  };
+}
+
+/** The badge of an applied SLA at `now` (ms), the minutes-ago counted back from `agesAt` (ms). */
+export function slaBadge(
+  applied: AppliedSla,
+  policies: Sla[],
+  hours: WorkingHours | null,
+  resolved: boolean,
+  now: number,
+  agesAt: number,
+): ConversationMeta["sla"] {
+  const policy = policies.find((sla) => sla.id === applied.policyId);
+  if (!policy) return null;
+  const at = (minutes: number | null) => (minutes === null ? null : agesAt - minutes * 60_000);
+  const status = evaluateSla(
+    policy,
+    {
+      createdAt: agesAt - applied.createdAgo * 60_000,
+      firstReplyAt: at(applied.firstReplyAgo),
+      waitingSince: at(applied.waitingAgo),
+      resolved,
+    },
+    hours,
+    now,
+  );
+  if (!status) return null;
+  return {
+    kind: status.kind,
+    state: status.missed ? "missed" : "due",
+    time: formatSlaTime(status.left),
+    policy: policy.name,
+    target: status.threshold / 60,
+  };
+}
+
+/** The conversations with an applied SLA (seed flags f or n, as before T-261), by id. */
+export const appliedSlas: Record<number, AppliedSla> = {};
 
 export const initialMeta: Record<number, ConversationMeta> = Object.fromEntries(
   seeds.map(([id, status, priority, assignee, team, flags, snoozed], index) => {
@@ -359,10 +517,12 @@ export const initialMeta: Record<number, ConversationMeta> = Object.fromEntries(
     const participants = [assignee, writer, flags.includes("p") ? CURRENT_AGENT_ID : 0, ...noteWriters(id)].filter(
       (value, i, list) => value > 0 && list.indexOf(value) === i,
     );
-    const waiting = studioConversations.find((c) => c.id === id)?.ago;
-    let sla: ConversationMeta["sla"] = null;
-    if (flags.includes("f")) sla = slaFor("FRT", waiting);
-    else if (flags.includes("n")) sla = slaFor("NRT", waiting);
+    // T-261: the first paint (server and browser alike) counts the start policies on a fixed clock with no working
+    // hours, so it renders the same on both; sla-store.ts then applies the saved policies, the hours and the clock.
+    const applied =
+      flags.includes("f") || flags.includes("n") ? appliedSlaOf(studioConversations.find((c) => c.id === id)) : null;
+    if (applied) appliedSlas[id] = applied;
+    const sla = applied ? slaBadge(applied, initialSlas, null, status === "resolved", 0, 0) : null;
     // Created order is not the same as activity order, so the two sorts give different lists.
     const createdRank = (index * 7) % seeds.length;
     // A conversation whose messages are all from yesterday cannot have been created today.
@@ -390,17 +550,18 @@ export const initialMeta: Record<number, ConversationMeta> = Object.fromEntries(
 export const baseConversations: Conversation[] = studioConversations;
 
 export function inboxOf(conversation: Conversation): Inbox {
-  return inboxes.find((inbox) => inbox.id === conversation.channel) ?? inboxes[0];
+  const live = liveInboxes();
+  return live.find((inbox) => inbox.id === conversation.channel) ?? live[0] ?? inboxes[0];
 }
 
 export function agentName(id: number | null | undefined): string | null {
   if (!id) return null;
-  return agents.find((agent) => agent.id === id)?.name ?? null;
+  return liveAgents().find((agent) => agent.id === id)?.name ?? null;
 }
 
 export function teamName(id: string | null | undefined): string | null {
   if (!id) return null;
-  return teams.find((team) => team.id === id)?.name ?? null;
+  return liveTeams().find((team) => team.id === id)?.name ?? null;
 }
 
 // Attachments and activity lines added to the Studio sample threads (private notes are above initialMeta).
@@ -435,7 +596,28 @@ const CURRENT_NAME = "Arham Khan";
 // takes private notes (ReplyBox.vue isEditorDisabled / canSendPublicReply).
 const replyWindowClosed = new Set([21, 24]);
 
+let linkedThreads: Record<number, CwMessage[]> | null = null;
+
+export function setLinkedThreads(threads: Record<number, CwMessage[]> | null): void {
+  linkedThreads = threads ? { ...threads } : null;
+  if (threads) {
+    requiredOnResolve.splice(0, requiredOnResolve.length);
+  } else {
+    requiredOnResolve.splice(0, requiredOnResolve.length, ...defaultRequiredOnResolve);
+  }
+}
+
+export function setLinkedThread(convId: number, thread: CwMessage[]): void {
+  linkedThreads ??= {};
+  linkedThreads[convId] = thread;
+}
+
+export function getLinkedThread(convId: number): CwMessage[] | undefined {
+  return linkedThreads?.[convId];
+}
+
 export function canReply(conversation: Conversation): boolean {
+  if (linkedSession()) return true;
   return !replyWindowClosed.has(conversation.id);
 }
 
@@ -475,7 +657,14 @@ export const csatRatingLabels: Record<number, string> = {
   5: "😍 Excellent",
 };
 
-export function buildThread(conversation: Conversation, meta: ConversationMeta | undefined): CwMessage[] {
+export function buildThread(
+  conversation: Conversation,
+  meta: ConversationMeta | undefined,
+  deleted?: readonly string[],
+): CwMessage[] {
+  if (linkedThreads !== null) {
+    return withDeletions(conversation.id, linkedThreads[conversation.id] ?? [], deleted);
+  }
   const inbox = inboxOf(conversation);
   const assignee = agentName(meta?.assigneeId);
   const thread: CwMessage[] = [];
@@ -491,12 +680,14 @@ export function buildThread(conversation: Conversation, meta: ConversationMeta |
           : `Assigned to ${assignee} by Arham Khan`,
     });
   }
-  if (meta?.teamId) {
+  // T-74: a team id that no team has (the sample ids, the teams now start empty) gets no line, not "null team".
+  const team = teamName(meta?.teamId);
+  if (team) {
     thread.push({
       id: `a-${conversation.id}-team`,
       kind: "activity",
       time: conversation.messages[0]?.time ?? "",
-      text: `Assigned to ${teamName(meta.teamId)} team by Arham Khan`,
+      text: `Assigned to ${team} team by Arham Khan`,
     });
   }
 
@@ -546,7 +737,9 @@ export function buildThread(conversation: Conversation, meta: ConversationMeta |
     });
   }
 
-  if (meta?.status === "resolved") {
+  // F-5A: a resolve made in the preview has its own line, with who did it and when (sim-thread-persist.ts); this one,
+  // and its sample CSAT survey, belong to the sample's resolved conversations.
+  if (meta?.status === "resolved" && !meta.statusAt) {
     thread.push({
       id: `a-${conversation.id}-resolved`,
       kind: "activity",
@@ -565,7 +758,8 @@ export function buildThread(conversation: Conversation, meta: ConversationMeta |
       });
     }
   }
-  if (meta?.status === "snoozed") {
+  // F-5A: a snooze made in the preview has its own line (sim-thread-persist.ts); this one is the sample's.
+  if (meta?.status === "snoozed" && !meta.statusAt) {
     thread.push({
       id: `a-${conversation.id}-snoozed`,
       kind: "activity",
@@ -573,7 +767,7 @@ export function buildThread(conversation: Conversation, meta: ConversationMeta |
       text: `${assignee ?? "Arham Khan"} has snoozed this conversation`,
     });
   }
-  return thread;
+  return withDeletions(conversation.id, thread, deleted);
 }
 
 // Chatwoot getLastMessage (helper/conversationHelper.js): the last message that is not an activity, so the card and
@@ -584,11 +778,15 @@ export function lastPreview(
   conversation: Conversation,
   meta: ConversationMeta | undefined,
   sent?: CwMessage[],
+  deleted?: readonly string[],
 ): { text: string; icon?: "image" | "audio" | "file" | "location"; byAgent?: boolean } {
   // The CSAT survey is an automatic message, so the card keeps showing what the customer and the agent said.
   const said = (message: CwMessage) =>
     (message.kind === "incoming" || message.kind === "outgoing") && !message.csat && !message.form;
-  const last = (sent ?? []).filter(said).at(-1) ?? buildThread(conversation, meta).filter(said).at(-1);
+  const last =
+    withDeletions(conversation.id, sent ?? [], deleted)
+      .filter(said)
+      .at(-1) ?? buildThread(conversation, meta, deleted).filter(said).at(-1);
   if (!last) return { text: "No Messages" };
   const byAgent = last.kind === "outgoing";
   const files = last.attachments;
@@ -627,6 +825,22 @@ export const whatsappTemplates: {
   body: template.body,
   examples: template.examples,
 }));
+
+// F-3: the reply box and the conversation dialogs read the account's template list as it is now (Settings > Templates,
+// saved in the preview's shared lists), so a template approved there is offered at once; the list above is only the
+// starting sample. Same rule as `sendableTemplates`: approved Meta templates.
+const chatTemplatesOf = (rows: SharedWhatsAppTemplate[]): typeof whatsappTemplates =>
+  rows
+    .filter((template) => template.status === "APPROVED" && template.provider === "Meta")
+    .map((template) => ({
+      name: template.name,
+      language: template.code,
+      category: template.category,
+      body: template.body,
+      examples: template.examples,
+    }));
+export const useLiveWhatsappTemplates = () => chatTemplatesOf(useCwShared((state) => state.whatsappTemplates));
+export const liveWhatsappTemplates = () => chatTemplatesOf(useCwShared.getState().whatsappTemplates);
 
 // The published articles of the Help Center (help-center/_components/data.ts), for the reply box "Insert article"
 // and the search Articles tab, so both list the same articles as Help Center > Articles.
@@ -706,7 +920,25 @@ export const conversationAttributeDefs = [
   { key: "product", label: "Product", type: "List", options: ["Studio Cloud", "Studio API", "Studio Mobile"] },
   { key: "callback_requested", label: "Callback requested", type: "Checkbox" },
   { key: "feedback_type", label: "Feedback type", type: "List", options: ["Bug", "Feature request"] },
+  // F161: the two attributes Settings > Conversation workflow marks "required on resolution" by default
+  // (workflow-page.tsx RequiredAttributesCard), with the same names, list values and regex as Settings > Attributes.
+  { key: "order_number", label: "Order number", type: "Text" },
+  {
+    key: "resolution_reason",
+    label: "Resolution reason",
+    type: "List",
+    options: ["Refund issued", "Replaced item", "Information only"],
+  },
 ] as const;
+
+const defaultRequiredOnResolve: { key: string; regex?: RegExp; cue?: string }[] = [
+  { key: "resolution_reason" },
+  { key: "order_number", regex: /^QA-[0-9]{6}$/, cue: "Order numbers look like QA-123456" },
+];
+
+// F161: Chatwoot account setting conversation_required_attributes (useConversationRequiredAttributes.js). Copied from
+// the Settings default; Settings keeps its own copy in page state, so a change there does not reach this list yet.
+export const requiredOnResolve: { key: string; regex?: RegExp; cue?: string }[] = [...defaultRequiredOnResolve];
 
 // Conversations that carry product feedback (used by the "Product Feedback" folder).
 const feedbackTypes: Record<number, string> = { 13: "Bug", 15: "Feature request", 16: "Bug", 19: "Feature request" };
@@ -761,6 +993,7 @@ export function conversationInfo(conversation: Conversation) {
 const unverifiedSessions = new Set([16]);
 
 export function isUnverifiedSession(conversation: Conversation): boolean {
+  if (linkedSession()) return false;
   return conversation.channel === "chat" && unverifiedSessions.has(conversation.id);
 }
 
@@ -811,3 +1044,9 @@ export const snoozeOptions = [
   { value: "tomorrow", label: "Tomorrow", display: "Snoozed until tomorrow" },
   { value: "next_week", label: "Next week", display: "Snoozed until next week" },
 ] as const;
+
+// T-261: in the browser, keep the SLA badges on the saved Settings > SLA policies. The SLA store writes the badges into
+// the conversation store, which imports this module, so it is imported only after this module has run.
+if (typeof window !== "undefined")
+  // biome-ignore lint/suspicious/noImportCycles: deferred import, runs after both modules are loaded.
+  void import("@/app/(main)/dashboard/settings/sla/_components/sla-store").then((m) => m.startSlaBadgeSync());

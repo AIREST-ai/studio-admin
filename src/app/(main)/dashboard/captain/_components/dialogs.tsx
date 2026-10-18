@@ -42,7 +42,11 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import { type Assistant, assistants, availableInboxes, type Scenario, type Tool, tools } from "./data";
+import { type Assistant, availableInboxes, type Scenario, type Tool } from "./data";
+import { nextId, setCaptainList, useCaptainList } from "./store";
+
+// Date shown on rows created in this tab (same "Oct 9, 2026" format as data.ts).
+const today = () => new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 interface DialogProps {
   open: boolean;
@@ -110,6 +114,7 @@ function useForm<T extends Record<string, string>>(initial: T) {
 const isUrl = (v: string) => /^https?:\/\/[^\s.]+\.[^\s]+/.test(v);
 
 function AssistantSelect() {
+  const assistants = useCaptainList("assistants");
   return (
     <Field label="Assistant">
       <NativeSelect className="w-full" defaultValue="1">
@@ -123,7 +128,14 @@ function AssistantSelect() {
   );
 }
 
+const assistantFeatures = [
+  { key: "faq", label: "Generate FAQs from resolved conversations" },
+  { key: "memory", label: "Capture key details as memories from customer interactions." },
+  { key: "citation", label: "Include source citations in responses" },
+] as const;
+
 export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps & { assistant?: Assistant }) {
+  const [features, setFeatures] = React.useState(assistant?.features ?? { faq: false, memory: false, citation: false });
   const { values, errors, set, validate } = useForm({
     name: assistant?.name ?? "",
     description: assistant?.description ?? "",
@@ -138,6 +150,18 @@ export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps &
       })
     )
       return;
+    const fields = {
+      name: values.name.trim(),
+      description: values.description.trim(),
+      productName: values.productName.trim(),
+      updatedAt: "Just now",
+      features,
+    };
+    setCaptainList("assistants", (list) =>
+      assistant
+        ? list.map((a) => (a.id === assistant.id ? { ...a, ...fields } : a))
+        : [...list, { id: nextId(list), inboxes: 0, documents: 0, faqs: 0, ...fields }],
+    );
     toast.success(assistant ? "Assistant updated successfully" : "Assistant created successfully");
     onOpenChange(false);
   }
@@ -166,9 +190,13 @@ export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps &
               placeholder="Enter assistant description"
               value={values.description}
               onChange={set("description")}
+              maxLength={500}
               aria-invalid={!!errors.description}
               className={cn("min-h-20", invalid)}
             />
+            <span className="justify-self-end text-muted-foreground text-xs tabular-nums">
+              {values.description.length}/500
+            </span>
           </Field>
           <Field label="Product Name" error={errors.productName}>
             <Input
@@ -179,6 +207,18 @@ export function AssistantDialog({ open, onOpenChange, assistant }: DialogProps &
               className={invalid}
             />
           </Field>
+          <fieldset className="grid gap-2.5">
+            <legend className="mb-3 font-medium text-sm">Features</legend>
+            {assistantFeatures.map((f) => (
+              <Label key={f.key} className="flex items-center gap-2 font-medium">
+                <Checkbox
+                  checked={features[f.key]}
+                  onCheckedChange={(c) => setFeatures((p) => ({ ...p, [f.key]: c === true }))}
+                />
+                {f.label}
+              </Label>
+            ))}
+          </fieldset>
         </div>
         <Footer submit={assistant ? "Update" : "Create"} onSubmit={submit} />
       </DialogContent>
@@ -199,6 +239,21 @@ export function DocumentDialog({ open, onOpenChange }: DialogProps) {
       setFileError("Please select a PDF file");
       return;
     }
+    const url = type === "url" ? values.url.trim() : (file ?? "");
+    setCaptainList("documents", (list) => [
+      {
+        id: nextId(list),
+        name: values.name.trim() || url,
+        source: type === "url" ? "web" : "pdf",
+        url,
+        status: "Updating",
+        syncedAgo: "Just now",
+        faqs: 0,
+        conversations: 0,
+        createdAt: today(),
+      },
+      ...list,
+    ]);
     toast.success("Document created successfully");
     onOpenChange(false);
   }
@@ -287,13 +342,23 @@ export function FaqDialog({
   open,
   onOpenChange,
   initial,
-}: DialogProps & { initial?: { question: string; answer: string } }) {
+}: DialogProps & { initial?: { id: number; question: string; answer: string } }) {
   const { values, errors, set, validate } = useForm({
     question: initial?.question ?? "",
     answer: initial?.answer ?? "",
   });
   function submit() {
     if (!validate({ question: "Please provide a valid question.", answer: "Please provide a valid answer." })) return;
+    const question = values.question.trim();
+    const answer = values.answer.trim();
+    setCaptainList("faqs", (list) =>
+      initial
+        ? list.map((f) => (f.id === initial.id ? { ...f, question, answer } : f))
+        : [
+            { id: nextId(list), question, answer, status: "approved", source: "Added manually", createdAt: today() },
+            ...list,
+          ],
+    );
     toast.success(initial ? "FAQ updated successfully" : "FAQ added successfully");
     onOpenChange(false);
   }
@@ -380,6 +445,19 @@ export function ToolDialog({ open, onOpenChange, tool }: DialogProps & { tool?: 
     const badParams = params.filter((p) => !p.name.trim()).map((p) => p.pid);
     setParamErrors(badParams);
     if (!ok || badParams.length) return;
+    const fields = {
+      title: values.title.trim(),
+      description: values.description.trim(),
+      method: values.method as Tool["method"],
+      endpoint: values.endpoint.trim(),
+      auth,
+      params: params.length,
+    };
+    setCaptainList("tools", (list) =>
+      tool
+        ? list.map((t) => (t.id === tool.id ? { ...t, ...fields } : t))
+        : [...list, { id: nextId(list), enabled: true, ...fields }],
+    );
     toast.success(tool ? "Custom tool updated successfully" : "Custom tool created successfully");
     onOpenChange(false);
   }
@@ -568,6 +646,15 @@ export function ScenarioDialog({ open, onOpenChange, scenario }: DialogProps & {
     instruction: scenario?.instruction ?? "",
   });
   const [toolsOpen, setToolsOpen] = React.useState(false);
+  // Set by a successful Create; the fields are cleared once the closing dialog is gone, not while it fades out.
+  const [clearPending, setClearPending] = React.useState(false);
+  // Reopened before the close ended: clear now, so the new draft starts empty and is not cleared later.
+  if (open && clearPending) {
+    setClearPending(false);
+    setValues({ title: "", description: "", instruction: "" });
+    setToolsOpen(false);
+  }
+  const tools = useCaptainList("tools");
   function submit() {
     if (
       !validate({
@@ -577,7 +664,28 @@ export function ScenarioDialog({ open, onOpenChange, scenario }: DialogProps & {
       })
     )
       return;
+    const instruction = values.instruction.trim();
+    const fields = {
+      title: values.title.trim(),
+      description: values.description.trim(),
+      instruction,
+      // Tools referenced as [@Tool name] in "How to handle", as the dropdown inserts them.
+      tools: [
+        ...new Set([
+          ...(scenario?.tools ?? []),
+          ...tools.filter((t) => instruction.includes(`[@${t.title}]`)).map((t) => t.title),
+        ]),
+      ],
+    };
+    setCaptainList("scenarios", (list) =>
+      scenario
+        ? list.map((x) => (x.id === scenario.id ? { ...x, ...fields } : x))
+        : [...list, { id: nextId(list), enabled: true, ...fields }],
+    );
     toast.success(scenario ? "Scenarios updated successfully" : "Scenarios added successfully");
+    // The create dialog stays mounted: after a successful Create the next "Add a scenario" starts empty.
+    // A cancelled draft and the edit dialog keep their values.
+    if (!scenario) setClearPending(true);
     onOpenChange(false);
   }
   function insertTool(name: string) {
@@ -585,7 +693,16 @@ export function ScenarioDialog({ open, onOpenChange, scenario }: DialogProps & {
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        // Radix calls this after the exit animation, once the content is unmounted.
+        onCloseAutoFocus={() => {
+          if (!clearPending) return;
+          setClearPending(false);
+          setValues({ title: "", description: "", instruction: "" });
+          setToolsOpen(false);
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{scenario ? "Update scenario" : "Create a scenario"}</DialogTitle>
           <DialogDescription>
@@ -651,8 +768,14 @@ export function ScenarioDialog({ open, onOpenChange, scenario }: DialogProps & {
 
 export function InboxDialog({ open, onOpenChange }: DialogProps) {
   const { values, errors, set, validate } = useForm({ inbox: "" });
+  const connected = useCaptainList("connectedInboxes");
+  const choices = availableInboxes.filter((name) => !connected.some((c) => c.name === name));
   function submit() {
     if (!validate({ inbox: "An inbox selection is required." })) return;
+    setCaptainList("connectedInboxes", (list) => [
+      ...list,
+      { id: nextId(list), name: values.inbox, channel: values.inbox.split(" ")[0], detail: "" },
+    ]);
     toast.success("Inbox connected successfully");
     onOpenChange(false);
   }
@@ -672,7 +795,7 @@ export function InboxDialog({ open, onOpenChange }: DialogProps) {
             <option value="" disabled>
               Choose the inbox to deploy the assistant.
             </option>
-            {availableInboxes.map((i) => (
+            {choices.map((i) => (
               <option key={i}>{i}</option>
             ))}
           </NativeSelect>

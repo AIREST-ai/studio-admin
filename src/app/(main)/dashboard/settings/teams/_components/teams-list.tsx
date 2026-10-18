@@ -5,7 +5,6 @@ import Link from "next/link";
 
 import { cn } from "cn";
 import { MessageSquare, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,10 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-import { agents } from "../../inboxes/_components/data";
+import { useAgentRoster } from "../../inboxes/_components/inboxes-store";
 import { AgentAvatar, ConfirmDeleteDialog } from "../../inboxes/_components/settings-ui";
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
-import { openConversations, type Team, teams as initialTeams } from "./data";
+import { openConversations, type Team } from "./data";
+import { deleteTeamWithNotice, useTeams } from "./teams-store";
 
 // Tabs from Chatwoot's "Allow auto assign for this team" setting.
 type TeamView = "all" | "auto" | "manual";
@@ -32,10 +32,11 @@ const teamViews: Record<TeamView, { label: string; match: (team: Team) => boolea
 };
 
 export function TeamsList() {
+  const agents = useAgentRoster(); // F-6B: a team's agents count an invited agent too
   const [query, setQuery] = React.useState("");
   const [view, setView] = React.useState<TeamView>("all");
   const [toDelete, setToDelete] = React.useState<Team | null>(null);
-  const [teams, setTeams] = React.useState(initialTeams);
+  const teams = useTeams();
 
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -111,7 +112,7 @@ export function TeamsList() {
                     </TableCell>
                     <TableCell className="py-3.5">
                       <Link
-                        href={`/dashboard/chat/teams/${team.name.toLowerCase()}`}
+                        href={`/dashboard/chat/teams/${team.slug}`}
                         className="inline-flex items-center gap-1.5 tabular-nums hover:underline"
                       >
                         <MessageSquare className="size-3.5 text-muted-foreground" />
@@ -151,7 +152,7 @@ export function TeamsList() {
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/chat/teams/${team.name.toLowerCase()}`}>
+                            <Link href={`/dashboard/chat/teams/${team.slug}`}>
                               <MessageSquare /> View conversations
                             </Link>
                           </DropdownMenuItem>
@@ -168,22 +169,20 @@ export function TeamsList() {
             </TableBody>
           </Table>
         ) : (
-          <NoResults>No teams found matching your search</NoResults>
+          <NoResults>
+            {teams.length ? "No teams found matching your search" : "There are no teams created on this account."}
+          </NoResults>
         )}
       </SettingsShell>
 
       <ConfirmDeleteDialog
         open={toDelete !== null}
         onOpenChange={(open) => !open && setToDelete(null)}
-        title="Are you sure you want to delete the team?"
+        title="Delete team"
         message="Deleting the team will remove the team assignment from the conversations assigned to this team."
         confirmValue={toDelete?.name ?? ""}
-        placeholder={`Please type ${toDelete?.name ?? ""} to confirm`}
-        confirmText={`Delete ${toDelete?.name ?? ""}`}
-        rejectText="Cancel"
         onConfirm={() => {
-          if (toDelete) setTeams((list) => list.filter((t) => t.id !== toDelete.id));
-          toast.success("Team deleted successfully.");
+          if (toDelete) void deleteTeamWithNotice(toDelete);
         }}
       />
     </>

@@ -1,8 +1,12 @@
 "use client";
-// Studio pattern (contacts/_components/contacts-list.tsx): big heading + primary action, line tabs with counts,
+// Studio pattern (contacts/_components/contacts-list.tsx): big heading + primary action,
 // card with search and filter chips, table with coloured badges and a "…" menu per row.
 // Chatwoot v4.18 content (components-next/Campaigns): Live chat / SMS / WhatsApp campaigns, Enabled/Disabled and
 // Scheduled/Processing/Completed statuses, "Sent by … from …", "Sent from … on …", Edit / Delete / View analytics.
+// M129-C (Fahad 129.3): every channel has a page with its official conditions (Instagram, Messenger, TikTok and Email
+// added; TikTok and Email say why they have no campaigns, with the source). One-off campaigns are made in the composer
+// (/dashboard/campaigns/new), go Draft → Scheduled → Running → Completed / Failed, can be sent now, retried and opened
+// in their report, and are saved in the preview (store.ts). Sending is simulated and says so.
 import * as React from "react";
 
 import Link from "next/link";
@@ -10,24 +14,28 @@ import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
 import {
+  Ban,
   Bot,
   ChartNoAxesColumn,
   Globe,
+  Info,
   Megaphone,
   MessageSquareText,
   MoreHorizontal,
   Plus,
-  Search,
+  RotateCcw,
+  Send,
   SlidersHorizontal,
   SlidersVertical,
   Smartphone,
   Trash2,
 } from "lucide-react";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -38,7 +46,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   Pagination,
   PaginationContent,
@@ -49,79 +56,74 @@ import {
 } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SimBadge } from "@/lib/cw/preview-sim-ui";
 import { getInitials } from "@/lib/utils";
 
 import { PageHeading, personToneClass } from "../../contacts/_components/studio-ui";
-import {
-  ConfirmDeleteCampaignDialog,
-  LiveChatCampaignDialog,
-  SMSCampaignDialog,
-  WhatsAppCampaignDialog,
-} from "./campaign-forms";
-import {
-  type LiveChatCampaign,
-  liveChatCampaigns,
-  type OneOffCampaign,
-  type OneOffStatus,
-  smsCampaigns,
-  whatsappCampaigns,
-} from "./data";
+import { ChannelRules } from "./campaign-composer";
+import { ConfirmDeleteCampaignDialog, LiveChatCampaignDialog } from "./campaign-forms";
+import { retryFailed, SIMULATED_SEND, sendNow, useCampaignClock } from "./campaign-runtime";
+import { type BroadcastChannel, CHANNELS } from "./channels";
+import type { LiveChatCampaign, OneOffCampaign, OneOffStatus } from "./data";
+import { CampaignStatusBadge } from "./status-badge";
+import { useCampaignList } from "./store";
 
-export type CampaignTab = "live_chat" | "sms" | "whatsapp";
+export type CampaignTab = "live_chat" | "sms" | "whatsapp" | "instagram" | "messenger" | "tiktok" | "email";
 
-const tabs: { value: CampaignTab; label: string; href: string; icon: React.ElementType }[] = [
-  { value: "live_chat", label: "Live chat", href: "/dashboard/campaigns/live-chat", icon: MessageSquareText },
-  { value: "sms", label: "SMS", href: "/dashboard/campaigns/sms", icon: Smartphone },
-  { value: "whatsapp", label: "WhatsApp", href: "/dashboard/campaigns/whatsapp", icon: Megaphone },
-];
-
-const copy: Record<CampaignTab, { title: string; description: string; emptyTitle: string; emptySubtitle: string }> =
-  {
-    live_chat: {
-      title: "Live chat campaigns",
-      description: "Proactive messages shown to visitors of your website.",
-      emptyTitle: "No live chat campaigns are available",
-      emptySubtitle: "Connect with your customers using proactive messages.  Click 'Create campaign' to get started.",
-    },
-    sms: {
-      title: "SMS campaigns",
-      description: "One-off SMS broadcasts to labelled contacts.",
-      emptyTitle: "No SMS campaigns are available",
-      emptySubtitle:
-        "Launch an SMS campaign to reach your customers directly. Send offers or make announcements with ease. Click 'Create campaign' to get started.",
-    },
-    whatsapp: {
-      title: "WhatsApp campaigns",
-      description: "Approved WhatsApp templates sent to labelled contacts.",
-      emptyTitle: "No WhatsApp campaigns are available",
-      emptySubtitle:
-        "Launch a WhatsApp campaign to reach your customers directly. Send offers or make announcements with ease. Click 'Create campaign' to get started.",
-    },
-  };
-
-const badgeBase = "gap-1.5 border px-2 py-1 font-medium";
-
-// Chatwoot colours: active (Enabled, Scheduled, Processing) = teal, inactive (Disabled, Completed) = grey.
-const teal = "border-teal-500/20 bg-teal-500/10 text-teal-600 dark:text-teal-400";
-const grey = "border-border bg-muted/50 text-muted-foreground";
-const statusTone: Record<string, { label: string; badge: string; dot: string }> = {
-  enabled: { label: "Enabled", badge: teal, dot: "bg-teal-500" },
-  disabled: { label: "Disabled", badge: grey, dot: "bg-muted-foreground" },
-  scheduled: { label: "Scheduled", badge: teal, dot: "bg-teal-500" },
-  processing: { label: "Processing", badge: teal, dot: "animate-pulse bg-teal-500" },
-  completed: { label: "Completed", badge: grey, dot: "bg-muted-foreground" },
+const copy: Record<CampaignTab, { title: string; description: string; emptyTitle: string; emptySubtitle: string }> = {
+  live_chat: {
+    title: "Live chat campaigns",
+    description: "Proactive messages shown to visitors of your website.",
+    emptyTitle: "No live chat campaigns are available",
+    emptySubtitle: "Connect with your customers using proactive messages.  Click 'Create campaign' to get started.",
+  },
+  sms: {
+    title: "SMS campaigns",
+    description: "One-off SMS broadcasts to labelled contacts.",
+    emptyTitle: "No SMS campaigns are available",
+    emptySubtitle:
+      "Launch an SMS campaign to reach your customers directly. Send offers or make announcements with ease. Click 'Create campaign' to get started.",
+  },
+  whatsapp: {
+    title: "WhatsApp campaigns",
+    description: "Approved WhatsApp templates sent to labelled contacts.",
+    emptyTitle: "No WhatsApp campaigns are available",
+    emptySubtitle:
+      "Launch a WhatsApp campaign to reach your customers directly. Send offers or make announcements with ease. Click 'Create campaign' to get started.",
+  },
+  instagram: {
+    title: "Instagram campaigns",
+    description: "Messages to customers who wrote to your Instagram account in the last 24 hours.",
+    emptyTitle: "No Instagram campaigns yet",
+    emptySubtitle:
+      "Instagram campaigns reach only customers whose 24-hour window is open. Click 'Create campaign' to get started.",
+  },
+  messenger: {
+    title: "Messenger campaigns",
+    description: "Messages to customers who wrote to your Facebook Page in the last 24 hours.",
+    emptyTitle: "No Messenger campaigns yet",
+    emptySubtitle:
+      "Messenger campaigns reach only customers whose 24-hour window is open. Click 'Create campaign' to get started.",
+  },
+  tiktok: {
+    title: "TikTok campaigns",
+    description: "TikTok does not allow campaigns: a business cannot start a conversation.",
+    emptyTitle: "TikTok has no campaigns",
+    emptySubtitle: "TikTok's Business Messaging API forbids messaging anyone who has not messaged the business first.",
+  },
+  email: {
+    title: "Email campaigns",
+    description: "Campaigns do not send from email inboxes.",
+    emptyTitle: "Email has no campaigns here",
+    emptySubtitle: "The engine accepts campaigns for Website, SMS and WhatsApp inboxes only.",
+  },
 };
 
-function CampaignStatusBadge({ status }: { status: keyof typeof statusTone }) {
-  const tone = statusTone[status];
-  return (
-    <Badge variant="outline" className={cn(badgeBase, tone.badge)}>
-      <span className={cn("size-1.5 rounded-full", tone.dot)} />
-      {tone.label}
-    </Badge>
-  );
-}
+const ONE_OFF_TABS = ["sms", "whatsapp", "instagram", "messenger"] as const;
+type OneOffTab = (typeof ONE_OFF_TABS)[number];
+const isOneOffTab = (tab: CampaignTab): tab is OneOffTab => (ONE_OFF_TABS as readonly string[]).includes(tab);
+
+const badgeBase = "gap-1.5 border px-2 py-1 font-medium";
 
 function AudienceBadge({ label }: { label: string }) {
   return (
@@ -147,7 +149,7 @@ function ChipSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm">
+      <SelectTrigger size="sm" aria-label={label}>
         <span className="text-muted-foreground">{label}:</span>
         <SelectValue />
       </SelectTrigger>
@@ -190,11 +192,15 @@ function RowMenu({
   onEdit,
   onDelete,
   analyticsHref,
+  onSendNow,
+  onRetry,
 }: {
   title: string;
   onEdit?: () => void;
   onDelete: () => void;
   analyticsHref?: string;
+  onSendNow?: () => void;
+  onRetry?: { count: number; run: () => void };
 }) {
   return (
     <DropdownMenu>
@@ -214,14 +220,24 @@ function RowMenu({
             <SlidersVertical /> Edit
           </DropdownMenuItem>
         ) : null}
+        {onSendNow ? (
+          <DropdownMenuItem onSelect={onSendNow}>
+            <Send /> Send now
+          </DropdownMenuItem>
+        ) : null}
         {analyticsHref ? (
           <DropdownMenuItem asChild>
             <Link href={analyticsHref}>
-              <ChartNoAxesColumn /> View analytics
+              <ChartNoAxesColumn /> View {analyticsHref.includes("/report/") ? "report" : "analytics"}
             </Link>
           </DropdownMenuItem>
         ) : null}
-        {onEdit || analyticsHref ? <DropdownMenuSeparator /> : null}
+        {onRetry ? (
+          <DropdownMenuItem onSelect={onRetry.run}>
+            <RotateCcw /> Retry failed ({onRetry.count})
+          </DropdownMenuItem>
+        ) : null}
+        {onEdit || analyticsHref || onSendNow || onRetry ? <DropdownMenuSeparator /> : null}
         <DropdownMenuItem variant="destructive" onSelect={onDelete}>
           <Trash2 /> Delete
         </DropdownMenuItem>
@@ -316,9 +332,22 @@ const oneOffColumnLabels: Record<OneOffColumn, string> = {
 
 export function CampaignsList({ tab, empty = false }: { tab: CampaignTab; empty?: boolean }) {
   const router = useRouter();
-  const [live, setLive] = React.useState<LiveChatCampaign[]>(empty ? [] : liveChatCampaigns);
-  const [sms, setSms] = React.useState<OneOffCampaign[]>(empty ? [] : smsCampaigns);
-  const [whatsapp, setWhatsapp] = React.useState<OneOffCampaign[]>(empty ? [] : whatsappCampaigns);
+  // Shared store so created/edited/deleted campaigns survive switching tabs; `?empty` previews a blank list.
+  const [storedLive, setStoredLive] = useCampaignList("live");
+  const [storedSms, setStoredSms] = useCampaignList("sms");
+  const [storedWhatsapp, setStoredWhatsapp] = useCampaignList("whatsapp");
+  const [storedInstagram, setStoredInstagram] = useCampaignList("instagram");
+  const [storedMessenger, setStoredMessenger] = useCampaignList("messenger");
+  useCampaignClock();
+  const [emptyLive, setEmptyLive] = React.useState<LiveChatCampaign[]>([]);
+  const [emptyOneOff, setEmptyOneOff] = React.useState<OneOffCampaign[]>([]);
+  const [live, setLive] = empty ? [emptyLive, setEmptyLive] : [storedLive, setStoredLive];
+  const stored: Record<OneOffTab, [OneOffCampaign[], (next: (prev: OneOffCampaign[]) => OneOffCampaign[]) => void]> = {
+    sms: [storedSms, setStoredSms],
+    whatsapp: [storedWhatsapp, setStoredWhatsapp],
+    instagram: [storedInstagram, setStoredInstagram],
+    messenger: [storedMessenger, setStoredMessenger],
+  };
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState("All");
   const [inbox, setInbox] = React.useState("All");
@@ -331,12 +360,15 @@ export function CampaignsList({ tab, empty = false }: { tab: CampaignTab; empty?
 
   const isLive = tab === "live_chat";
   const isWhatsApp = tab === "whatsapp";
-  const oneOff = isWhatsApp ? whatsapp : sms;
-  const setOneOff = isWhatsApp ? setWhatsapp : setSms;
-  const counts: Record<CampaignTab, number> = { live_chat: live.length, sms: sms.length, whatsapp: whatsapp.length };
+  const oneOffTab: OneOffTab | null = isOneOffTab(tab) ? tab : null;
+  const unavailable = tab === "tiktok" || tab === "email";
+  const [oneOff, setOneOff] = empty || !oneOffTab ? [emptyOneOff, setEmptyOneOff] : stored[oneOffTab];
+  const count = isLive ? live.length : oneOff.length;
   const text = copy[tab];
 
-  const statusOptions = isLive ? ["All", "Enabled", "Disabled"] : ["All", "Scheduled", "Processing", "Completed"];
+  const statusOptions = isLive
+    ? ["All", "Enabled", "Disabled"]
+    : ["All", "Draft", "Scheduled", "Running", "Completed", "Failed"];
   const inboxOptions = ["All", ...Array.from(new Set((isLive ? live : oneOff).map((c) => c.inbox)))];
   const senderOptions = ["All", ...Array.from(new Set(live.map((c) => c.sender ?? "Bot")))];
 
@@ -427,256 +459,326 @@ export function CampaignsList({ tab, empty = false }: { tab: CampaignTab; empty?
       <EmptyHeader>
         <EmptyMedia variant="icon">{isLive ? <MessageSquareText /> : <Megaphone />}</EmptyMedia>
         <EmptyTitle>{filtered ? "No campaigns match these filters" : text.emptyTitle}</EmptyTitle>
-        <EmptyDescription>{filtered ? "Try another search or clear the filters." : text.emptySubtitle}</EmptyDescription>
+        <EmptyDescription>
+          {filtered ? "Try another search or clear the filters." : text.emptySubtitle}
+        </EmptyDescription>
       </EmptyHeader>
-      <EmptyContent>
-        {filtered ? (
+      {/* T-148: Chatwoot's campaign empty states (LiveChat/SMS/WhatsAppCampaignEmptyState.vue) fill no actions slot, so
+          the header's Create campaign is the only one; Clear filters stays when the list is filtered. */}
+      {filtered ? (
+        <EmptyContent>
           <Button size="sm" variant="outline" onClick={clearFilters}>
             Clear filters
           </Button>
-        ) : (
-          <Button size="sm" onClick={() => setDialog("create")}>
-            <Plus /> Create campaign
-          </Button>
-        )}
-      </EmptyContent>
+        </EmptyContent>
+      ) : null}
     </Empty>
   );
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeading
-          title="Campaigns"
-          subtitle="Proactive website messages and one-off SMS and WhatsApp broadcasts to your contacts."
-        />
-        <Button size="sm" onClick={() => setDialog("create")}>
-          <Plus /> Create campaign
-        </Button>
+      {/* T-148: one header row, the page's own title (CAMPAIGN.<TYPE>.HEADER_TITLE), no tabs, count by the title. T-199 A1:
+          button on the block's bottom, as Chatwoot header-actions (ArticlesPage.vue:364-374, BaseSettingsHeader.vue:93,128). */}
+      <div className="flex flex-wrap items-end justify-between gap-3 md:flex-nowrap">
+        <div className="min-w-0">
+          <PageHeading
+            title={
+              <>
+                {text.title}
+                <Badge variant="secondary" className="ms-2 align-middle tabular-nums">
+                  {count}
+                </Badge>
+              </>
+            }
+            subtitle={text.description}
+          />
+        </div>
+        {isLive ? (
+          <Button size="sm" className="shrink-0" onClick={() => setDialog("create")}>
+            <Plus /> Create campaign
+          </Button>
+        ) : unavailable ? (
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <Button size="sm" disabled aria-describedby="campaign-unavailable">
+              <Ban /> Create campaign
+            </Button>
+            <span id="campaign-unavailable" className="text-muted-foreground text-xs">
+              Not available on {CHANNELS[tab].label}: see why below.
+            </span>
+          </div>
+        ) : (
+          <Button size="sm" className="shrink-0" asChild>
+            <Link href={`/dashboard/campaigns/new?channel=${tab}`}>
+              <Plus /> Create campaign
+            </Link>
+          </Button>
+        )}
       </div>
 
-      <Tabs
-        className="gap-4"
-        value={tab}
-        onValueChange={(value) => router.push(tabs.find((t) => t.value === value)?.href ?? "/dashboard/campaigns")}
-      >
-        <TabsList
-          variant="line"
-          className="w-full justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none"
+      {/* M129-C round 2: Live chat shows its conditions and sources too, like every channel. */}
+      {CHANNELS[tab] ? (
+        <details
+          className="group rounded-xl border bg-card px-4 py-3 text-sm"
+          open={unavailable || undefined}
+          data-channel-conditions={tab}
         >
-          {tabs.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
-              <t.icon />
-              {t.label}
-              <Badge variant="secondary" className="ms-1 tabular-nums">
-                {counts[t.value]}
-              </Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-medium">
+            <span className="flex items-center gap-2">
+              <Info className="size-4 text-muted-foreground" />
+              {CHANNELS[tab].label} campaign conditions
+              <span className="font-normal text-muted-foreground">{CHANNELS[tab].summary}</span>
+            </span>
+            <span className="text-muted-foreground text-xs group-open:hidden">Show</span>
+            <span className="hidden text-muted-foreground text-xs group-open:inline">Hide</span>
+          </summary>
+          <div className="mt-3 border-t pt-3">
+            <ChannelRules channel={tab} />
+          </div>
+        </details>
+      ) : null}
+      {oneOffTab ? (
+        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+          <SimBadge />
+          {SIMULATED_SEND}
+        </div>
+      ) : null}
 
-      <Card>
-        <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-          <CardTitle className="text-xl leading-none">{text.title}</CardTitle>
-          <CardDescription className="max-w-sm leading-snug">{text.description}</CardDescription>
-          <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                <Search className="size-3.5" />
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
+      {unavailable ? (
+        <Card>
+          <CardContent>
+            <Empty className="py-12" data-campaigns-unavailable={tab}>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Ban />
+                </EmptyMedia>
+                <EmptyTitle>{text.emptyTitle}</EmptyTitle>
+                <EmptyDescription>{text.emptySubtitle}</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/dashboard/campaigns/whatsapp">WhatsApp campaigns</Link>
+                </Button>
+              </EmptyContent>
+            </Empty>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+            <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
+              <ExpandingSearch
+                name="campaigns"
+                label="Search campaigns"
                 placeholder="Search campaigns..."
+                className="w-full md:w-64"
                 value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
+                onChange={(value) => {
+                  setQuery(value);
                   setPage(0);
                 }}
               />
-            </InputGroup>
-            {columnMenu}
-          </CardAction>
-        </CardHeader>
+            </CardAction>
+          </CardHeader>
 
-        <CardContent className="flex flex-col gap-4 px-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <ChipSelect label="Status" value={status} options={statusOptions} onChange={chip(setStatus)} />
-              <ChipSelect label="Inbox" value={inbox} options={inboxOptions} onChange={chip(setInbox)} />
-              {isLive ? (
-                <ChipSelect label="Sent by" value={sender} options={senderOptions} onChange={chip(setSender)} />
-              ) : null}
+          <CardContent className="flex flex-col gap-4 px-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <ChipSelect label="Status" value={status} options={statusOptions} onChange={chip(setStatus)} />
+                <ChipSelect label="Inbox" value={inbox} options={inboxOptions} onChange={chip(setInbox)} />
+                {isLive ? (
+                  <ChipSelect label="Sent by" value={sender} options={senderOptions} onChange={chip(setSender)} />
+                ) : null}
+              </div>
+              {/* T-282 round 2 (Fahad 123): the view (Hide columns) comes after the filters, as the shadcn/ui tasks
+                toolbar (filters, then View) and Twenty's view bar (filter, sort, options); it sat before them, in the
+                header row. */}
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground text-sm tabular-nums">
+                  {total} {total === 1 ? "campaign" : "campaigns"}
+                </span>
+                {columnMenu}
+              </div>
             </div>
-            <span className="text-muted-foreground text-sm tabular-nums">
-              {total} {total === 1 ? "campaign" : "campaigns"}
-            </span>
-          </div>
 
-          {total === 0 ? (
-            emptyState
-          ) : isLive ? (
-            <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
-              <TableHeader className="[&_tr]:border-t">
-                <TableRow>
-                  <TableHead className="py-4 font-normal">Campaign</TableHead>
-                  <TableHead className="py-4 font-normal">Status</TableHead>
-                  {showLive("sender") ? <TableHead className="py-4 font-normal">Sent by</TableHead> : null}
-                  {showLive("inbox") ? <TableHead className="py-4 font-normal">Inbox</TableHead> : null}
-                  {showLive("url") ? <TableHead className="py-4 font-normal">URL</TableHead> : null}
-                  {showLive("timeOnPage") ? <TableHead className="py-4 font-normal">Time on page</TableHead> : null}
-                  <TableHead className="py-4 font-normal">
-                    <div className="text-right">Actions</div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {slice(liveRows).map((c) => (
-                  <TableRow key={c.id} className="border-border/60 hover:bg-white/2.5">
-                    <TableCell className="max-w-96 py-4 align-middle">
-                      <button type="button" className="grid gap-0.5 text-left" onClick={() => open("edit", c.id)}>
-                        <span className="truncate font-medium text-foreground text-sm">{c.title}</span>
-                        <span className="line-clamp-1 whitespace-normal text-muted-foreground text-sm" dir="auto">
-                          {c.message}
-                        </span>
-                      </button>
-                    </TableCell>
-                    <TableCell className="py-4 align-middle">
-                      <CampaignStatusBadge status={c.enabled ? "enabled" : "disabled"} />
-                    </TableCell>
-                    {showLive("sender") ? (
-                      <TableCell className="py-4 align-middle">
-                        <SenderCell sender={c.sender} />
-                      </TableCell>
-                    ) : null}
-                    {showLive("inbox") ? (
-                      <TableCell className="py-4 align-middle">
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
-                          <Globe className="size-3.5 text-muted-foreground" />
-                          {c.inbox}
-                        </span>
-                      </TableCell>
-                    ) : null}
-                    {showLive("url") ? (
-                      <TableCell className="max-w-56 py-4 align-middle">
-                        <span className="block truncate text-muted-foreground text-sm">{c.url}</span>
-                      </TableCell>
-                    ) : null}
-                    {showLive("timeOnPage") ? (
-                      <TableCell className="py-4 align-middle">
-                        <span className="text-sm tabular-nums">{c.timeOnPage}s</span>
-                        {c.businessHoursOnly ? (
-                          <span className="block text-muted-foreground text-xs">Business hours only</span>
-                        ) : null}
-                      </TableCell>
-                    ) : null}
-                    <TableCell className="py-4 align-middle">
-                      <div className="flex justify-end">
-                        <RowMenu
-                          title={c.title}
-                          onEdit={() => open("edit", c.id)}
-                          onDelete={() => open("delete", c.id)}
-                        />
-                      </div>
-                    </TableCell>
+            {total === 0 ? (
+              emptyState
+            ) : isLive ? (
+              <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
+                <TableHeader className="[&_tr]:border-t">
+                  <TableRow>
+                    <TableHead className="min-w-56 py-4 font-normal">Campaign</TableHead>
+                    <TableHead className="py-4 font-normal">Status</TableHead>
+                    {showLive("sender") ? <TableHead className="py-4 font-normal">Sent by</TableHead> : null}
+                    {showLive("inbox") ? <TableHead className="py-4 font-normal">Inbox</TableHead> : null}
+                    {showLive("url") ? <TableHead className="py-4 font-normal">URL</TableHead> : null}
+                    {showLive("timeOnPage") ? <TableHead className="py-4 font-normal">Time on page</TableHead> : null}
+                    <TableHead className="sticky right-0 bg-card py-4 font-normal shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
+                      <div className="text-right">Actions</div>
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
-              <TableHeader className="[&_tr]:border-t">
-                <TableRow>
-                  <TableHead className="py-4 font-normal">Campaign</TableHead>
-                  <TableHead className="py-4 font-normal">Status</TableHead>
-                  {showOneOff("inbox") ? <TableHead className="py-4 font-normal">Sent from</TableHead> : null}
-                  {showOneOff("template") ? <TableHead className="py-4 font-normal">Template</TableHead> : null}
-                  {showOneOff("audience") ? <TableHead className="py-4 font-normal">Audience</TableHead> : null}
-                  {showOneOff("scheduledAt") ? (
-                    <TableHead className="py-4 font-normal">Scheduled time</TableHead>
-                  ) : null}
-                  <TableHead className="py-4 font-normal">
-                    <div className="text-right">Actions</div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {slice(oneOffRows).map((c) => {
-                  const analyticsHref =
-                    isWhatsApp && c.status !== "scheduled" ? `/dashboard/campaigns/whatsapp/${c.id}/analytics` : undefined;
-                  return (
+                </TableHeader>
+                <TableBody>
+                  {slice(liveRows).map((c) => (
                     <TableRow key={c.id} className="border-border/60 hover:bg-white/2.5">
                       <TableCell className="max-w-96 py-4 align-middle">
-                        <div className="grid gap-0.5">
-                          {analyticsHref ? (
-                            <Link href={analyticsHref} className="truncate font-medium text-foreground text-sm">
-                              {c.title}
-                            </Link>
-                          ) : (
-                            <span className="truncate font-medium text-foreground text-sm">{c.title}</span>
-                          )}
+                        <button type="button" className="grid gap-0.5 text-left" onClick={() => open("edit", c.id)}>
+                          <span className="truncate font-medium text-foreground text-sm">{c.title}</span>
                           <span className="line-clamp-1 whitespace-normal text-muted-foreground text-sm" dir="auto">
                             {c.message}
                           </span>
-                        </div>
+                        </button>
                       </TableCell>
                       <TableCell className="py-4 align-middle">
-                        <CampaignStatusBadge status={c.status} />
+                        <CampaignStatusBadge status={c.enabled ? "enabled" : "disabled"} />
                       </TableCell>
-                      {showOneOff("inbox") ? (
+                      {showLive("sender") ? (
+                        <TableCell className="py-4 align-middle">
+                          <SenderCell sender={c.sender} />
+                        </TableCell>
+                      ) : null}
+                      {showLive("inbox") ? (
                         <TableCell className="py-4 align-middle">
                           <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
-                            {isWhatsApp ? (
-                              <MessageSquareText className="size-3.5 text-muted-foreground" />
-                            ) : (
-                              <Smartphone className="size-3.5 text-muted-foreground" />
-                            )}
+                            <Globe className="size-3.5 text-muted-foreground" />
                             {c.inbox}
                           </span>
                         </TableCell>
                       ) : null}
-                      {showOneOff("template") ? (
-                        <TableCell className="py-4 align-middle">
-                          <span className="whitespace-nowrap font-mono text-muted-foreground text-xs">
-                            {c.template ?? "---"}
-                          </span>
+                      {showLive("url") ? (
+                        <TableCell className="max-w-56 py-4 align-middle">
+                          <span className="block truncate text-muted-foreground text-sm">{c.url}</span>
                         </TableCell>
                       ) : null}
-                      {showOneOff("audience") ? (
+                      {showLive("timeOnPage") ? (
                         <TableCell className="py-4 align-middle">
-                          <div className="flex flex-wrap gap-1.5">
-                            {c.audience.map((label) => (
-                              <AudienceBadge key={label} label={label} />
-                            ))}
-                          </div>
+                          <span className="text-sm tabular-nums">{c.timeOnPage}s</span>
+                          {c.businessHoursOnly ? (
+                            <span className="block text-muted-foreground text-xs">Business hours only</span>
+                          ) : null}
                         </TableCell>
                       ) : null}
-                      {showOneOff("scheduledAt") ? (
-                        <TableCell className="py-4 align-middle">
-                          <span className="whitespace-nowrap text-sm tabular-nums">{c.scheduledAt}</span>
-                        </TableCell>
-                      ) : null}
-                      <TableCell className="py-4 align-middle">
+                      <TableCell className="sticky right-0 bg-card py-4 align-middle shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
                         <div className="flex justify-end">
                           <RowMenu
                             title={c.title}
-                            analyticsHref={analyticsHref}
+                            onEdit={() => open("edit", c.id)}
                             onDelete={() => open("delete", c.id)}
                           />
                         </div>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table className="**:data-[slot='table-cell']:px-4 **:data-[slot='table-head']:px-4">
+                <TableHeader className="[&_tr]:border-t">
+                  <TableRow>
+                    <TableHead className="min-w-56 py-4 font-normal">Campaign</TableHead>
+                    <TableHead className="py-4 font-normal">Status</TableHead>
+                    {showOneOff("inbox") ? <TableHead className="py-4 font-normal">Sent from</TableHead> : null}
+                    {showOneOff("template") ? <TableHead className="py-4 font-normal">Template</TableHead> : null}
+                    {showOneOff("audience") ? <TableHead className="py-4 font-normal">Audience</TableHead> : null}
+                    {showOneOff("scheduledAt") ? (
+                      <TableHead className="py-4 font-normal">Scheduled time</TableHead>
+                    ) : null}
+                    <TableHead className="sticky right-0 bg-card py-4 font-normal shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
+                      <div className="text-right">Actions</div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {slice(oneOffRows).map((c) => {
+                    // Composer campaigns open their report; the Chatwoot sample WhatsApp campaigns keep their analytics page.
+                    const analyticsHref = c.channel
+                      ? `/dashboard/campaigns/report/${c.id}`
+                      : isWhatsApp && c.status !== "scheduled"
+                        ? `/dashboard/campaigns/whatsapp/${c.id}/analytics`
+                        : undefined;
+                    const editable = !!c.channel && (c.status === "draft" || c.status === "scheduled");
+                    const failedCount = c.run?.results.filter((r) => r.status === "failed").length ?? 0;
+                    const channelKey = (c.channel ?? oneOffTab) as BroadcastChannel;
+                    return (
+                      <TableRow key={c.id} className="border-border/60 hover:bg-white/2.5">
+                        <TableCell className="max-w-96 py-4 align-middle">
+                          <div className="grid gap-0.5">
+                            {analyticsHref ? (
+                              <Link href={analyticsHref} className="truncate font-medium text-foreground text-sm">
+                                {c.title}
+                              </Link>
+                            ) : (
+                              <span className="truncate font-medium text-foreground text-sm">{c.title}</span>
+                            )}
+                            <span className="line-clamp-1 whitespace-normal text-muted-foreground text-sm" dir="auto">
+                              {c.message}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 align-middle">
+                          <CampaignStatusBadge status={c.status} />
+                        </TableCell>
+                        {showOneOff("inbox") ? (
+                          <TableCell className="py-4 align-middle">
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm">
+                              {tab !== "sms" ? (
+                                <MessageSquareText className="size-3.5 text-muted-foreground" />
+                              ) : (
+                                <Smartphone className="size-3.5 text-muted-foreground" />
+                              )}
+                              {c.inbox}
+                            </span>
+                          </TableCell>
+                        ) : null}
+                        {showOneOff("template") ? (
+                          <TableCell className="py-4 align-middle">
+                            <span className="whitespace-nowrap font-mono text-muted-foreground text-xs">
+                              {c.template ?? "---"}
+                            </span>
+                          </TableCell>
+                        ) : null}
+                        {showOneOff("audience") ? (
+                          <TableCell className="py-4 align-middle">
+                            <div className="flex flex-wrap gap-1.5">
+                              {c.audience.map((label) => (
+                                <AudienceBadge key={label} label={label} />
+                              ))}
+                            </div>
+                          </TableCell>
+                        ) : null}
+                        {showOneOff("scheduledAt") ? (
+                          <TableCell className="py-4 align-middle">
+                            <span className="whitespace-nowrap text-sm tabular-nums">{c.scheduledAt}</span>
+                          </TableCell>
+                        ) : null}
+                        <TableCell className="sticky right-0 bg-card py-4 align-middle shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
+                          <div className="flex justify-end">
+                            <RowMenu
+                              title={c.title}
+                              analyticsHref={analyticsHref}
+                              onEdit={editable ? () => router.push(`/dashboard/campaigns/new?id=${c.id}`) : undefined}
+                              onSendNow={editable ? () => sendNow(channelKey, c.id) : undefined}
+                              onRetry={
+                                c.channel && (c.status === "completed" || c.status === "failed") && failedCount
+                                  ? { count: failedCount, run: () => retryFailed(channelKey, c.id) }
+                                  : undefined
+                              }
+                              onDelete={() => open("delete", c.id)}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
 
-          {total > 0 ? (
-            <TablePager total={total} page={current} pageSize={PAGE_SIZE} onPage={setPage} noun="campaigns" />
-          ) : null}
-        </CardContent>
-      </Card>
+            {total > 0 ? (
+              <TablePager total={total} page={current} pageSize={PAGE_SIZE} onPage={setPage} noun="campaigns" />
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       {isLive ? (
         <LiveChatCampaignDialog
@@ -689,19 +791,7 @@ export function CampaignsList({ tab, empty = false }: { tab: CampaignTab; empty?
             )
           }
         />
-      ) : isWhatsApp ? (
-        <WhatsAppCampaignDialog
-          open={dialog === "create"}
-          onOpenChange={(o) => setDialog(o ? "create" : null)}
-          onSave={(saved) => setWhatsapp((prev) => [saved, ...prev])}
-        />
-      ) : (
-        <SMSCampaignDialog
-          open={dialog === "create"}
-          onOpenChange={(o) => setDialog(o ? "create" : null)}
-          onSave={(saved) => setSms((prev) => [saved, ...prev])}
-        />
-      )}
+      ) : null}
       <ConfirmDeleteCampaignDialog
         open={dialog === "delete"}
         title={selectedTitle}

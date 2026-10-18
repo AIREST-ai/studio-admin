@@ -1,0 +1,14 @@
+# supervisor only: auditor ids for the round-2 resend (message: «خطأ بالكامل. أعد الفحص من البداية.» with no reasons)
+conversations a787e561c731c6c78
+contacts-notifications a48f5fa858b687c3e
+reports a1cdf9bad880f6979
+campaigns-calls a3e03ab880d330701
+help-center af8cb4502330b4965
+captain a61602b0db85a4005
+users-roles abdaf504bfb501984
+settings-a aaa1f80a091ba733a
+settings-b ab7adbd7e43fb85e2
+settings-c af02ca17f7e97bda7
+map-a a5c16427ac9c3498d
+map-b a2506e894b218cf3d
+temp-judge abfcca152d04007c8

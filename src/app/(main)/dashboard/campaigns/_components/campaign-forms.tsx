@@ -34,18 +34,10 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import type { ChannelKey } from "@/lib/cw/data";
+import { useCwList } from "@/lib/cw/store";
 
-import {
-  formatSchedule,
-  inboxMembers,
-  type LiveChatCampaign,
-  labels,
-  type OneOffCampaign,
-  smsInboxes,
-  websiteInboxes,
-  whatsappInboxes,
-  whatsappTemplates,
-} from "./data";
+import { formatSchedule, type LiveChatCampaign, type OneOffCampaign } from "./data";
 
 interface DialogProps {
   open: boolean;
@@ -53,6 +45,34 @@ interface DialogProps {
 }
 
 type Errors = Record<string, string | undefined>;
+
+// Chatwoot reads inboxes, inbox members, labels and templates from the account; here that is src/lib/cw.
+function useInboxNames(channel: ChannelKey) {
+  const [inboxes] = useCwList("inboxes");
+  return inboxes.filter((inbox) => inbox.channel === channel).map((inbox) => inbox.name);
+}
+
+function useInboxMembers(inboxName: string) {
+  const [inboxes] = useCwList("inboxes");
+  const [agents] = useCwList("agents");
+  const inbox = inboxes.find((i) => i.name === inboxName);
+  if (!inbox) return [];
+  return inbox.agents.flatMap((id) => agents.find((agent) => agent.id === id)?.name ?? []);
+}
+
+// SMSCampaignForm.vue / LiveChatCampaignForm.vue: TextArea with max-length 200 and an "n / 200" counter.
+const MESSAGE_MAX = 200;
+
+function templateVariables(body: string) {
+  return Array.from(new Set(Array.from(body.matchAll(/\{\{([^}]+)\}\}/g), (m) => m[1])));
+}
+
+function friendlyName(name: string) {
+  return name
+    .split("_")
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
+    .join(" ");
+}
 
 function hasErrors(errors: Errors) {
   return Object.values(errors).some(Boolean);
@@ -129,6 +149,8 @@ function AudiencePicker({
   onChange: (value: string[]) => void;
   invalid?: boolean;
 }) {
+  const [accountLabels] = useCwList("labels");
+  const labels = accountLabels.map((label) => label.title);
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -220,13 +242,16 @@ function LiveChatForm({
   const [title, setTitle] = React.useState(campaign?.title ?? "");
   const [message, setMessage] = React.useState(campaign?.message ?? "");
   const [inbox, setInbox] = React.useState(campaign?.inbox ?? "");
-  const [sender, setSender] = React.useState(campaign ? (campaign.sender ?? "Bot") : "");
+  // LiveChatCampaignForm.vue:47 senderId 0: "Bot" is preselected.
+  const [sender, setSender] = React.useState(campaign?.sender ?? "Bot");
   const [url, setUrl] = React.useState(campaign?.url ?? "");
   const [timeOnPage, setTimeOnPage] = React.useState(campaign ? String(campaign.timeOnPage) : "10");
   const [enabled, setEnabled] = React.useState(campaign?.enabled ?? true);
   const [businessHours, setBusinessHours] = React.useState(campaign?.businessHoursOnly ?? false);
   const [errors, setErrors] = React.useState<Errors>({});
-  const senderOptions = inbox ? ["Bot", ...(inboxMembers[inbox] ?? [])] : [];
+  const websiteInboxes = useInboxNames("website");
+  const members = useInboxMembers(inbox);
+  const senderOptions = inbox ? ["Bot", ...members] : ["Bot"];
 
   function submit() {
     const next: Errors = {
@@ -271,9 +296,13 @@ function LiveChatForm({
             className="min-h-20"
             placeholder="Please enter the message of campaign"
             value={message}
+            maxLength={MESSAGE_MAX}
             aria-invalid={Boolean(errors.message) || undefined}
             onChange={(e) => setMessage(e.target.value)}
           />
+          <span className="text-end text-muted-foreground text-xs tabular-nums">
+            {message.length} / {MESSAGE_MAX}
+          </span>
         </FormField>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Select Inbox" htmlFor="lc-inbox" error={errors.inbox}>
@@ -285,7 +314,7 @@ function LiveChatForm({
               invalid={Boolean(errors.inbox)}
               onChange={(value) => {
                 setInbox(value);
-                setSender("");
+                setSender("Bot");
               }}
             />
           </FormField>
@@ -338,7 +367,7 @@ function LiveChatForm({
           </Field>
         </FieldSet>
       </FieldGroup>
-      <FormFooter submitLabel={isEdit ? "Update" : "Create"} onSubmit={submit} />
+      <FormFooter submitLabel={isEdit ? "Confirm" : "Create"} onSubmit={submit} />
     </>
   );
 }
@@ -380,6 +409,7 @@ function SMSForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }) {
   const [audience, setAudience] = React.useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = React.useState("");
   const [errors, setErrors] = React.useState<Errors>({});
+  const smsInboxes = useInboxNames("sms");
 
   function submit() {
     const next: Errors = {
@@ -421,10 +451,13 @@ function SMSForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }) {
             className="min-h-20"
             placeholder="Please enter the message of campaign"
             value={message}
+            maxLength={MESSAGE_MAX}
             aria-invalid={Boolean(errors.message) || undefined}
             onChange={(e) => setMessage(e.target.value)}
           />
-          <span className="text-end text-muted-foreground text-xs tabular-nums">{message.length} characters</span>
+          <span className="text-end text-muted-foreground text-xs tabular-nums">
+            {message.length} / {MESSAGE_MAX}
+          </span>
         </FormField>
         <FormField label="Select Inbox" htmlFor="sms-inbox" error={errors.inbox}>
           <SelectField
@@ -491,13 +524,22 @@ function WhatsAppForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }
   const [audience, setAudience] = React.useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = React.useState("");
   const [errors, setErrors] = React.useState<Errors>({});
-  const selected = whatsappTemplates.find((t) => t.value === template);
+  const whatsappInboxes = useInboxNames("whatsapp");
+  const [accountTemplates] = useCwList("whatsappTemplates");
+  // getFilteredWhatsAppTemplates: approved templates of the selected WhatsApp inbox.
+  const templates = accountTemplates.filter((t) => t.status === "APPROVED" && t.inboxes.includes(inbox));
+  const selected = templates.find((t) => t.name === template);
+  const selectedVariables = selected ? templateVariables(selected.body) : [];
 
   function submit() {
     const next: Errors = {
       title: title.trim() ? undefined : "Title is required",
       inbox: inbox ? undefined : "Inbox is required",
       template: template ? undefined : "Template is required",
+      // WhatsAppTemplateParser.vue FORM_ERROR_MESSAGE: every {{n}} needs a value.
+      variables: selectedVariables.every((v) => variables[v]?.trim())
+        ? undefined
+        : "Please fill all variables before sending",
       audience: audience.length ? undefined : "Audience is required",
       scheduledAt: scheduledAt ? undefined : "Scheduled time is required",
     };
@@ -506,12 +548,12 @@ function WhatsAppForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }
     onDone({
       id: Date.now(),
       title: title.trim(),
-      message: selected.body,
+      message: selected.body.replace(/\{\{([^}]+)\}\}/g, (match, key: string) => variables[key]?.trim() || match),
       inbox,
       audience,
       scheduledAt: formatSchedule(scheduledAt),
       status: "scheduled",
-      template: selected.label,
+      template: `${selected.name} (${selected.code})`,
     });
     toast.success("WhatsApp campaign created successfully");
   }
@@ -545,7 +587,7 @@ function WhatsAppForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }
           <SelectField
             id="wa-template"
             placeholder="Select a template"
-            options={whatsappTemplates}
+            options={templates.map((t) => ({ value: t.name, label: `${friendlyName(t.name)} (${t.code})` }))}
             value={template}
             disabled={!inbox}
             invalid={Boolean(errors.template)}
@@ -559,9 +601,9 @@ function WhatsAppForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }
         {selected ? (
           <div className="grid gap-3 rounded-lg border bg-muted/40 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium text-sm">Process {selected.value}</span>
+              <span className="font-medium text-sm">{selected.name}</span>
               <div className="flex gap-1.5 text-muted-foreground text-xs">
-                <span>Language: {selected.language}</span>
+                <span>Language: {selected.code}</span>
                 <span>·</span>
                 <span>Category: {selected.category}</span>
               </div>
@@ -569,22 +611,24 @@ function WhatsAppForm({ onDone }: { onDone: (campaign: OneOffCampaign) => void }
             <p className="rounded-md bg-background p-2.5 text-sm" dir="auto">
               {selected.body.replace(/\{\{(\d+)\}\}/g, (match, key: string) => variables[key] || match)}
             </p>
-            {selected.variables.length ? (
+            {selectedVariables.length ? (
               <div className="grid gap-1.5">
                 <Label className="text-muted-foreground text-xs">Variables</Label>
-                {selected.variables.map((variable) => (
+                {selectedVariables.map((variable) => (
                   <div key={variable} className="flex items-center gap-2">
                     <Badge variant="outline" className="font-mono">
                       {`{{${variable}}}`}
                     </Badge>
                     <Input
                       className="h-7"
-                      placeholder={`Enter value for ${variable}`}
+                      placeholder={`Enter ${variable} value`}
+                      aria-invalid={(Boolean(errors.variables) && !variables[variable]?.trim()) || undefined}
                       value={variables[variable] ?? ""}
                       onChange={(e) => setVariables((prev) => ({ ...prev, [variable]: e.target.value }))}
                     />
                   </div>
                 ))}
+                {errors.variables ? <p className="text-destructive text-xs">{errors.variables}</p> : null}
               </div>
             ) : null}
           </div>

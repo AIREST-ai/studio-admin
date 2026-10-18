@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 
-import { initialBoard } from "./_components/data";
 import { Kanban } from "./_components/kanban";
 
 export const metadata: Metadata = {
   title: "Dodge board",
-  description: "Customer problems a reply left open, tracked from the dodge until they are solved.",
+  description:
+    "Agent replies that left a customer's problem unsolved, in this preview's conversations, followed until solved.",
   alternates: {
     canonical: "/dashboard/kanban",
   },
 };
 
+// F-9: the board reads the preview's conversations and its saved copy itself (kanban.tsx), so nothing is passed here.
 export default function Page() {
   return (
     <div data-content-padding="false">
-      <Kanban initialBoard={initialBoard} />
+      <Kanban />
     </div>
   );
 }

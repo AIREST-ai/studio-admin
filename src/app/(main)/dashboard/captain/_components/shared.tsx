@@ -20,7 +20,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { PageHeading } from "../../contacts/_components/studio-ui";
-import { assistants, connectedInboxes, documents, faqs, scenarios, suggestions, tools } from "./data";
+import type { Assistant } from "./data";
+import { useCaptainList } from "./store";
 
 // The assistant picked in the switcher, shared by every Captain page while the tab is open (mock, no backend).
 let currentAssistantId = 1;
@@ -34,15 +35,29 @@ export function setCurrentAssistant(id: number) {
   for (const cb of assistantListeners) cb();
 }
 export function useCurrentAssistant() {
+  const assistants = useCaptainList("assistants");
   const id = React.useSyncExternalStore(
     subscribeAssistant,
     () => currentAssistantId,
     () => 1,
   );
-  return assistants.find((a) => a.id === id) ?? assistants[0];
+  // After the picked assistant is deleted, fall back to the first one left (or a blank one when none are left).
+  return assistants.find((a) => a.id === id) ?? assistants[0] ?? noAssistant;
 }
 
+const noAssistant: Assistant = {
+  id: 0,
+  name: "No assistant",
+  description: "",
+  productName: "",
+  inboxes: 0,
+  documents: 0,
+  faqs: 0,
+  updatedAt: "",
+};
+
 export function AssistantSwitcher() {
+  const assistants = useCaptainList("assistants");
   const current = useCurrentAssistant();
   return (
     <DropdownMenu>
@@ -61,6 +76,11 @@ export function AssistantSwitcher() {
           <span className="font-normal text-muted-foreground text-xs">Switch between assistants</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {assistants.length === 0 && (
+          <p className="px-2 py-1.5 text-muted-foreground text-sm">
+            No assistants found, please create one to get started
+          </p>
+        )}
         {assistants.map((a) => (
           <DropdownMenuItem key={a.id} className="items-start" onSelect={() => setCurrentAssistant(a.id)}>
             <Bot className="mt-0.5" />
@@ -84,19 +104,31 @@ export function AssistantSwitcher() {
 
 // Chatwoot's Captain sidebar (Sidebar.vue: Overview, FAQs, Documents, Scenarios, Playground, Inboxes, Tools,
 // Settings) shown as Studio line tabs with count pills, because the Studio sidebar keeps one "Captain" link.
-const captainNav = [
-  { href: "/dashboard/captain", label: "Overview" },
-  { href: "/dashboard/captain/faqs", label: "FAQs", count: faqs.length + suggestions.length },
-  { href: "/dashboard/captain/documents", label: "Documents", count: documents.length },
-  { href: "/dashboard/captain/scenarios", label: "Scenarios", count: scenarios.length },
-  { href: "/dashboard/captain/playground", label: "Playground" },
-  { href: "/dashboard/captain/inboxes", label: "Inboxes", count: connectedInboxes.length },
-  { href: "/dashboard/captain/tools", label: "Tools", count: tools.length },
-  { href: "/dashboard/captain/settings", label: "Settings" },
-];
+// Counts follow the shared Captain lists (store.ts), so they change after a create, delete or approve.
+// T-284 (item 125.6, Fahad): the same order as the Captain bar (sidebar-items.ts): Inboxes second, then Documents and
+// the FAQs Captain makes from them (the assistant's knowledge), then the rest in their order.
+function useCaptainNav() {
+  const faqs = useCaptainList("faqs");
+  const suggestions = useCaptainList("suggestions");
+  const documents = useCaptainList("documents");
+  const scenarios = useCaptainList("scenarios");
+  const connectedInboxes = useCaptainList("connectedInboxes");
+  const tools = useCaptainList("tools");
+  return [
+    { href: "/dashboard/captain", label: "Overview" },
+    { href: "/dashboard/captain/inboxes", label: "Inboxes", count: connectedInboxes.length },
+    { href: "/dashboard/captain/documents", label: "Documents", count: documents.length },
+    { href: "/dashboard/captain/faqs", label: "FAQs", count: faqs.length + suggestions.length },
+    { href: "/dashboard/captain/scenarios", label: "Scenarios", count: scenarios.length },
+    { href: "/dashboard/captain/playground", label: "Playground" },
+    { href: "/dashboard/captain/tools", label: "Tools", count: tools.length },
+    { href: "/dashboard/captain/settings", label: "Settings" },
+  ] as { href: string; label: string; count?: number }[];
+}
 
 export function CaptainNav() {
   const pathname = usePathname();
+  const captainNav = useCaptainNav();
   const active =
     [...captainNav].sort((a, b) => b.href.length - a.href.length).find((n) => pathname.startsWith(n.href))?.href ??
     captainNav[0].href;

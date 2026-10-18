@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PolicyIndex } from "./_components/policy-index";
 
 export const metadata: Metadata = {
-  title: "Agent assignment",
+  title: "Agent Assignment",
   description: "Policies that route conversations and manage agent workload.",
 };
 

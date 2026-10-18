@@ -1,65 +1,85 @@
 "use client";
 // F159 settings-b: Chatwoot v4.18 Settings > Templates (templates/Index.vue, TemplateCard.vue,
 // TemplatePreviewDrawer.vue, templateUtils.js; whatsappTemplateMgmt.json) in the Studio pattern.
+// M129-C (Fahad 129.9, 129.2): the list is the account's one template list (lib/cw/store.ts `whatsappTemplates`,
+// saved in the preview), with "New template" (builder), "Template library" and an honest simulated "Sync templates":
+// it applies the simulated Meta decisions of Pending templates and says that Meta was not contacted.
 import * as React from "react";
 
-import { Copy, ExternalLink, Eye, FileText, Image as ImageIcon, MessageCircle, Phone, RefreshCw, Video } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import {
+  BookOpen,
+  Check,
+  Copy,
+  CopyPlus,
+  ExternalLink,
+  Eye,
+  FileText,
+  Image as ImageIcon,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { PRODUCT_NAME } from "@/config/app-config";
+import { SimBadge } from "@/lib/cw/preview-sim-ui";
 
 import { NoResults, plural, SettingsShell } from "../../labels/_shared/settings-shell";
 import { ChipBar, ChipSelect, type Tone, ToneBadge } from "../../labels/_shared/settings-ui";
+import {
+  DELETED_NAME_DAYS,
+  draftFromRecord,
+  freeName,
+  META_SOURCES,
+  rejectionText,
+  type TemplateRecord,
+  templateKey,
+} from "./template-model";
+import {
+  decideNow,
+  deleteTemplate,
+  SIM_NOTE,
+  saveDraft,
+  syncTemplates,
+  useTemplateReviewClock,
+  useTemplates,
+} from "./template-store";
+import { bubbleFromRecord, WhatsAppBubble } from "./whatsapp-bubble";
 
-type Status = "APPROVED" | "PENDING" | "REJECTED" | "UNSUBMITTED";
-type TemplateType =
-  | "Text"
-  | "Image"
-  | "Video"
-  | "Document"
-  | "Media"
-  | "Quick reply"
-  | "Call to action"
-  | "Catalog"
-  | "Copy code";
+type Status = TemplateRecord["status"];
+type TemplateType = TemplateRecord["type"];
 
-interface Template {
-  name: string;
-  status: Status;
-  type: TemplateType;
-  category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
-  language: "English" | "Arabic";
-  inboxes: string[];
-  provider: "Meta" | "Twilio";
-  header?: string;
-  media?: "image" | "video" | "document";
-  body: string;
-  footer?: string;
-  buttons?: string[];
+function statusMeta(t: TemplateRecord): { label: string; tone: Tone } {
+  const map: Record<Status, { label: string; tone: Tone }> = {
+    APPROVED: { label: "approved", tone: "green" },
+    PENDING: { label: "pending", tone: "amber" },
+    REJECTED: { label: "rejected", tone: "red" },
+    UNSUBMITTED: { label: t.simulated ? "draft" : "Not submitted for WhatsApp approval", tone: "gray" },
+  };
+  return map[t.status];
 }
-
-const templates: Template[] = [
-  { name: "order_confirmation", status: "APPROVED", type: "Call to action", category: "UTILITY", language: "English", inboxes: ["WhatsApp Doha"], provider: "Meta", header: "Order confirmed", body: "Hi {{1}}, thank you for your order {{2}}. We will deliver it to {{3}} within 24 hours.", footer: "Reply STOP to unsubscribe", buttons: ["Track order"] },
-  { name: "order_confirmation_ar", status: "APPROVED", type: "Call to action", category: "UTILITY", language: "Arabic", inboxes: ["WhatsApp Doha"], provider: "Meta", header: "تم تأكيد طلبك", body: "مرحباً {{1}}، شكراً لطلبك رقم {{2}}. سنوصله إلى {{3}} خلال ٢٤ ساعة.", buttons: ["تتبع الطلب"] },
-  { name: "delivery_out_today", status: "APPROVED", type: "Quick reply", category: "UTILITY", language: "English", inboxes: ["WhatsApp Doha", "WhatsApp Dubai"], provider: "Meta", body: "Good news {{1}}! Your order is out for delivery today between {{2}}. Will someone be home?", buttons: ["Yes", "Reschedule"] },
-  { name: "ramadan_offer_2026", status: "PENDING", type: "Image", category: "MARKETING", language: "Arabic", inboxes: ["WhatsApp Doha", "WhatsApp Riyadh"], provider: "Meta", media: "image", body: "رمضان كريم 🌙 خصم ٢٠٪ على جميع الأجهزة المنزلية حتى نهاية الشهر. استخدم الرمز {{1}}." },
-  { name: "product_demo_video", status: "APPROVED", type: "Video", category: "MARKETING", language: "English", inboxes: ["WhatsApp Dubai"], provider: "Meta", media: "video", body: "See the new Smart Air Fryer in 30 seconds, {{1}}. Reply YES to book a home demo." },
-  { name: "invoice_ready", status: "APPROVED", type: "Document", category: "UTILITY", language: "English", inboxes: ["WhatsApp Dubai"], provider: "Meta", media: "document", body: "Hello {{1}}, your invoice {{2}} for AED {{3}} is attached." },
-  { name: "login_code", status: "APPROVED", type: "Copy code", category: "AUTHENTICATION", language: "English", inboxes: ["WhatsApp Doha", "WhatsApp Dubai", "WhatsApp Riyadh"], provider: "Meta", body: "{{1}} is your verification code. For your security, do not share this code.", buttons: ["Copy code"] },
-  { name: "new_arrivals_catalog", status: "APPROVED", type: "Catalog", category: "MARKETING", language: "English", inboxes: ["WhatsApp Doha"], provider: "Meta", body: "New arrivals are here, {{1}}! Browse the autumn collection right inside WhatsApp.", buttons: ["View catalog"] },
-  { name: "feedback_request", status: "REJECTED", type: "Quick reply", category: "MARKETING", language: "English", inboxes: ["WhatsApp Riyadh"], provider: "Meta", body: "How was your visit to our Riyadh showroom today, {{1}}?", buttons: ["Great", "Okay", "Not good"] },
-  { name: "appointment_reminder", status: "UNSUBMITTED", type: "Text", category: "UTILITY", language: "English", inboxes: ["Twilio WhatsApp"], provider: "Twilio", body: "Reminder: your service visit is booked for {{1}} at {{2}}. Reply 1 to confirm or 2 to change." },
-  { name: "branch_photos", status: "APPROVED", type: "Media", category: "MARKETING", language: "Arabic", inboxes: ["Twilio WhatsApp"], provider: "Twilio", media: "image", body: "افتتحنا فرعنا الجديد في لوسيل 🎉 تفضل بزيارتنا واحصل على هدية ترحيبية." },
-];
-
-const statusMeta: Record<Status, { label: string; tone: Tone }> = {
-  APPROVED: { label: "approved", tone: "green" },
-  PENDING: { label: "pending", tone: "amber" },
-  REJECTED: { label: "rejected", tone: "red" },
-  UNSUBMITTED: { label: "Not submitted for WhatsApp approval", tone: "gray" },
-};
 
 const typeIcon: Record<TemplateType, React.ElementType> = {
   Text: MessageCircle,
@@ -69,94 +89,157 @@ const typeIcon: Record<TemplateType, React.ElementType> = {
   Media: ImageIcon,
   "Quick reply": MessageCircle,
   "Call to action": Phone,
-  Catalog: MessageCircle,
+  Catalog: ShoppingBag,
   "Copy code": Copy,
 };
 
-const allTypes: TemplateType[] = ["Text", "Image", "Video", "Document", "Media", "Quick reply", "Call to action", "Catalog", "Copy code"];
-const allInboxes = Array.from(new Set(templates.flatMap((t) => t.inboxes)));
+const allTypes: TemplateType[] = [
+  "Text",
+  "Image",
+  "Video",
+  "Document",
+  "Media",
+  "Quick reply",
+  "Call to action",
+  "Catalog",
+  "Copy code",
+];
+const statusOptions = ["All statuses", "Approved", "Pending", "Rejected", "Draft or not submitted"];
 
-function syncStamp(date: Date) {
-  return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+function stamp(date: Date | number) {
+  return new Date(date).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
-function WhatsAppPreview({ t }: { t: Template }) {
-  const rtl = t.language === "Arabic";
-  const MediaIcon = t.media === "video" ? Video : t.media === "document" ? FileText : ImageIcon;
-  return (
-    <div className="rounded-xl bg-[#e5ddd5] p-4 dark:bg-[#0b141a]">
-      <div
-        dir={rtl ? "rtl" : "ltr"}
-        className="max-w-[85%] rounded-lg rounded-tl-none bg-white p-2.5 text-[#111b21] text-sm shadow-sm dark:bg-[#202c33] dark:text-[#e9edef]"
-      >
-        {t.media ? (
-          <div className="mb-2 grid h-32 place-items-center rounded-md bg-black/5 dark:bg-white/5">
-            <MediaIcon className="size-8 text-[#667781]" />
-          </div>
-        ) : null}
-        {t.header ? <p className="mb-1 font-semibold">{t.header}</p> : null}
-        <p className="leading-relaxed">{t.body}</p>
-        {t.footer ? <p className="mt-1 text-[#667781] text-xs">{t.footer}</p> : null}
-        <p className="mt-1 text-right text-[#667781] text-[10px]">10:42</p>
-        {t.buttons?.length ? (
-          <div className="-mx-2.5 -mb-2.5 mt-2 divide-y border-black/10 border-t dark:border-white/10">
-            {t.buttons.map((b) => (
-              <div key={b} className="py-2 text-center font-medium text-[#00a5f4] text-sm">
-                {b}
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
+/** "decision in 7 s" for a Pending template with a simulated review. */
+function reviewLine(t: TemplateRecord, now: number): string | null {
+  const r = t.review;
+  if (!r) return null;
+  if (t.status === "PENDING") {
+    if (r.decideAt === null) return `Simulated decision (${r.outcome.toLowerCase()}) waits for Sync templates`;
+    const left = Math.max(0, Math.ceil((r.decideAt - now) / 1000));
+    return `Simulated decision (${r.outcome.toLowerCase()}) in ${left} s`;
+  }
+  if (r.decidedAt)
+    return `${t.status === "APPROVED" ? "Approved" : "Rejected"} by the simulated review on ${stamp(r.decidedAt)}`;
+  return null;
 }
 
 export function TemplatesList() {
+  const router = useRouter();
+  useTemplateReviewClock();
+  const [templates] = useTemplates();
   const [query, setQuery] = React.useState("");
   const [inbox, setInbox] = React.useState("All inboxes");
   const [language, setLanguage] = React.useState("All languages");
   const [type, setType] = React.useState("All types");
-  const [preview, setPreview] = React.useState<Template | undefined>();
+  const [status, setStatus] = React.useState("All statuses");
+  const [previewKey, setPreviewKey] = React.useState<string | undefined>();
+  const [deleting, setDeleting] = React.useState<TemplateRecord | null>(null);
   const [syncing, setSyncing] = React.useState(false);
-  const [lastSync, setLastSync] = React.useState("Oct 12, 2026, 9:14 AM");
+  const [lastSync, setLastSync] = React.useState<string | null>(null);
+  const [now, setNow] = React.useState(() => Date.now());
+  const preview = previewKey ? templates.find((t) => templateKey(t) === previewKey) : undefined;
 
+  const counting = templates.some((t) => t.status === "PENDING" && t.review?.decideAt);
+  React.useEffect(() => {
+    if (!counting) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [counting]);
+
+  const allInboxes = Array.from(new Set(templates.flatMap((t) => t.inboxes)));
   const q = query.trim().toLowerCase();
   const rows = templates.filter(
     (t) =>
       (inbox === "All inboxes" || t.inboxes.includes(inbox)) &&
       (language === "All languages" || t.language === language) &&
       (type === "All types" || t.type === type) &&
+      (status === "All statuses" ||
+        (status === "Approved" && t.status === "APPROVED") ||
+        (status === "Pending" && t.status === "PENDING") ||
+        (status === "Rejected" && t.status === "REJECTED") ||
+        (status === "Draft or not submitted" && t.status === "UNSUBMITTED")) &&
       `${t.name} ${t.body}`.toLowerCase().includes(q),
   );
 
   function sync() {
     setSyncing(true);
     window.setTimeout(() => {
+      const { decided, waiting, untouched } = syncTemplates();
       setSyncing(false);
-      setLastSync(syncStamp(new Date()));
-      toast.success("Template sync started for all WhatsApp inboxes. Updates may take a couple of minutes.");
-    }, 1200);
+      setLastSync(stamp(Date.now()));
+      const approved = decided.filter((t) => t.status === "APPROVED").length;
+      const rejected = decided.length - approved;
+      const parts = [
+        `${approved} approved`,
+        `${rejected} rejected`,
+        `${waiting.length + untouched.length} still pending`,
+      ];
+      toast.info(`Sync simulated: ${parts.join(", ")}`, {
+        description: `${SIM_NOTE} Only the simulated decisions of templates submitted in this preview change a status${
+          untouched.length ? `; ${untouched.map((t) => t.name).join(", ")} is sample data with no simulated review` : ""
+        }.`,
+        duration: 8000,
+      });
+    }, 900);
+  }
+
+  async function duplicate(t: TemplateRecord) {
+    const draft = draftFromRecord(t);
+    const name = freeName(`${t.name}_copy`, t.code, templates);
+    try {
+      const id = await saveDraft({ ...draft, name, library: undefined, origin: `${t.name} (${t.code})` });
+      toast.success(`Draft ${name} created`, {
+        description: `Saved in the ${PRODUCT_NAME} preview. Not submitted to Meta.`,
+      });
+      router.push(`/dashboard/settings/templates/new?id=${encodeURIComponent(id)}`);
+    } catch {
+      // saveDraft already showed the Not saved toast and rolled back the list
+    }
   }
 
   return (
     <>
       <SettingsShell
         title="Templates"
-        description="View the message templates synced from your WhatsApp inboxes. To create or edit a template, manage it with your provider."
+        description="WhatsApp message templates. Create one and submit it for Meta's approval, or copy a ready-made one from the Template library. In this preview, submitting and syncing are simulated."
         learnMore="Learn more about WhatsApp templates"
         count={plural(rows.length, "template", "templates")}
         search={{ placeholder: "Search by content or name...", value: query, onChange: setQuery }}
         cardTitle="WhatsApp templates"
-        cardDescription={`Last sync attempt on ${lastSync}`}
+        cardDescription={
+          lastSync
+            ? `Last simulated sync on ${lastSync}. Meta was not contacted.`
+            : "Sync is simulated in this preview: Meta is not contacted."
+        }
         actions={
-          <Button variant="outline" size="sm" onClick={sync} disabled={syncing}>
-            <RefreshCw className={syncing ? "animate-spin" : undefined} /> Sync templates
-          </Button>
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/settings/templates/library">
+                <BookOpen /> Template library
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={sync} disabled={syncing} data-sync-templates="">
+              <RefreshCw className={syncing ? "animate-spin" : undefined} /> Sync templates
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/dashboard/settings/templates/new">
+                <Plus /> New template
+              </Link>
+            </Button>
+          </>
         }
       >
         <ChipBar>
           <ChipSelect label="Inbox" value={inbox} options={["All inboxes", ...allInboxes]} onChange={setInbox} />
+          <ChipSelect label="Status" value={status} options={statusOptions} onChange={setStatus} />
           <ChipSelect
             label="Language"
             value={language}
@@ -169,18 +252,22 @@ export function TemplatesList() {
           <div className="divide-y">
             {rows.map((t) => {
               const Icon = typeIcon[t.type];
-              const meta = statusMeta[t.status];
+              const meta = statusMeta(t);
+              const key = templateKey(t);
+              const line = reviewLine(t, now);
               return (
                 // biome-ignore lint/a11y/useSemanticElements: row holds a nested preview button, as TemplateCard.vue.
                 <div
-                  key={t.name}
+                  key={key}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setPreview(t)}
+                  data-template-row={t.name}
+                  data-template-status={t.status}
+                  onClick={() => setPreviewKey(key)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setPreview(t);
+                      setPreviewKey(key);
                     }
                   }}
                   className="flex w-full cursor-pointer items-center justify-between gap-4 px-6 py-4 text-left hover:bg-muted/40"
@@ -193,6 +280,7 @@ export function TemplatesList() {
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="truncate font-medium">{t.name}</span>
                         <ToneBadge tone={meta.tone}>{meta.label}</ToneBadge>
+                        {t.simulated ? <SimBadge /> : null}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
                         <span>{t.type}</span>
@@ -209,6 +297,11 @@ export function TemplatesList() {
                       <p className="line-clamp-1 max-w-2xl text-muted-foreground text-xs" dir="auto">
                         {t.body}
                       </p>
+                      {line ? (
+                        <p className="text-muted-foreground text-xs" data-review-line="">
+                          {line}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <Tooltip>
@@ -219,7 +312,7 @@ export function TemplatesList() {
                         aria-label={`Preview ${t.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPreview(t);
+                          setPreviewKey(key);
                         }}
                       >
                         <Eye />
@@ -232,11 +325,13 @@ export function TemplatesList() {
             })}
           </div>
         ) : (
-          <NoResults>{templates.length ? "No templates match your filters." : "No WhatsApp templates found."}</NoResults>
+          <NoResults>
+            {templates.length ? "No templates match your filters." : "No WhatsApp templates found."}
+          </NoResults>
         )}
       </SettingsShell>
 
-      <Sheet open={!!preview} onOpenChange={(o) => !o && setPreview(undefined)}>
+      <Sheet open={!!preview} onOpenChange={(o) => !o && setPreviewKey(undefined)}>
         <SheetContent className="w-full gap-0 sm:max-w-md">
           <SheetHeader className="border-b">
             <SheetTitle>Template preview</SheetTitle>
@@ -244,21 +339,35 @@ export function TemplatesList() {
           </SheetHeader>
           {preview ? (
             <div className="grid gap-5 overflow-y-auto p-4">
-              <div className="font-medium">{preview.name}</div>
-              <WhatsAppPreview t={preview} />
+              <div className="flex flex-wrap items-center gap-2 font-medium">
+                {preview.name}
+                {preview.simulated ? <SimBadge /> : null}
+              </div>
+              <WhatsAppBubble content={bubbleFromRecord(preview)} />
               <div className="grid gap-3">
                 <span className="font-medium text-sm">Template details</span>
                 <dl className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-2.5 text-sm">
                   <dt className="text-muted-foreground">Status</dt>
-                  <dd>
-                    <ToneBadge tone={statusMeta[preview.status].tone}>{statusMeta[preview.status].label}</ToneBadge>
+                  <dd className="grid gap-1">
+                    <ToneBadge tone={statusMeta(preview).tone}>{statusMeta(preview).label}</ToneBadge>
+                    {reviewLine(preview, now) ? (
+                      <span className="text-muted-foreground text-xs">{reviewLine(preview, now)}</span>
+                    ) : null}
                   </dd>
+                  {preview.status === "REJECTED" && preview.review ? (
+                    <>
+                      <dt className="text-muted-foreground">Reason</dt>
+                      <dd data-rejection-reason="">{rejectionText(preview.review.reason)}</dd>
+                    </>
+                  ) : null}
                   <dt className="text-muted-foreground">Content type</dt>
                   <dd>{preview.type}</dd>
                   <dt className="text-muted-foreground">Category</dt>
                   <dd>{preview.category.toLowerCase()}</dd>
                   <dt className="text-muted-foreground">Language</dt>
-                  <dd>{preview.language}</dd>
+                  <dd>
+                    {preview.language} ({preview.code})
+                  </dd>
                   <dt className="text-muted-foreground">Inboxes</dt>
                   <dd className="flex flex-wrap gap-1">
                     {preview.inboxes.map((i) => (
@@ -267,25 +376,135 @@ export function TemplatesList() {
                       </ToneBadge>
                     ))}
                   </dd>
+                  {preview.draft?.origin ? (
+                    <>
+                      <dt className="text-muted-foreground">Copied from</dt>
+                      <dd>{preview.draft.origin}</dd>
+                    </>
+                  ) : null}
                 </dl>
               </div>
-              <Button variant="outline" className="w-fit" asChild>
-                <a
-                  href={
-                    preview.provider === "Twilio"
-                      ? "https://console.twilio.com/us1/develop/sms/content-template-builder"
-                      : "https://business.facebook.com/wa/manage/message-templates/"
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {preview.provider === "Twilio" ? "Manage in Twilio" : "Manage in Meta"} <ExternalLink />
-                </a>
-              </Button>
+              {preview.status === "PENDING" && preview.review ? (
+                <div className="grid gap-2 rounded-lg border border-amber-500/40 border-dashed bg-amber-500/5 p-3">
+                  <span className="flex items-center gap-2 font-medium text-sm">
+                    <SimBadge /> Decide the simulated review now
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => decideNow(templateKey(preview), "APPROVED")}>
+                      <Check /> Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => decideNow(templateKey(preview), "REJECTED", preview.review?.reason)}
+                    >
+                      <X /> Reject
+                    </Button>
+                  </div>
+                  <span className="text-muted-foreground text-xs">{SIM_NOTE}</span>
+                </div>
+              ) : null}
+              {preview.status === "PENDING" && !preview.review ? (
+                <div className="grid gap-2 rounded-lg border border-amber-500/40 border-dashed bg-amber-500/5 p-3 text-sm">
+                  <span className="flex items-center gap-2 font-medium">
+                    <SimBadge /> Sample template in review
+                  </span>
+                  <span className="text-muted-foreground text-xs">Choose its simulated decision. {SIM_NOTE}</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => decideNow(templateKey(preview), "APPROVED")}>
+                      <Check /> Approve
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => decideNow(templateKey(preview), "REJECTED")}>
+                      <X /> Reject
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {preview.provider === "Meta" &&
+                (preview.status === "UNSUBMITTED" || preview.status === "REJECTED") &&
+                preview.simulated ? (
+                  <Button size="sm" asChild>
+                    <Link href={`/dashboard/settings/templates/new?id=${encodeURIComponent(templateKey(preview))}`}>
+                      <Pencil /> {preview.status === "REJECTED" ? "Edit and resubmit" : "Edit draft"}
+                    </Link>
+                  </Button>
+                ) : null}
+                {preview.provider === "Meta" ? (
+                  <Button size="sm" variant="outline" onClick={() => duplicate(preview)}>
+                    <CopyPlus /> Duplicate as draft
+                  </Button>
+                ) : null}
+                {preview.provider === "Meta" ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive"
+                    onClick={() => setDeleting(preview)}
+                    data-delete-template=""
+                  >
+                    <Trash2 /> Delete template
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </SheetContent>
       </Sheet>
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {deleting?.name} ({deleting?.code})?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="grid gap-2" data-delete-dialog="">
+                <span>The template leaves this list, and campaigns that use it can no longer send it.</span>
+                {deleting?.status === "APPROVED" ? (
+                  <span>
+                    It is approved: Meta does not let you create a new template with the same name for{" "}
+                    {DELETED_NAME_DAYS} days after deleting it.{" "}
+                    <a
+                      href={META_SOURCES.management}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Source: Meta <ExternalLink className="size-3" />
+                    </a>
+                  </span>
+                ) : null}
+                <span>{SIM_NOTE}</span>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              data-confirm-delete=""
+              onClick={() => {
+                const row = deleting;
+                setDeleting(null);
+                setPreviewKey(undefined);
+                if (!row) return;
+                // F-3: said only once the preview saved the deletion (a refused save says why itself).
+                void deleteTemplate(templateKey(row)).then((deleted) => {
+                  if (!deleted) return;
+                  toast.success(`${row.name} (${row.code}) deleted`, {
+                    description:
+                      row.status === "APPROVED"
+                        ? `Its name cannot be reused for ${DELETED_NAME_DAYS} days. ${SIM_NOTE}`
+                        : SIM_NOTE,
+                  });
+                });
+              }}
+            >
+              Delete template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

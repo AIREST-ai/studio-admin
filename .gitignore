@@ -35,3 +35,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# studio live data (never commit live state)
+.studio-data/
+
+# backup and temp files (never commit)
+*.bak
+*.bak*
+*.backup*
+
+# secrets and tokens (never commit)
+*.secret*
+*.token*
+.env*.local

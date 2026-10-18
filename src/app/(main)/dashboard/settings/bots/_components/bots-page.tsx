@@ -4,7 +4,19 @@
 // so Add, Edit and Delete change the table.
 import * as React from "react";
 
-import { Bot as BotIcon, Check, Copy, Eye, EyeOff, ImageUp, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Bot as BotIcon,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  ImageUp,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
@@ -18,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,58 +56,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { getInitials } from "@/lib/utils";
 
+import { copyText } from "../../_components/copy-text";
 import { NoResults, SettingsShell } from "../../labels/_shared/settings-shell";
+import { BOT_SAVED_NOTE, type Bot, botsStore, useBots, useBotsLoaded } from "./bots-store";
 
-interface Bot {
-  id: number;
-  name: string;
-  description: string;
-  url: string;
-  system?: boolean;
-  accessToken: string;
-  secret: string;
+// F-6A (sim2 problem 2: "Bot added successfully." and gone after a reload): the bots are saved in this preview
+// (./bots-store.ts). Every "added / updated / deleted / regenerated" message shows after the save, with a line that
+// says it is the preview; a failed save says why.
+async function botSaved(saving: Promise<void>, message: string): Promise<boolean> {
+  try {
+    await saving;
+    toast.success(message, { description: BOT_SAVED_NOTE });
+    return true;
+  } catch (error) {
+    toast.error("Not saved", { description: (error as Error).message });
+    return false;
+  }
+}
+
+/** The picked image as a 128 px square PNG data: URL, small enough to keep with the saved bot. */
+async function avatarDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const size = 128;
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  canvas
+    .getContext("2d")
+    ?.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+  bitmap.close();
+  return canvas.toDataURL("image/png");
 }
 
 function randomToken(length = 24) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
   return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
-
-const initialBots: Bot[] = [
-  {
-    id: 1,
-    name: "Captain",
-    description: "System bot",
-    url: "https://chat.weblabs.studio/captain/webhook",
-    system: true,
-    accessToken: "Fq7vN2kXc9RtLm4bWz8sHy3d",
-    secret: "whsec_4f8c2b1e9a7d6c3b",
-  },
-  {
-    id: 2,
-    name: "Order Status Bot",
-    description: "Looks up an order by its number and answers delivery questions before handing off to an agent.",
-    url: "https://bots.weblabs.studio/order-status",
-    accessToken: "Mp3sQw8eRt2yUi7oPa5sDf6g",
-    secret: "whsec_9b2d7e4a1c8f3e6d",
-  },
-  {
-    id: 3,
-    name: "Arabic FAQ Bot",
-    description: "Answers common questions in Arabic about pricing, opening hours and the API.",
-    url: "https://bots.weblabs.studio/faq-ar",
-    accessToken: "Zx4cVb6nMq1wEr9tYu2iOp8a",
-    secret: "whsec_1a5e9c3f7b2d8a4e",
-  },
-  {
-    id: 4,
-    name: "Lead Qualifier",
-    description: "Asks new website visitors about budget and timeline, then labels the conversation as a lead.",
-    url: "https://bots.weblabs.studio/lead-qualifier",
-    accessToken: "Hj5kLz7xCv3bNm1qWe6rTy9u",
-    secret: "whsec_7c3a1f9e5d2b6c8a",
-  },
-];
 
 type BotView = "all" | "webhook" | "system";
 const botViews: Record<BotView, { label: string; match: (bot: Bot) => boolean }> = {
@@ -104,9 +101,10 @@ const botViews: Record<BotView, { label: string; match: (bot: Bot) => boolean }>
   system: { label: "System", match: (bot) => Boolean(bot.system) },
 };
 
-function BotAvatar({ name, className }: { name: string; className?: string }) {
+function BotAvatar({ name, src, className }: { name: string; src?: string | null; className?: string }) {
   return (
     <Avatar className={`font-medium ${personToneClass(name)} ${className ?? ""}`}>
+      {src ? <AvatarImage src={src} alt={name} className="object-cover" /> : null}
       <AvatarFallback>{name.trim() ? getInitials(name) : <BotIcon className="size-4" />}</AvatarFallback>
     </Avatar>
   );
@@ -119,15 +117,17 @@ function SecretField({
   value,
   onReset,
   copyMessage,
-  resetMessage,
   maskable = true,
 }: {
   label: string;
   description?: string;
   value: string;
-  onReset: () => void;
+  /** Without onReset there is no Reset button (Chatwoot's create view: show-reset-button false). It says "regenerated"
+   *  itself (F-6A), after the save. */
+  onReset?: () => unknown;
   copyMessage: string;
-  resetMessage: string;
+  /** Kept for the callers' wording; the message itself is shown by onReset after the save (F-6A). */
+  resetMessage?: string;
   maskable?: boolean;
 }) {
   const [visible, setVisible] = React.useState(!maskable);
@@ -152,28 +152,30 @@ function SecretField({
             <InputGroupButton
               size="icon-xs"
               aria-label="Copy secret to clipboard"
-              onClick={() => {
-                void navigator.clipboard?.writeText(value).catch(() => undefined);
-                setCopied(true);
-                toast.success(copyMessage);
-                setTimeout(() => setCopied(false), 1500);
+              onClick={async () => {
+                if (await copyText(value, copyMessage)) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
               }}
             >
               {copied ? <Check /> : <Copy />}
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label={`Reset ${label}`}
-          onClick={() => {
-            onReset();
-            toast.success(resetMessage);
-          }}
-        >
-          <RefreshCw />
-        </Button>
+        {onReset ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={`Reset ${label}`}
+            onClick={() => {
+              void onReset();
+            }}
+          >
+            <RefreshCw />
+          </Button>
+        ) : null}
       </div>
     </Field>
   );
@@ -189,22 +191,28 @@ function BotDialog({
   bot: Bot | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (values: { name: string; description: string; url: string }) => void;
-  onReset: (field: "accessToken" | "secret") => void;
+  onSave: (values: { name: string; description: string; url: string; avatar: string | null }) => void;
+  onReset: (field: "accessToken" | "secret") => Promise<unknown>;
 }) {
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [url, setUrl] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
+  const [avatar, setAvatar] = React.useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
+  // Reset the form when the dialog opens or switches bot — not when a token of the same bot is regenerated.
+  const botId = bot?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only re-seed on open / bot change, see above.
   React.useEffect(() => {
     if (open) {
       setName(bot?.name ?? "");
       setDescription(bot?.description ?? "");
       setUrl(bot?.url ?? "");
+      setAvatar(bot?.avatar ?? null);
       setSubmitted(false);
     }
-  }, [open, bot]);
+  }, [open, botId]);
 
   const nameError = !name.trim() ? "Bot name is required" : "";
   const urlError = !url.trim()
@@ -230,27 +238,47 @@ function BotDialog({
             event.preventDefault();
             setSubmitted(true);
             if (nameError || urlError) return;
-            onSave({ name: name.trim(), description: description.trim(), url: url.trim() });
+            onSave({ name: name.trim(), description: description.trim(), url: url.trim(), avatar });
           }}
         >
           <FieldGroup className="gap-4">
             <Field>
               <FieldLabel>Bot avatar</FieldLabel>
               <div className="flex items-center gap-3">
-                <BotAvatar name={name} className="size-12" />
-                <Button type="button" variant="outline" size="sm">
+                <BotAvatar name={name} src={avatar} className="size-12" />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png, image/jpeg, image/gif"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    // Kept with the bot when the form is saved (Create Bot / Update Bot).
+                    if (file)
+                      avatarDataUrl(file).then(setAvatar, () =>
+                        toast.error("This image could not be read. Try a PNG or JPEG."),
+                      );
+                  }}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
                   <ImageUp /> Upload
                 </Button>
-                {bot ? (
+                {avatar ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground"
-                    onClick={() => toast.success("Bot avatar deleted successfully")}
+                    onClick={() => setAvatar(null)}
                   >
                     Delete
                   </Button>
+                ) : null}
+                {avatar !== (bot?.avatar ?? null) ? (
+                  <span className="text-muted-foreground text-xs">
+                    Saved when you {bot ? "update" : "create"} the bot
+                  </span>
                 ) : null}
               </div>
             </Field>
@@ -322,7 +350,8 @@ function BotDialog({
 }
 
 export function BotsPage() {
-  const [bots, setBots] = React.useState(initialBots);
+  const bots = useBots();
+  const loaded = useBotsLoaded();
   const [query, setQuery] = React.useState("");
   const [view, setView] = React.useState<BotView>("all");
   const [editingId, setEditingId] = React.useState<number | null>(null);
@@ -335,8 +364,7 @@ export function BotsPage() {
   const rows = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     return bots.filter(
-      (b) =>
-        botViews[view].match(b) && (!q || [b.name, b.description, b.url].some((v) => v.toLowerCase().includes(q))),
+      (b) => botViews[view].match(b) && (!q || [b.name, b.description, b.url].some((v) => v.toLowerCase().includes(q))),
     );
   }, [bots, query, view]);
 
@@ -370,7 +398,9 @@ export function BotsPage() {
         }}
         cardDescription="Bots that answer conversations in your inboxes before a human does."
       >
-        {rows.length ? (
+        {!loaded ? (
+          <NoResults>Loading saved bots…</NoResults>
+        ) : rows.length ? (
           <Table className="**:data-[slot='table-cell']:px-6 **:data-[slot='table-head']:px-6">
             <TableHeader>
               <TableRow>
@@ -385,7 +415,7 @@ export function BotsPage() {
                   <TableRow key={bot.id} className="border-border/60">
                     <TableCell className="max-w-0 py-3.5">
                       <div className="flex min-w-0 items-center gap-3">
-                        <BotAvatar name={bot.name} className="size-9 shrink-0" />
+                        <BotAvatar name={bot.name} src={bot.avatar} className="size-9 shrink-0" />
                         <div className="grid min-w-0 gap-0.5">
                           <div className="flex items-center gap-2">
                             <span className="truncate font-medium">{bot.name}</span>
@@ -443,36 +473,40 @@ export function BotsPage() {
           </Table>
         ) : (
           <NoResults>
-            {query ? "No bots found matching your search" : "No bots found. You can create a bot by clicking the 'Add Bot' button."}
+            {query
+              ? "No bots found matching your search"
+              : "No bots found. You can create a bot by clicking the 'Add Bot' button."}
           </NoResults>
         )}
       </SettingsShell>
 
       <BotDialog
-        bot={editing}
+        bot={editing ? (bots.find((b) => b.id === editing.id) ?? editing) : null}
         open={formOpen}
         onOpenChange={setFormOpen}
         onReset={(field) => {
-          if (!editing) return;
+          if (!editing) return Promise.resolve(false);
           const next = field === "secret" ? `whsec_${randomToken(16).toLowerCase()}` : randomToken();
-          setBots((list) => list.map((b) => (b.id === editing.id ? { ...b, [field]: next } : b)));
+          return botSaved(
+            botsStore.update(editing.id, { [field]: next } as Partial<Bot>),
+            field === "secret" ? "Webhook secret regenerated successfully" : "Access token regenerated successfully",
+          );
         }}
-        onSave={(values) => {
+        onSave={async (values) => {
           if (editing) {
-            setBots((list) => list.map((b) => (b.id === editing.id ? { ...b, ...values } : b)));
-            toast.success("Bot updated successfully.");
+            if (await botSaved(botsStore.update(editing.id, values), "Bot updated successfully.")) setFormOpen(false);
           } else {
             const bot: Bot = {
-              id: Math.max(...bots.map((b) => b.id)) + 1,
+              id: botsStore.nextId(),
               ...values,
-                        accessToken: randomToken(),
+              accessToken: randomToken(),
               secret: `whsec_${randomToken(16).toLowerCase()}`,
             };
-            setBots((list) => [...list, bot]);
-            setCreated(bot);
-            toast.success("Bot added successfully.");
+            if (await botSaved(botsStore.save(bot), "Bot added successfully.")) {
+              setCreated(bot);
+              setFormOpen(false);
+            }
           }
-          setFormOpen(false);
         }}
       />
 
@@ -486,14 +520,20 @@ export function BotsPage() {
             </DialogDescription>
           </DialogHeader>
           {created ? (
-            <SecretField
-              label="Webhook Secret"
-              value={created.secret}
-              maskable={false}
-              onReset={() => undefined}
-              copyMessage="Secret copied to clipboard"
-              resetMessage="Webhook secret regenerated successfully"
-            />
+            <div className="grid gap-4">
+              <SecretField
+                label="Access Token"
+                value={created.accessToken}
+                maskable={false}
+                copyMessage="Access token copied to clipboard"
+              />
+              <SecretField
+                label="Webhook Secret"
+                value={created.secret}
+                maskable={false}
+                copyMessage="Secret copied to clipboard"
+              />
+            </div>
           ) : null}
           <DialogFooter>
             <Button onClick={() => setCreated(null)}>Done</Button>
@@ -512,8 +552,7 @@ export function BotsPage() {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (toDelete) setBots((list) => list.filter((b) => b.id !== toDelete.id));
-                toast.success("Bot deleted successfully.");
+                if (toDelete) void botSaved(botsStore.remove(toDelete.id), "Bot deleted successfully.");
               }}
             >
               Yes, Delete

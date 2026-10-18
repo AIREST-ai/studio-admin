@@ -1,9 +1,6 @@
-import { notFound } from "next/navigation";
-
 import type { Metadata } from "next";
 
-import { CapacityPolicyForm } from "../../_components/capacity-policy-form";
-import { capacityPolicies } from "../../_components/data";
+import { CapacityPolicyRoute } from "../../_components/policy-routes";
 
 export const metadata: Metadata = {
   title: "Agent capacity policy",
@@ -11,8 +8,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (id === "new") return <CapacityPolicyForm />;
-  const policy = capacityPolicies.find((p) => String(p.id) === id);
-  if (!policy) notFound();
-  return <CapacityPolicyForm policy={policy} />;
+  return <CapacityPolicyRoute id={id} />;
 }

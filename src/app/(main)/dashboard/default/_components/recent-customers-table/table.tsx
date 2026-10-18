@@ -16,10 +16,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   MessagesSquare,
-  Search,
   UsersRound,
 } from "lucide-react";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,7 +28,6 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -124,18 +123,18 @@ export function RecentCustomersTable({ data }: { data: RecentCustomerRow[] }) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full lg:w-80">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="h-7 rounded-[min(var(--radius-md),12px)] pl-8"
-              placeholder="Search dodges..."
-              value={searchQuery}
-              onChange={(event) => {
-                table.getColumn("search")?.setFilterValue(event.target.value || undefined);
-                table.setPageIndex(0);
-              }}
-            />
-          </div>
+          {/* T-285 (Fahad 125.4): a lens that opens the box in its place; closing it brings back the lens alone. */}
+          <ExpandingSearch
+            name="customers"
+            label="Search customers"
+            placeholder="Search dodges..."
+            className="w-full lg:w-80"
+            value={searchQuery}
+            onChange={(value) => {
+              table.getColumn("search")?.setFilterValue(value || undefined);
+              table.setPageIndex(0);
+            }}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

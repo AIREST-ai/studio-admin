@@ -3,18 +3,10 @@
 // EditAttribute.vue, constants.js; attributesMgmt.json) in the Studio pattern.
 import * as React from "react";
 
+import { cn } from "cn";
 import { Calendar, CheckSquare, Hash, Link2, List, Pencil, Plus, Trash2, Type, X } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,13 +17,16 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
+import { createSavedList, SAVED_IN_PREVIEW, useSavedList } from "../../_components/settings-preview-client";
+import { ConfirmDeleteDialog } from "../../inboxes/_components/settings-ui";
 import { NoResults, plural, SettingsShell } from "../../labels/_shared/settings-shell";
-import { ChipBar, ChipSelect, FieldError, RowMenu, tableClass, ToneBadge } from "../../labels/_shared/settings-ui";
+import { ChipBar, ChipSelect, FieldError, RowMenu, ToneBadge, tableClass } from "../../labels/_shared/settings-ui";
 
 type Model = "conversation" | "contact";
 type AttrType = "Text" | "Number" | "Link" | "Date" | "List" | "Checkbox";
 
 interface Attribute {
+  id: number;
   name: string;
   attrKey: string;
   description: string;
@@ -44,19 +39,114 @@ interface Attribute {
 }
 
 const initialAttributes: Attribute[] = [
-  { name: "Order number", attrKey: "order_number", description: "Order reference from the online store", type: "Text", model: "conversation", badges: ["Pre-chat", "Resolution"], regexPattern: "^QA-[0-9]{6}$", regexCue: "Order numbers look like QA-123456" },
-  { name: "Delivery city", attrKey: "delivery_city", description: "City where the order is delivered", type: "List", model: "conversation", values: ["Doha", "Al Wakrah", "Lusail", "Dubai", "Riyadh"] },
-  { name: "Resolution reason", attrKey: "resolution_reason", description: "Why the conversation was closed", type: "List", model: "conversation", badges: ["Resolution"], values: ["Refund issued", "Replaced item", "Information only"] },
-  { name: "Refund amount (QAR)", attrKey: "refund_amount_qar", description: "Amount refunded to the customer", type: "Number", model: "conversation" },
-  { name: "Callback requested", attrKey: "callback_requested", description: "Customer asked for a phone call back", type: "Checkbox", model: "conversation" },
-  { name: "Tracking link", attrKey: "tracking_link", description: "Courier tracking page for the parcel", type: "Link", model: "conversation" },
-  { name: "Subscription plan", attrKey: "subscription_plan", description: "Current plan of the customer", type: "List", model: "contact", values: ["Basic", "Plus", "Family"] },
-  { name: "First purchase date", attrKey: "first_purchase_date", description: "Date of the first order", type: "Date", model: "contact" },
-  { name: "Qatar ID verified", attrKey: "qid_verified", description: "Identity checked by the branch team", type: "Checkbox", model: "contact" },
-  { name: "Loyalty points", attrKey: "loyalty_points", description: "Points balance in the rewards program", type: "Number", model: "contact" },
-  { name: "Preferred language", attrKey: "preferred_language", description: "Language the contact wants replies in", type: "List", model: "contact", badges: ["Pre-chat"], values: ["Arabic", "English"] },
-  { name: "Company website", attrKey: "company_website", description: "Main website of the contact's company", type: "Link", model: "contact" },
+  {
+    id: 1,
+    name: "Order number",
+    attrKey: "order_number",
+    description: "Order reference from the online store",
+    type: "Text",
+    model: "conversation",
+    badges: ["Pre-chat", "Resolution"],
+    regexPattern: "^QA-[0-9]{6}$",
+    regexCue: "Order numbers look like QA-123456",
+  },
+  {
+    id: 2,
+    name: "Delivery city",
+    attrKey: "delivery_city",
+    description: "City where the order is delivered",
+    type: "List",
+    model: "conversation",
+    values: ["Doha", "Al Wakrah", "Lusail", "Dubai", "Riyadh"],
+  },
+  {
+    id: 3,
+    name: "Resolution reason",
+    attrKey: "resolution_reason",
+    description: "Why the conversation was closed",
+    type: "List",
+    model: "conversation",
+    badges: ["Resolution"],
+    values: ["Refund issued", "Replaced item", "Information only"],
+  },
+  {
+    id: 4,
+    name: "Refund amount (QAR)",
+    attrKey: "refund_amount_qar",
+    description: "Amount refunded to the customer",
+    type: "Number",
+    model: "conversation",
+  },
+  {
+    id: 5,
+    name: "Callback requested",
+    attrKey: "callback_requested",
+    description: "Customer asked for a phone call back",
+    type: "Checkbox",
+    model: "conversation",
+  },
+  {
+    id: 6,
+    name: "Tracking link",
+    attrKey: "tracking_link",
+    description: "Courier tracking page for the parcel",
+    type: "Link",
+    model: "conversation",
+  },
+  {
+    id: 7,
+    name: "Subscription plan",
+    attrKey: "subscription_plan",
+    description: "Current plan of the customer",
+    type: "List",
+    model: "contact",
+    values: ["Basic", "Plus", "Family"],
+  },
+  {
+    id: 8,
+    name: "First purchase date",
+    attrKey: "first_purchase_date",
+    description: "Date of the first order",
+    type: "Date",
+    model: "contact",
+  },
+  {
+    id: 9,
+    name: "Qatar ID verified",
+    attrKey: "qid_verified",
+    description: "Identity checked by the branch team",
+    type: "Checkbox",
+    model: "contact",
+  },
+  {
+    id: 10,
+    name: "Loyalty points",
+    attrKey: "loyalty_points",
+    description: "Points balance in the rewards program",
+    type: "Number",
+    model: "contact",
+  },
+  {
+    id: 11,
+    name: "Preferred language",
+    attrKey: "preferred_language",
+    description: "Language the contact wants replies in",
+    type: "List",
+    model: "contact",
+    badges: ["Pre-chat"],
+    values: ["Arabic", "English"],
+  },
+  {
+    id: 12,
+    name: "Company website",
+    attrKey: "company_website",
+    description: "Main website of the contact's company",
+    type: "Link",
+    model: "contact",
+  },
 ];
+
+export const attributesStore = createSavedList<Attribute>("customAttributes", initialAttributes);
 
 const typeIcon: Record<AttrType, React.ElementType> = {
   Text: Type,
@@ -102,7 +192,7 @@ function AttributeDialog({
   attribute?: Attribute;
   model: Model;
   takenKeys: string[];
-  onSave: (attr: Attribute) => void;
+  onSave: (attr: Omit<Attribute, "id">) => Promise<void>;
 }) {
   const blank: FormState = {
     model,
@@ -119,6 +209,8 @@ function AttributeDialog({
   const [keyEdited, setKeyEdited] = React.useState(false);
   const [draftValue, setDraftValue] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the dialog opens.
   React.useEffect(() => {
@@ -141,6 +233,8 @@ function AttributeDialog({
     setKeyEdited(!!attribute);
     setDraftValue("");
     setSubmitted(false);
+    setSaving(false);
+    setSaveError(null);
   }, [open, attribute]);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -167,28 +261,36 @@ function AttributeDialog({
     setDraftValue("");
   }
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitted(true);
-    if (hasError || !form.model || !form.type) return;
-    onSave({
-      name: form.name.trim(),
-      attrKey: form.attrKey,
-      description: form.description.trim(),
-      type: form.type,
-      model: form.model,
-      badges: attribute?.badges,
-      values: form.type === "List" ? form.values : undefined,
-      regexPattern: form.type === "Text" && form.regex ? form.regexPattern : undefined,
-      regexCue: form.type === "Text" && form.regex ? form.regexCue : undefined,
-    });
-    onOpenChange(false);
+    if (hasError || !form.model || !form.type || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        name: form.name.trim(),
+        attrKey: form.attrKey,
+        description: form.description.trim(),
+        type: form.type,
+        model: form.model,
+        badges: attribute?.badges,
+        values: form.type === "List" ? form.values : undefined,
+        regexPattern: form.type === "Text" && form.regex ? form.regexPattern : undefined,
+        regexCue: form.type === "Text" && form.regex ? form.regexCue : undefined,
+      });
+      onOpenChange(false);
+    } catch (error) {
+      setSaveError((error as Error).message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const err = (k: keyof typeof errors) => (submitted ? errors[k] : "");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
@@ -280,7 +382,12 @@ function AttributeDialog({
                     <button
                       type="button"
                       aria-label={`Remove ${v}`}
-                      onClick={() => set("values", form.values.filter((x) => x !== v))}
+                      onClick={() =>
+                        set(
+                          "values",
+                          form.values.filter((x) => x !== v),
+                        )
+                      }
                     >
                       <X className="size-3" />
                     </button>
@@ -289,7 +396,9 @@ function AttributeDialog({
                 <input
                   id="attr-values"
                   className="min-w-32 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  placeholder={attribute ? "Please enter values and press enter key" : "Please enter value and press enter key"}
+                  placeholder={
+                    attribute ? "Please enter values and press enter key" : "Please enter value and press enter key"
+                  }
                   value={draftValue}
                   onChange={(e) => setDraftValue(e.target.value)}
                   onKeyDown={(e) => {
@@ -336,13 +445,20 @@ function AttributeDialog({
               ) : null}
             </>
           ) : null}
+          {saveError ? (
+            <p role="alert" data-attribute-save-error="" className="text-destructive text-sm">
+              {saveError}
+            </p>
+          ) : null}
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" disabled={saving}>
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit">{attribute ? "Update" : "Create"}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : attribute ? "Update" : "Create"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -350,7 +466,7 @@ function AttributeDialog({
   );
 }
 
-/** Delete confirm with type-to-confirm, as Chatwoot's woot-delete-modal for attributes. */
+/** Delete confirm with type-to-confirm, as Chatwoot's woot-delete-modal for attributes (shared dialog, 128.2). */
 function DeleteAttribute({
   attribute,
   onOpenChange,
@@ -360,42 +476,20 @@ function DeleteAttribute({
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
-  const [typed, setTyped] = React.useState("");
-  React.useEffect(() => setTyped(""), [attribute]);
-  const name = attribute?.name ?? "";
   return (
-    <AlertDialog open={!!attribute} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure want to delete - {name}</AlertDialogTitle>
-          <AlertDialogDescription>Deleting will remove the custom attribute</AlertDialogDescription>
-        </AlertDialogHeader>
-        <Input
-          aria-label="Confirm name"
-          placeholder={`Please type ${name} to confirm`}
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-        />
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            disabled={typed !== name}
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
-          >
-            Delete {name}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDeleteDialog
+      open={!!attribute}
+      onOpenChange={onOpenChange}
+      title="Delete attribute"
+      message="Deleting will remove the custom attribute"
+      confirmValue={attribute?.name ?? ""}
+      onConfirm={onConfirm}
+    />
   );
 }
 
 export function AttributesList() {
-  const [attributes, setAttributes] = React.useState(initialAttributes);
+  const attributes = useSavedList(attributesStore);
   const [model, setModel] = React.useState<Model>("conversation");
   const [query, setQuery] = React.useState("");
   const [typeFilter, setTypeFilter] = React.useState("All");
@@ -439,14 +533,21 @@ export function AttributesList() {
           <ChipSelect label="Type" value={typeFilter} options={["All", ...attrTypes]} onChange={setTypeFilter} />
         </ChipBar>
         {rows.length ? (
-          <Table className={tableClass}>
+          <Table
+            className={cn(
+              tableClass,
+              "max-xl:**:data-[slot='table-cell']:px-4 max-xl:**:data-[slot='table-head']:px-4",
+            )}
+          >
             <TableHeader>
               <TableRow>
                 <TableHead className="py-3 font-normal">Name</TableHead>
                 <TableHead className="py-3 font-normal">Description</TableHead>
                 <TableHead className="py-3 font-normal">Type</TableHead>
                 <TableHead className="py-3 font-normal">Key</TableHead>
-                <TableHead className="w-20 py-3 text-right font-normal">Actions</TableHead>
+                <TableHead className="sticky right-0 w-20 bg-card py-3 text-right font-normal shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -455,7 +556,7 @@ export function AttributesList() {
                 return (
                   <TableRow key={attr.attrKey} className="border-border/60">
                     <TableCell className="py-3.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{attr.name}</span>
                         {attr.badges?.map((b) => (
                           <ToneBadge key={b} tone={b === "Pre-chat" ? "sky" : "violet"}>
@@ -464,7 +565,9 @@ export function AttributesList() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-sm truncate py-3.5 text-muted-foreground">{attr.description}</TableCell>
+                    <TableCell className="max-w-sm whitespace-normal py-3.5 text-muted-foreground">
+                      {attr.description}
+                    </TableCell>
                     <TableCell className="py-3.5">
                       <span className="inline-flex items-center gap-1.5">
                         <Icon className="size-3.5 text-muted-foreground" />
@@ -474,7 +577,7 @@ export function AttributesList() {
                     <TableCell className="py-3.5">
                       <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{attr.attrKey}</code>
                     </TableCell>
-                    <TableCell className="py-3.5 text-right">
+                    <TableCell className="sticky right-0 bg-card py-3.5 text-right shadow-[inset_1px_0_0_var(--border),-6px_0_6px_-6px_rgb(0_0_0/0.45)]">
                       <RowMenu
                         name={attr.name}
                         items={[
@@ -508,10 +611,15 @@ export function AttributesList() {
         onOpenChange={setAdding}
         model={model}
         takenKeys={attributes.map((a) => a.attrKey)}
-        onSave={(attr) => {
-          setAttributes((prev) => [...prev, attr]);
-          setModel(attr.model);
-          toast.success("Custom Attribute added successfully!");
+        onSave={async (attr) => {
+          try {
+            await attributesStore.save({ ...attr, id: attributesStore.nextId() });
+            setModel(attr.model);
+            toast.success("Custom Attribute added successfully!", { description: SAVED_IN_PREVIEW });
+          } catch (error) {
+            toast.error((error as Error).message);
+            throw error;
+          }
         }}
       />
       <AttributeDialog
@@ -520,17 +628,25 @@ export function AttributesList() {
         attribute={editing}
         model={model}
         takenKeys={attributes.map((a) => a.attrKey)}
-        onSave={(attr) => {
-          setAttributes((prev) => prev.map((a) => (a.attrKey === attr.attrKey ? attr : a)));
-          toast.success("Custom Attribute updated successfully");
+        onSave={async (attr) => {
+          try {
+            await attributesStore.save({ ...attr, id: editing?.id ?? attributesStore.nextId() });
+            toast.success("Custom Attribute updated successfully", { description: SAVED_IN_PREVIEW });
+          } catch (error) {
+            toast.error((error as Error).message);
+            throw error;
+          }
         }}
       />
       <DeleteAttribute
         attribute={deleting}
         onOpenChange={(o) => !o && setDeleting(undefined)}
         onConfirm={() => {
-          setAttributes((prev) => prev.filter((a) => a.attrKey !== deleting?.attrKey));
-          toast.success("Custom Attribute deleted successfully.");
+          if (!deleting) return;
+          void attributesStore.remove(deleting.id).then(
+            () => toast.success("Custom Attribute deleted successfully.", { description: SAVED_IN_PREVIEW }),
+            (error: Error) => toast.error(error.message),
+          );
         }}
       />
     </>

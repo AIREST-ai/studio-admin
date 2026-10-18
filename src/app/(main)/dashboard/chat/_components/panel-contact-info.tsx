@@ -7,6 +7,7 @@ import { type ReactNode, useRef, useState } from "react";
 
 import Link from "next/link";
 
+import { cn } from "cn";
 import {
   Building2,
   Check,
@@ -24,18 +25,21 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
 
-import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
+import { canDeleteContacts, useViewer } from "@/lib/cw/view-as";
 
+import { CustomerPath } from "./customer-path";
 import { type Conversation, contactIdOf, isPersonOnline } from "./cw-data";
 import { openDialog } from "./cw-dialogs";
-import { cw, useContactOf } from "./cw-store";
+import { contactKeyOf, cw, useContactOf } from "./cw-store";
 import { PersonAvatar } from "./cw-ui";
-import { copyToClipboard } from "./panel-attributes";
+import { copyToClipboard, previewOnly } from "./panel-attributes";
+import { useSimProfileId } from "./sim-actions";
+import { getCallChannelInfo, startSimCall } from "./sim-call";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[1-9][\d\s-]{6,17}$/;
@@ -265,14 +269,19 @@ function NameField({ name, onSave }: { name: string; onSave: (name: string) => v
 }
 
 export function ContactInfo({ conversation }: { conversation: Conversation }) {
+  const viewer = useViewer();
   const contact = useContactOf(conversation);
-  const key = conversation.contact.email;
-  const profileId = contactIdOf(conversation.id);
+  const key = contactKeyOf(conversation);
+  // M129-A: after a (simulated) merge the conversation belongs to the kept contact, so its profile opens.
+  const mergedInto = useSimProfileId(conversation.id);
+  const profileId = mergedInto ?? contactIdOf(conversation.id);
   const profileHref = profileId ? `/dashboard/contacts/${profileId}` : "/dashboard/contacts";
-  const canCall = conversation.channel === "whatsapp" || conversation.channel === "phone";
+  const linkedActive = useLinkedAdapterStatus((s) => s.active);
+  const isLinked = linkedActive || linkedSession();
+  const callInfo = getCallChannelInfo(conversation, isLinked);
   const save = (patch: Parameters<typeof cw.editContact>[1]) => {
     cw.editContact(key, patch);
-    toast.success("Contact saved successfully");
+    previewOnly("Contact changed");
   };
 
   return (
@@ -290,7 +299,11 @@ export function ContactInfo({ conversation }: { conversation: Conversation }) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href={profileHref} aria-label="View Profile" className="text-muted-foreground hover:text-foreground">
+                <Link
+                  href={profileHref}
+                  aria-label="View Profile"
+                  className="text-muted-foreground hover:text-foreground"
+                >
                   <ExternalLink className="size-3.5" />
                 </Link>
               </TooltipTrigger>
@@ -315,6 +328,8 @@ export function ContactInfo({ conversation }: { conversation: Conversation }) {
           onSave={(email) => save({ email })}
           validate={(email) => (EMAIL_RE.test(email) ? null : "Please enter a valid email address.")}
         />
+        {/* T-285 (Fahad 124.4): Customer Path right above the phone number, framed as the product's own feature. */}
+        <CustomerPath conversation={conversation} />
         <InfoRow
           icon={Phone}
           title="Phone number"
@@ -322,9 +337,7 @@ export function ContactInfo({ conversation }: { conversation: Conversation }) {
           href={contact.phone ? `tel:${contact.phone.replace(/\s/g, "")}` : undefined}
           copyable
           onSave={(phone) => save({ phone })}
-          validate={(phone) =>
-            PHONE_RE.test(phone) ? null : "Phone number should be either empty or of E.164 format"
-          }
+          validate={(phone) => (PHONE_RE.test(phone) ? null : "Phone number should be either empty or of E.164 format")}
         />
         <InfoRow icon={Building2} title="Company" value={contact.company} onSave={(company) => save({ company })} />
         {contact.location && <InfoRow icon={MapPin} title="Location" value={contact.location} />}
@@ -341,10 +354,29 @@ export function ContactInfo({ conversation }: { conversation: Conversation }) {
         <IconAction label="View all conversations" href={profileHref}>
           <History />
         </IconAction>
-        {canCall && (
-          <IconAction label="Call" onClick={() => toast("Calling the contact…")}>
+        {callInfo.canCall && (
+          <IconAction label={callInfo.tooltip} onClick={() => startSimCall(conversation.id)}>
             <PhoneCall />
           </IconAction>
+        )}
+        {callInfo.isInstagram && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex" title={callInfo.tooltip}>
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  disabled
+                  data-call-button="instagram-disabled"
+                  aria-label={callInfo.label}
+                  className="opacity-50"
+                >
+                  <PhoneCall />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{callInfo.tooltip}</TooltipContent>
+          </Tooltip>
         )}
         <IconAction label="Edit contact" onClick={() => openDialog({ type: "edit-contact", convId: conversation.id })}>
           <PenLine />
@@ -355,13 +387,16 @@ export function ContactInfo({ conversation }: { conversation: Conversation }) {
         >
           <GitMerge />
         </IconAction>
-        <IconAction
-          label="Delete contact"
-          className="text-destructive hover:text-destructive"
-          onClick={() => openDialog({ type: "delete-contact", convId: conversation.id })}
-        >
-          <Trash2 />
-        </IconAction>
+        {/* F-5A "View as": administrators only (Chatwoot conversation/contact/ContactInfo.vue v-if="isAdmin"). */}
+        {canDeleteContacts(viewer) && (
+          <IconAction
+            label="Delete contact"
+            className="text-destructive hover:text-destructive"
+            onClick={() => openDialog({ type: "delete-contact", convId: conversation.id })}
+          >
+            <Trash2 />
+          </IconAction>
+        )}
       </div>
     </div>
   );

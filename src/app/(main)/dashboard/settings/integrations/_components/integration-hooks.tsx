@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+import { SettingsCard } from "../../_components/settings-card";
 import { NoResults, PageHeader, SettingsShell } from "../../labels/_shared/settings-shell";
 import { hookApps, type IntegrationHook } from "./data";
 import {
@@ -27,11 +28,14 @@ import {
   IntegrationRow,
   integrationById,
 } from "./integration-ui";
+import { hooksStore, INTEGRATION_NOTE, type SavedHook, useHooks, useHooksLoaded } from "./integrations-store";
 
 export function IntegrationHooks({ integrationId }: { integrationId: string }) {
   const item = integrationById(integrationId);
   const app = hookApps[integrationId];
-  const [hooks, setHooks] = React.useState<IntegrationHook[]>(app?.hooks ?? []);
+  // F-6A: the hooks are saved in this preview (integrations-store.ts); none was connected in the sample.
+  const hooks: SavedHook[] = useHooks().filter((hook) => hook.app === integrationId);
+  const loaded = useHooksLoaded();
   const [adding, setAdding] = React.useState(false);
   const [deleting, setDeleting] = React.useState<IntegrationHook | null>(null);
   const [query, setQuery] = React.useState("");
@@ -39,7 +43,7 @@ export function IntegrationHooks({ integrationId }: { integrationId: string }) {
   if (!item || !app) {
     return (
       <div className="flex flex-col gap-4">
-        <BackToIntegrations />
+        <BackToIntegrations current="Integration not found" />
         <PageHeader title="Integration not found" description="This integration is not available on this account." />
       </div>
     );
@@ -48,22 +52,43 @@ export function IntegrationHooks({ integrationId }: { integrationId: string }) {
   const isInbox = app.hookType === "inbox";
   const connected = hooks.length > 0;
 
-  function create(values: Record<string, string>) {
+  // A key or password is never kept: only its last 4 characters, so the page can say which one was used.
+  const shown = (name: string, value: string | undefined) => {
+    const field = app.fields.find((f) => f.name === name);
+    if (field?.type === "password" && value) return `•••• ${value.slice(-4)}`;
+    return value ?? "";
+  };
+
+  async function create(values: Record<string, string>): Promise<boolean> {
     const properties =
       app.mode === "multiple"
         ? (app.headers ?? []).map((h) => {
             const field = app.fields.find((f) => f.name === h.field);
-            return values[h.field] || field?.options?.[0] || "—";
+            return shown(h.field, values[h.field]) || field?.options?.[0] || "—";
           })
-        : [values[app.fields[0].name] ?? ""];
-    setHooks((prev) => [...prev, { id: Date.now(), inbox: values.inbox, properties }]);
+        : [shown(app.fields[0].name, values[app.fields[0].name])];
+    try {
+      await hooksStore.save({ id: hooksStore.nextId(), app: integrationId, inbox: values.inbox, properties });
+      toast.success("Integration hook added successfully", { description: INTEGRATION_NOTE });
+      return true;
+    } catch (error) {
+      toast.error("Not saved", { description: (error as Error).message });
+      return false;
+    }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleting) return;
-    setHooks((prev) => prev.filter((h) => h.id !== deleting.id));
-    toast.success("Hook deleted successfully");
+    const hook = deleting;
     setDeleting(null);
+    try {
+      await hooksStore.remove(hook.id);
+      toast.success(isInbox ? "Hook deleted successfully" : "Integration disconnected successfully", {
+        description: INTEGRATION_NOTE,
+      });
+    } catch (error) {
+      toast.error("Not saved", { description: (error as Error).message });
+    }
   }
 
   const dialogs = (
@@ -81,7 +106,7 @@ export function IntegrationHooks({ integrationId }: { integrationId: string }) {
   if (app.mode === "single") {
     return (
       <div className="flex flex-col gap-4">
-        <BackToIntegrations />
+        <BackToIntegrations current={item.name} />
         <PageHeader
           title={item.name}
           description={app.shortDescription}
@@ -93,12 +118,11 @@ export function IntegrationHooks({ integrationId }: { integrationId: string }) {
             <IntegrationRow
               item={item}
               action={
-                connected ? (
-                  <Button variant="destructive" onClick={() => setDeleting(hooks[0])}>
-                    Disconnect
+                // م137 round 2 (judge M137): Disconnect moved to the red card at the foot of the page (below).
+                connected ? null : (
+                  <Button onClick={() => setAdding(true)} disabled={!loaded}>
+                    Connect
                   </Button>
-                ) : (
-                  <Button onClick={() => setAdding(true)}>Connect</Button>
                 )
               }
             />
@@ -106,10 +130,25 @@ export function IntegrationHooks({ integrationId }: { integrationId: string }) {
               <div className="grid gap-1 border-t px-6 py-4 text-sm">
                 <span className="text-muted-foreground">Connected with</span>
                 <span className="font-mono">{hooks[0].properties[0] || "Configured"}</span>
+                <span className="text-muted-foreground text-xs">{INTEGRATION_NOTE}</span>
               </div>
             ) : null}
           </CardContent>
         </Card>
+        {/* م137 round 2 (Fahad 137, judge M137): disconnecting is the page's danger action, in a red card at the
+            bottom (GitHub's Danger Zone; Chatwoot's AccountDelete). Same dialog. */}
+        {connected ? (
+          <SettingsCard
+            tone="danger"
+            title="Disconnect"
+            description={`Disconnects ${item.name} from this account. You can connect it again later.`}
+            action={
+              <Button variant="destructive" size="sm" onClick={() => setDeleting(hooks[0])}>
+                Disconnect
+              </Button>
+            }
+          />
+        ) : null}
         {dialogs}
       </div>
     );
@@ -122,7 +161,7 @@ export function IntegrationHooks({ integrationId }: { integrationId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <BackToIntegrations />
+      <BackToIntegrations current={item.name} />
       <SettingsShell
         title={item.name}
         description={item.description}

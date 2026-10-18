@@ -164,7 +164,7 @@ export const webhooks: Webhook[] = [
   {
     id: 4,
     name: "",
-    url: "https://n8n.dohafit.qa/webhook/7c1e-support",
+    url: "https://hooks.dohafit.qa/webhook/7c1e-support",
     events: ["conversation_created", "conversation_status_changed", "webwidget_triggered", "inbox_updated"],
   },
 ];
@@ -298,7 +298,13 @@ export const hookApps: Record<string, HookApp> = {
     mode: "single",
     shortDescription: "Start audio and video calls with customers from a conversation.",
     fields: [
-      { name: "organization_id", label: "Organization ID", type: "text", placeholder: "Dyte organization ID", required: true },
+      {
+        name: "organization_id",
+        label: "Organization ID",
+        type: "text",
+        placeholder: "Dyte organization ID",
+        required: true,
+      },
       { name: "api_key", label: "API Key", type: "password", placeholder: "Dyte API key", required: true },
     ],
     hooks: [],
@@ -309,8 +315,20 @@ export const hookApps: Record<string, HookApp> = {
     mode: "single",
     shortDescription: "Sync contacts and conversation activity to LeadSquared CRM.",
     fields: [
-      { name: "access_key", label: "Access Key", type: "password", placeholder: "LeadSquared access key", required: true },
-      { name: "secret_key", label: "Secret Key", type: "password", placeholder: "LeadSquared secret key", required: true },
+      {
+        name: "access_key",
+        label: "Access Key",
+        type: "password",
+        placeholder: "LeadSquared access key",
+        required: true,
+      },
+      {
+        name: "secret_key",
+        label: "Secret Key",
+        type: "password",
+        placeholder: "LeadSquared secret key",
+        required: true,
+      },
       {
         name: "endpoint_url",
         label: "API Host",
@@ -327,7 +345,14 @@ export const hookApps: Record<string, HookApp> = {
   },
 };
 
-export const hookInboxes = ["Support Email", "Website Chat", "WhatsApp Business", "Instagram", "Facebook Page", "Phone"];
+export const hookInboxes = [
+  "Support Email",
+  "Website Chat",
+  "WhatsApp Business",
+  "Instagram",
+  "Facebook Page",
+  "Phone",
+];
 
 export interface SlackChannel {
   id: string;

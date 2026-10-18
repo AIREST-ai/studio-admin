@@ -1,9 +1,10 @@
 "use client";
+import * as React from "react";
 
 import type { Column, ColumnDef } from "@tanstack/react-table";
 import { Subscribe } from "@tanstack/react-table";
 import { cn } from "cn";
-import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal, RotateCcw } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal, RotateCcw, Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -24,6 +24,83 @@ import {
 import type { DataTableFeatures } from "@/lib/data-table-features";
 
 import { labels, priorities, statuses, type Task } from "./data";
+
+export interface TaskRowActions {
+  onEdit: (task: Task) => void;
+  onDuplicate: (task: Task) => void;
+  onToggleFavorite: (task: Task) => void;
+  onLabelChange: (task: Task, label: string) => void;
+  onDelete: (task: Task) => void;
+}
+
+export const TaskRowActionsContext = React.createContext<TaskRowActions | null>(null);
+
+function TaskRowMenu({ task }: { task: Task }) {
+  const actions = React.useContext(TaskRowActionsContext);
+  // Edit/Delete open their dialog only once this menu has fully closed (after its exit animation). Opened earlier, the
+  // closing menu still takes focus on pointer leave, the dialog's focus trap pulls it back and re-selects the title, and
+  // the first typed character is replaced. Waiting also lets the menu hand focus back to its trigger first.
+  const afterClose = React.useRef<(() => void) | null>(null);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground data-[state=open]:bg-muted"
+          data-task-menu={task.id}
+        >
+          <MoreHorizontal />
+          <span className="sr-only">Open menu</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-48"
+        onCloseAutoFocus={() => {
+          const run = afterClose.current;
+          afterClose.current = null;
+          run?.();
+        }}
+      >
+        <DropdownMenuItem
+          onSelect={() => {
+            afterClose.current = () => actions?.onEdit(task);
+          }}
+        >
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => actions?.onDuplicate(task)}>Make a copy</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => actions?.onToggleFavorite(task)}>
+          {task.favorite ? "Remove from favorites" : "Favorite"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuRadioGroup value={task.label} onValueChange={(label) => actions?.onLabelChange(task, label)}>
+              {labels.map((label) => (
+                <DropdownMenuRadioItem key={label.value} value={label.value}>
+                  {label.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => {
+            afterClose.current = () => actions?.onDelete(task);
+          }}
+        >
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 const statusStyles: Record<string, string> = {
   backlog: "border-muted-foreground/20 bg-muted text-muted-foreground",
@@ -124,6 +201,11 @@ export const columns: ColumnDef<DataTableFeatures, Task>[] = [
 
       return (
         <div className="flex min-w-0 items-center gap-2">
+          {row.original.favorite && (
+            <span role="img" aria-label="Favorite" title="Favorite" className="shrink-0">
+              <Star className="size-4 fill-amber-400 text-amber-400" />
+            </span>
+          )}
           {label && (
             <Badge className="rounded-sm bg-transparent" variant="outline">
               {label.label}
@@ -178,44 +260,10 @@ export const columns: ColumnDef<DataTableFeatures, Task>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const task = row.original as Task;
-
-      return (
-        <div className="text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="text-muted-foreground data-[state=open]:bg-muted">
-                <MoreHorizontal />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <DropdownMenuItem>Make a copy</DropdownMenuItem>
-              <DropdownMenuItem>Favorite</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup value={task.label}>
-                    {labels.map((label) => (
-                      <DropdownMenuRadioItem key={label.value} value={label.value}>
-                        {label.label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                Delete
-                <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <div className="text-right">
+        <TaskRowMenu task={row.original} />
+      </div>
+    ),
   },
 ];

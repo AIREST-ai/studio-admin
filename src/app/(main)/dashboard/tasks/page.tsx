@@ -1,25 +1,23 @@
 import type { Metadata } from "next";
 
-import { tasks } from "./_components/data";
-import { Tasks } from "./_components/tasks";
+import { TwentyBoard } from "./_twenty/twenty-board";
 
 export const metadata: Metadata = {
-  title: "Open Source Task Manager with shadcn/ui",
+  title: "Tasks",
   description:
-    "Explore an open source task manager for searching, filtering, organizing, and tracking work in one place.",
+    "Tasks from the tasks server: running work on the board, Done, On hold and Canceled in their own sections, cards you design.",
   alternates: {
     canonical: "/dashboard/tasks",
   },
 };
 
+// M129-F (Fahad 129.6): the Tasks page now reads and writes the ready task system Twenty (local install, see
+// src/lib/twenty/server.ts) instead of the template's sample tasks. The previous board (./_board, saved by
+// /api/tasks-board) is no longer shown here; the calendar still reads its own copy for due dates.
 export default function Page() {
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-3xl tracking-tight">Welcome back!</h2>
-        <p className="text-muted-foreground">Here's a list of your tasks for this month!</p>
-      </div>
-      <Tasks data={tasks} />
+    <div data-content-padding="false">
+      <TwentyBoard />
     </div>
   );
 }

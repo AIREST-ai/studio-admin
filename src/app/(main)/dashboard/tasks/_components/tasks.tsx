@@ -10,7 +10,9 @@ import {
 } from "@tanstack/react-table";
 import { cn } from "cn";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import {
   Pagination,
   PaginationContent,
@@ -24,8 +26,10 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { dataTableFeatures } from "@/lib/data-table-features";
 
-import { columns } from "./columns";
+import { columns, type TaskRowActions, TaskRowActionsContext } from "./columns";
 import type { Task } from "./data";
+import { ConfirmDialog, TaskFormDialog } from "./task-dialogs";
+import { type SaveResult, type TaskSaveState, useTaskStore } from "./task-store";
 import { TasksToolbar } from "./tasks-toolbar";
 
 interface TasksProps {
@@ -47,7 +51,46 @@ function getPageNumbers(currentPage: number, pageCount: number) {
   return [currentPage - 1, currentPage, currentPage + 1];
 }
 
+function SaveNotice({ save, onReset }: { save: TaskSaveState; onReset: () => void }) {
+  if (save.status === "error") {
+    return (
+      <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-destructive text-sm">
+        <span>
+          Demo save: {save.message}
+          {save.kind === "write" ? " Nothing was changed; the last saved tasks are kept. Try the change again." : null}
+        </span>
+        <Button variant="link" size="sm" className="h-auto p-0" onClick={onReset}>
+          Reset demo data
+        </Button>
+      </div>
+    );
+  }
+
+  const savedAt = save.status === "saved" ? save.savedAt : null;
+  let detail = "Loading saved tasks…";
+  if (savedAt) {
+    detail = `Last saved ${new Date(savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`;
+  } else if (save.status === "saved") {
+    detail = "Showing sample data.";
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm" aria-live="polite">
+      <span>Demo save: changes are kept in this browser only (no server). {detail}</span>
+      {savedAt ? (
+        <Button variant="link" size="sm" className="h-auto p-0" onClick={onReset}>
+          Reset demo data
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function Tasks({ data }: TasksProps) {
+  const store = useTaskStore(data);
+  const [form, setForm] = React.useState<{ open: boolean; task: Task | null }>({ open: false, task: null });
+  const [toDelete, setToDelete] = React.useState<Task | null>(null);
+  const [resetOpen, setResetOpen] = React.useState(false);
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -59,7 +102,7 @@ export function Tasks({ data }: TasksProps) {
 
   const table = useTable({
     features: dataTableFeatures,
-    data,
+    data: store.tasks,
     columns,
     state: {
       sorting,
@@ -69,6 +112,8 @@ export function Tasks({ data }: TasksProps) {
       pagination,
     },
     getRowId: (row) => row.id,
+    // Editing a row must not send the user back to page 1; an emptied last page is clamped below instead.
+    autoResetPageIndex: false,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -83,47 +128,106 @@ export function Tasks({ data }: TasksProps) {
   const canPreviousPage = table.getCanPreviousPage();
   const canNextPage = table.getCanNextPage();
 
+  React.useEffect(() => {
+    if (pageIndex > pageCount - 1) setPagination((current) => ({ ...current, pageIndex: pageCount - 1 }));
+  }, [pageIndex, pageCount]);
+
+  // The row whose ⋮ menu gets focus back when the Edit/Delete dialog closes; after a delete, its neighbour.
+  const focusRow = React.useRef<string | null>(null);
+  const restoreRowFocus = (event: Event) => {
+    const id = focusRow.current;
+    focusRow.current = null;
+    if (id === null) return;
+    const menus = Array.from(document.querySelectorAll<HTMLElement>("[data-task-menu]"));
+    // The row may have left this page (sorting/filtering after an edit): fall back to the first row's menu.
+    const target = menus.find((menu) => menu.dataset.taskMenu === id) ?? menus[0];
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+  };
+
+  const notSaved = (result: SaveResult) => {
+    if (!result.ok) toast.error(`${result.message} Nothing was changed.`);
+  };
+
+  const rowActions: TaskRowActions = {
+    onEdit: (task) => {
+      focusRow.current = task.id;
+      setForm({ open: true, task });
+    },
+    onDuplicate: (task) => {
+      const copy = store.duplicate(task.id);
+      if (!copy) return;
+      if (copy.ok) toast.success(`${task.id} copied to ${copy.task.id}`);
+      else notSaved(copy);
+    },
+    onToggleFavorite: (task) => notSaved(store.toggleFavorite(task.id)),
+    onLabelChange: (task, label) => notSaved(store.setLabel(task.id, label)),
+    onDelete: (task) => {
+      focusRow.current = task.id;
+      setToDelete(task);
+    },
+  };
+
   return (
     <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
-      <div className="border-b px-4 py-4">
-        <TasksToolbar table={table} />
+      <div className="flex flex-col gap-3 border-b px-4 py-4">
+        <TasksToolbar table={table} onAddTask={() => setForm({ open: true, task: null })} />
+        <SaveNotice save={store.save} onReset={() => setResetOpen(true)} />
       </div>
-      <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="h-11 font-medium text-muted-foreground" colSpan={header.colSpan}>
-                  {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="border-border/60 hover:bg-muted/20"
-                data-state={table.state.rowSelection[row.id] && "selected"}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-3 align-middle">
-                    <table.FlexRender cell={cell} />
-                  </TableCell>
+      <TaskRowActionsContext value={rowActions}>
+        <Table className="**:data-[slot=table-cell]:px-4 **:data-[slot=table-head]:px-4">
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      "h-11 font-medium text-muted-foreground",
+                      header.column.id === "actions" && "sticky right-0 bg-background",
+                    )}
+                    colSpan={header.colSpan}
+                  >
+                    {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={table.getVisibleLeafColumns().length} className="h-24 text-center">
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  className="border-border/60 hover:bg-muted/20"
+                  data-state={table.state.rowSelection[row.id] && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "py-3 align-middle",
+                        cell.column.id === "title" && "md:w-full md:min-w-40 md:max-w-0",
+                        cell.column.id === "actions" &&
+                          "sticky right-0 bg-background [tr[data-state=selected]>&]:bg-muted",
+                      )}
+                    >
+                      <table.FlexRender cell={cell} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={table.getVisibleLeafColumns().length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TaskRowActionsContext>
       <div className="flex flex-col gap-3 border-t px-4 py-4 md:flex-row md:items-center md:justify-between">
         <div className="text-muted-foreground text-sm">
           {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
@@ -236,6 +340,56 @@ export function Tasks({ data }: TasksProps) {
           </Pagination>
         </div>
       </div>
+      <TaskFormDialog
+        open={form.open}
+        task={form.task}
+        onOpenChange={(open) => setForm((current) => ({ ...current, open }))}
+        onCloseAutoFocus={restoreRowFocus}
+        onSubmit={(draft) => {
+          // Success is only announced after the save really happened; on failure the dialog keeps the draft.
+          if (form.task) {
+            const result = store.update(form.task.id, draft);
+            if (!result.ok) return result;
+            toast.success(`${form.task.id} updated`);
+          } else {
+            const result = store.create(draft);
+            if (!result.ok) return result;
+            table.setPageIndex(0);
+            toast.success(`${result.task.id} created`);
+          }
+          setForm((current) => ({ ...current, open: false }));
+          return { ok: true };
+        }}
+      />
+      <ConfirmDialog
+        open={toDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setToDelete(null);
+        }}
+        onCloseAutoFocus={restoreRowFocus}
+        title={toDelete ? `Delete ${toDelete.id}?` : "Delete task?"}
+        description={toDelete ? `"${toDelete.title}" will be removed from this list. This cannot be undone.` : ""}
+        confirm="Delete task"
+        onConfirm={() => {
+          if (!toDelete) return { ok: true };
+          const ids = table.getRowModel().rows.map((row) => row.id);
+          const index = ids.indexOf(toDelete.id);
+          const result = store.remove(toDelete.id);
+          if (!result.ok) return result;
+          // No neighbour on this page: the deleted id is not found, so focus falls back to the first row's menu.
+          focusRow.current = ids[index + 1] ?? ids[index - 1] ?? toDelete.id;
+          toast.success(`${toDelete.id} deleted`);
+          return result;
+        }}
+      />
+      <ConfirmDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Reset demo data?"
+        description="All task changes saved in this browser are removed and the sample tasks come back."
+        confirm="Reset"
+        onConfirm={store.reset}
+      />
     </div>
   );
 }

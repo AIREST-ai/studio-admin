@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SlaList } from "./_components/sla-list";
 
 export const metadata: Metadata = {
-  title: "Service Level Agreements",
+  title: "SLA",
   description: "Response and resolution time targets for your team.",
 };
 

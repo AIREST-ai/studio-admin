@@ -47,7 +47,17 @@ export type Role = {
   group: RoleGroup;
   accessLevel: "Full" | "Scoped";
   permissions: Permission[];
+  /** Studio-before columns (kept by Fahad's rule): last review date, owner, review status. Not in Chatwoot. */
+  lastReview: string;
+  owner: string;
+  status: RoleStatus;
 };
+
+export type RoleStatus = "Active" | "Needs review";
+
+export function todayLabel() {
+  return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 export const systemRoles: Role[] = [
   {
@@ -58,6 +68,9 @@ export const systemRoles: Role[] = [
     group: "System roles",
     accessLevel: "Full",
     permissions: [...AVAILABLE_CUSTOM_ROLE_PERMISSIONS],
+    lastReview: "Apr 12, 2025",
+    owner: "System",
+    status: "Active",
   },
   {
     key: "agent",
@@ -66,7 +79,11 @@ export const systemRoles: Role[] = [
     description: "Views and responds to conversations in the inboxes they are added to.",
     group: "System roles",
     accessLevel: "Scoped",
-    permissions: ["conversation_manage", "conversation_unassigned_manage", "conversation_participating_manage", "contact_manage"],
+    // Not "Manage all conversations": a Chatwoot agent only works the inboxes they are added to.
+    permissions: ["conversation_unassigned_manage", "conversation_participating_manage", "contact_manage"],
+    lastReview: "May 1, 2025",
+    owner: "System",
+    status: "Active",
   },
 ];
 
@@ -75,6 +92,7 @@ export function customRole(
   name: string,
   description: string,
   permissions: Permission[],
+  meta: Partial<Pick<Role, "lastReview" | "owner" | "status">> = {},
 ): Role {
   return {
     key: `custom_${id}`,
@@ -84,28 +102,53 @@ export function customRole(
     group: "Custom roles",
     accessLevel: "Scoped",
     permissions,
+    lastReview: meta.lastReview ?? todayLabel(),
+    owner: meta.owner ?? "Arham Khan",
+    status: meta.status ?? "Active",
   };
 }
 
 export const roles: Role[] = [
   ...systemRoles,
-  customRole(1, "Support Lead", "Oversees the support queue, reassigns conversations and reviews team reports.", [
-    "conversation_manage",
-    "conversation_unassigned_manage",
-    "conversation_participating_manage",
-    "contact_manage",
-    "report_manage",
-  ]),
-  customRole(2, "Tier 1 Support", "Picks up new conversations from the unassigned queue and hands off escalations.", [
-    "conversation_unassigned_manage",
-    "conversation_participating_manage",
-  ]),
-  customRole(3, "Sales Agent", "Works leads coming in from WhatsApp and the website widget.", [
-    "conversation_participating_manage",
-    "contact_manage",
-  ]),
-  customRole(4, "Content Editor", "Writes, updates and publishes help center articles.", ["knowledge_base_manage"]),
-  customRole(5, "Reporting Analyst", "Prepares the weekly CSAT, SLA and agent performance reviews.", ["report_manage"]),
+  customRole(
+    1,
+    "Support Lead",
+    "Oversees the support queue, reassigns conversations and reviews team reports.",
+    [
+      "conversation_manage",
+      "conversation_unassigned_manage",
+      "conversation_participating_manage",
+      "contact_manage",
+      "report_manage",
+    ],
+    { lastReview: "Sep 2, 2026", owner: "Arham Khan", status: "Needs review" },
+  ),
+  customRole(
+    2,
+    "Tier 1 Support",
+    "Picks up new conversations from the unassigned queue and hands off escalations.",
+    ["conversation_unassigned_manage", "conversation_participating_manage"],
+    { lastReview: "Aug 18, 2026", owner: "Priya Nair", status: "Active" },
+  ),
+  customRole(
+    3,
+    "Sales Agent",
+    "Works leads coming in from WhatsApp and the website widget.",
+    ["conversation_participating_manage", "contact_manage"],
+    { lastReview: "Jul 27, 2026", owner: "Arham Khan", status: "Needs review" },
+  ),
+  customRole(4, "Content Editor", "Writes, updates and publishes help center articles.", ["knowledge_base_manage"], {
+    lastReview: "Sep 30, 2026",
+    owner: "Dana Bakr",
+    status: "Active",
+  }),
+  customRole(
+    5,
+    "Reporting Analyst",
+    "Prepares the weekly CSAT, SLA and agent performance reviews.",
+    ["report_manage"],
+    { lastReview: "Jun 9, 2026", owner: "Priya Nair", status: "Needs review" },
+  ),
 ];
 
 export function roleKeyOf(user: { role: "administrator" | "agent"; customRoleId: number | null }) {

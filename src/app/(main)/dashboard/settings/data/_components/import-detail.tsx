@@ -3,10 +3,8 @@
 // ImportSkipLogsSection, in the Studio detail pattern: title outside, stat cards on top, then tabs.
 import * as React from "react";
 
-import Link from "next/link";
-
 import { cn } from "cn";
-import { Check, ChevronLeft, Download, RefreshCw, RotateCcw } from "lucide-react";
+import { Check, Download, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +13,10 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+import { SettingsBreadcrumb } from "../../_components/settings-breadcrumb";
 import { CountTabs, NoResults } from "../../labels/_shared/settings-shell";
-import { type DataImport, dataImports, isActive, type ImportStage, sourceLabel, stageLabel, typeLabel } from "./data";
-import { ImportStatusBadge, SourceIcon } from "./data-page";
+import { type DataImport, type ImportStage, isActive, sourceLabel, stageLabel, typeLabel } from "./data";
+import { dataImportsStore, IMPORT_SAVED_NOTE, ImportStatusBadge, SourceIcon, useDataImports } from "./data-page";
 
 function downloadCsv(filename: string, header: string[], rows: string[][]) {
   const csv = [header, ...rows].map((r) => r.map((c) => `"${c.replaceAll('"', '""')}"`).join(",")).join("\n");
@@ -41,8 +40,8 @@ function stageIndex(item: DataImport) {
 }
 
 export function ImportDetail({ importId }: { importId: number }) {
-  const seed = dataImports.find((i) => i.id === importId);
-  const [item, setItem] = React.useState<DataImport | undefined>(seed);
+  const rows = useDataImports();
+  const item = rows.find((i) => i.id === importId);
   const [tab, setTab] = React.useState("errors");
   const [kind, setKind] = React.useState("all");
   const [refreshing, setRefreshing] = React.useState(false);
@@ -50,7 +49,7 @@ export function ImportDetail({ importId }: { importId: number }) {
   if (!item) {
     return (
       <div className="flex flex-col gap-4">
-        <BackLink />
+        <BackLink current="Import not found" />
         <h1 className="text-3xl tracking-tight">Import not found</h1>
       </div>
     );
@@ -66,16 +65,19 @@ export function ImportDetail({ importId }: { importId: number }) {
     setRefreshing(true);
     window.setTimeout(() => {
       setRefreshing(false);
-      setItem((prev) =>
-        prev && isActive(prev) ? { ...prev, imported: Math.min(prev.imported + 137, prev.total) } : prev,
-      );
+      if (item && isActive(item)) {
+        void dataImportsStore
+          .update(item.id, { imported: Math.min(item.imported + 137, item.total) })
+          .catch(() => undefined);
+      }
     }, 600);
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <BackLink />
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <BackLink current={item.name || "Untitled import"} />
+      {/* م137 round 2 (judge M137): the buttons at the top right, level with the title, as in PageHeader. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <SourceIcon source={item.source} />
           <div className="grid min-w-0 gap-1">
@@ -109,18 +111,26 @@ export function ImportDetail({ importId }: { importId: number }) {
               variant="outline"
               size="sm"
               onClick={() => {
-                setItem({ ...item, status: "pending", stage: "queued" });
-                toast.success("Import has been queued to resume.");
+                void dataImportsStore.update(item.id, { status: "pending", stage: "queued" }).then(
+                  () => toast.success("Import has been queued to resume.", { description: IMPORT_SAVED_NOTE }),
+                  (error: Error) => toast.error(error.message),
+                );
               }}
             >
               <RotateCcw /> Retry
             </Button>
           ) : null}
           {active && item.source !== "file" ? (
-            <Button variant="destructive" size="sm" onClick={() => {
-                setItem({ ...item, status: "abandoned", stage: "abandoned" });
-                toast.success("Import has been abandoned.");
-              }}>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                void dataImportsStore.update(item.id, { status: "abandoned", stage: "abandoned" }).then(
+                  () => toast.success("Import has been abandoned.", { description: IMPORT_SAVED_NOTE }),
+                  (error: Error) => toast.error(error.message),
+                );
+              }}
+            >
               Abandon
             </Button>
           ) : null}
@@ -319,17 +329,13 @@ export function ImportDetail({ importId }: { importId: number }) {
           </CardContent>
         </Card>
       )}
-
     </div>
   );
 }
 
-function BackLink() {
+// م137 round 2 (judge M137): the same path above the title as every Settings detail page, not a back link.
+function BackLink({ current }: { current: string }) {
   return (
-    <Button variant="ghost" size="sm" className="w-fit px-1.5 text-muted-foreground" asChild>
-      <Link href="/dashboard/settings/data">
-        <ChevronLeft /> Back to imports
-      </Link>
-    </Button>
+    <SettingsBreadcrumb items={[{ label: "Import & Export", href: "/dashboard/settings/data" }, { label: current }]} />
   );
 }

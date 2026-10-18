@@ -5,31 +5,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { cn } from "cn";
-import { AlertTriangle, MessageSquare, PartyPopper, Search, Trash2, Users, UserX } from "lucide-react";
+import { AlertTriangle, MessageSquare, PartyPopper, SmilePlus, Trash2, Users, UserX } from "lucide-react";
 import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Badge } from "@/components/ui/badge";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { CHANGED_ELSEWHERE } from "@/lib/cw/store";
 
-import { agents } from "../../inboxes/_components/data";
+import { SettingsBreadcrumb } from "../../_components/settings-breadcrumb";
+import { SettingsCard } from "../../_components/settings-card";
+import { useAgentRoster } from "../../inboxes/_components/inboxes-store";
 import { AgentAvatar, ConfirmDeleteDialog, WizardSteps } from "../../inboxes/_components/settings-ui";
 import { CountTabs, PageHeader } from "../../labels/_shared/settings-shell";
 import { type Team, teamStats } from "./data";
+import { deleteTeamWithNotice, saveTeamsChange, teamsStore, useTeams } from "./teams-store";
 
 const createSteps = [
   { title: "Create", body: "Create a new team of agents." },
@@ -43,21 +40,127 @@ const editSteps = [
   { title: "Finish", body: "You are all set to go!" },
 ];
 
+type TeamDraft = Pick<Team, "name" | "description" | "icon" | "autoAssign">;
+
+// F-6B: a step moves on (and the page says "updated" or "ready") only after the preview server saved the change.
+function useSaveStep() {
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const run = async (task: () => void | Promise<void>) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await task();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    } finally {
+      setSaving(false);
+    }
+  };
+  return { saving, error, run };
+}
+
+function SaveFailed({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <p
+      role="alert"
+      className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-sm"
+    >
+      Not saved: {error}
+    </p>
+  );
+}
+
+// Emoji part of Chatwoot's EmojiIconPicker (TeamForm.vue): pick an emoji for the team, or Remove it.
+const teamEmojis = [
+  "💼",
+  "🎧",
+  "💳",
+  "🛠️",
+  "🚀",
+  "📣",
+  "🤝",
+  "🧾",
+  "📦",
+  "🌍",
+  "⭐",
+  "🔥",
+  "💡",
+  "🧑‍💻",
+  "📞",
+  "💬",
+  "🛒",
+  "🏷️",
+  "📊",
+  "🎯",
+  "🧪",
+  "🔒",
+  "❤️",
+  "🌱",
+];
+
+function TeamIconPicker({ value, onChange }: { value: string; onChange: (icon: string) => void }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="icon" aria-label="Team icon" className="shrink-0 text-lg">
+          {value || <SmilePlus className="size-4" />}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64">
+        <div className="mb-2 flex items-center justify-between text-muted-foreground text-xs">
+          <span>Emojis</span>
+          {value ? (
+            <button
+              type="button"
+              className="hover:text-foreground"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-8 gap-1">
+          {teamEmojis.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className={cn("grid size-7 place-items-center rounded hover:bg-muted", emoji === value && "bg-muted")}
+              onClick={() => {
+                onChange(emoji);
+                setOpen(false);
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function DetailsStep({
   team,
-  name,
-  onName,
+  draft,
+  onDraft,
   onNext,
   bare,
 }: {
   team?: Team;
-  name: string;
-  onName: (name: string) => void;
-  onNext: () => void;
+  draft: TeamDraft;
+  onDraft: (draft: TeamDraft) => void;
+  onNext: () => void | Promise<void>;
   bare?: boolean;
 }) {
   const [submitted, setSubmitted] = React.useState(false);
-  const nameError = submitted && !name.trim();
+  const nameError = submitted && !draft.name.trim();
+  const step = useSaveStep();
   return (
     <div className="grid max-w-xl gap-6">
       {bare ? null : (
@@ -71,46 +174,79 @@ function DetailsStep({
       <FieldGroup className="gap-4">
         <Field data-invalid={nameError || undefined}>
           <FieldLabel htmlFor="team-name">Team name</FieldLabel>
-          <Input
-            id="team-name"
-            placeholder="Example: Sales, Customer Support"
-            value={name}
-            aria-invalid={nameError || undefined}
-            onChange={(e) => onName(e.target.value)}
-          />
+          <div className="flex gap-2">
+            <TeamIconPicker value={draft.icon} onChange={(icon) => onDraft({ ...draft, icon })} />
+            <Input
+              id="team-name"
+              placeholder="Example: Sales, Customer Support"
+              value={draft.name}
+              aria-invalid={nameError || undefined}
+              onChange={(e) => onDraft({ ...draft, name: e.target.value })}
+            />
+          </div>
           {nameError ? <FieldError>This field is required</FieldError> : null}
         </Field>
         <Field>
           <FieldLabel htmlFor="team-desc">Team Description</FieldLabel>
-          <Textarea id="team-desc" placeholder="Short description about this team." defaultValue={team?.description} />
+          <Textarea
+            id="team-desc"
+            placeholder="Short description about this team."
+            value={draft.description}
+            onChange={(e) => onDraft({ ...draft, description: e.target.value })}
+          />
         </Field>
         <div className="flex items-center gap-2 text-sm">
-          <Checkbox id="team-auto-assign" defaultChecked={team?.autoAssign ?? true} />
+          <Checkbox
+            id="team-auto-assign"
+            checked={draft.autoAssign}
+            onCheckedChange={(c) => onDraft({ ...draft, autoAssign: c === true })}
+          />
           <label htmlFor="team-auto-assign">Allow auto assign for this team.</label>
         </div>
       </FieldGroup>
+      <SaveFailed error={step.error} />
       <div>
         <Button
+          disabled={step.saving}
           onClick={() => {
             setSubmitted(true);
-            if (!name.trim()) return;
-            if (team) toast.success("Team updated successfully.");
-            onNext();
+            if (!draft.name.trim()) return;
+            void step.run(async () => {
+              if (team) {
+                await saveTeamsChange(() => teamsStore.update(team.id, { ...draft, name: draft.name.trim() }));
+                toast.success("Team updated successfully.");
+              }
+              await onNext();
+            });
           }}
         >
-          {team ? "Update team" : "Create team"}
+          {step.saving ? "Saving…" : `${team ? "Update" : "Create"} team`}
         </Button>
       </div>
     </div>
   );
 }
 
-function AgentsStep({ team, name, onNext, bare }: { team?: Team; name: string; onNext: () => void; bare?: boolean }) {
+function AgentsStep({
+  team,
+  name,
+  onNext,
+  bare,
+}: {
+  team?: Team;
+  name: string;
+  onNext: (members: number[]) => void | Promise<void>;
+  bare?: boolean;
+}) {
+  const step = useSaveStep();
+  const agents = useAgentRoster(); // F-6B: the live agents (an invited agent too), not the seed
   const [selected, setSelected] = React.useState<number[]>(team?.members ?? []);
   const [query, setQuery] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
   // F159: the heading shows the name typed in step 1 (the old fallback was a clinic team not in Conversations).
   const teamName = name.trim() || team?.name || "New team";
+  let saveLabel = team ? "Update agents in team" : "Add agents";
+  if (step.saving) saveLabel = "Saving…";
   const rows = agents.filter((a) => a.name.toLowerCase().includes(query.trim().toLowerCase()));
   const all = selected.length === agents.length;
   return (
@@ -125,17 +261,18 @@ function AgentsStep({ team, name, onNext, bare }: { team?: Team; name: string; o
           </p>
         </div>
       )}
-      <InputGroup className="h-8 w-full md:w-72">
-        <InputGroupAddon align="inline-start">
-          <Search className="size-3.5" />
-        </InputGroupAddon>
-        <InputGroupInput
-          className="h-8"
+      {/* F-13 round 2 (Fahad 125.4): a lens only; a click opens the box, closing it brings back the lens. */}
+      <div className="flex">
+        <ExpandingSearch
+          name="team-agents"
+          label="Search agents"
           placeholder="Search"
+          size="default"
+          className="w-full md:w-72"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
         />
-      </InputGroup>
+      </div>
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -178,19 +315,19 @@ function AgentsStep({ team, name, onNext, bare }: { team?: Team; name: string; o
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="grid gap-1 text-muted-foreground text-sm tabular-nums">
           {selected.length} out of {agents.length} agents selected.
-          {submitted && !selected.length ? (
-            <span className="text-destructive">Select at least one agent.</span>
-          ) : null}
+          {submitted && !selected.length ? <span className="text-destructive">Select at least one agent.</span> : null}
         </span>
         <Button
+          disabled={step.saving}
           onClick={() => {
             setSubmitted(true);
-            if (selected.length) onNext();
+            if (selected.length) void step.run(() => onNext(selected));
           }}
         >
-          {team ? "Update agents in team" : "Add agents"}
+          {saveLabel}
         </Button>
       </div>
+      <SaveFailed error={step.error} />
     </div>
   );
 }
@@ -212,22 +349,9 @@ function FinishStep() {
   );
 }
 
+// م137 round 2 (judge M137): the same path as every other Settings detail page (settings-breadcrumb.tsx).
 function TeamBreadcrumb({ current }: { current: string }) {
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link href="/dashboard/settings/teams">Teams</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{current}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
+  return <SettingsBreadcrumb items={[{ label: "Teams", href: "/dashboard/settings/teams" }, { label: current }]} />;
 }
 
 // Stat cards copied from the Contacts detail page (Studio metric cards).
@@ -275,7 +399,13 @@ function TeamStatCards({ team }: { team: Team }) {
 function TeamDetails({ team }: { team: Team }) {
   const [tab, setTab] = React.useState<"details" | "agents">("details");
   const [done, setDone] = React.useState(false);
-  const [name, setName] = React.useState(team.name);
+  const [draft, setDraft] = React.useState<TeamDraft>({
+    name: team.name,
+    description: team.description,
+    icon: team.icon,
+    autoAssign: team.autoAssign,
+  });
+  const name = draft.name;
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const router = useRouter();
   const step = tab === "details" ? editSteps[0] : editSteps[1];
@@ -283,7 +413,8 @@ function TeamDetails({ team }: { team: Team }) {
     <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-col gap-3">
         <TeamBreadcrumb current={team.name} />
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        {/* م137 round 2 (judge M137): the buttons at the top right, level with the title, as in PageHeader. */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-4">
             <div className="grid size-14 shrink-0 place-items-center rounded-xl border bg-muted/40 text-2xl">
               {team.icon}
@@ -312,11 +443,8 @@ function TeamDetails({ team }: { team: Team }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)}>
-              <Trash2 /> Delete team
-            </Button>
             <Button size="sm" asChild>
-              <Link href={`/dashboard/chat/teams/${team.name.toLowerCase()}`}>
+              <Link href={`/dashboard/chat/teams/${team.slug}`}>
                 <MessageSquare /> View conversations
               </Link>
             </Button>
@@ -353,37 +481,73 @@ function TeamDetails({ team }: { team: Team }) {
             </CardHeader>
             <CardContent>
               {tab === "details" ? (
-                <DetailsStep team={team} name={name} onName={setName} onNext={() => setTab("agents")} bare />
+                <DetailsStep team={team} draft={draft} onDraft={setDraft} onNext={() => setTab("agents")} bare />
               ) : (
-                <AgentsStep team={team} name={name} onNext={() => setDone(true)} bare />
+                <AgentsStep
+                  team={team}
+                  name={name}
+                  onNext={async (members) => {
+                    await saveTeamsChange(() => teamsStore.update(team.id, { members }));
+                    setDone(true);
+                  }}
+                  bare
+                />
               )}
             </CardContent>
           </>
         )}
       </Card>
 
+      {/* م137 (Fahad 137): deleting the whole team is the page's danger action, so it sits in a red card at the bottom
+          (GitHub's Danger Zone at the foot of its settings page; Chatwoot's AccountDelete after AccountId), no longer
+          in the header beside View conversations. Same dialog and name check. */}
+      <SettingsCard
+        tone="danger"
+        title="Delete team"
+        description="Deleting the team will remove the team assignment from the conversations assigned to this team."
+        action={
+          <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+            <Trash2 /> Delete team
+          </Button>
+        }
+      />
+
       <ConfirmDeleteDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Are you sure you want to delete the team?"
+        title="Delete team"
         message="Deleting the team will remove the team assignment from the conversations assigned to this team."
         confirmValue={team.name}
-        placeholder={`Please type ${team.name} to confirm`}
-        confirmText={`Delete ${team.name}`}
-        rejectText="Cancel"
         onConfirm={() => {
-          toast.success("Team deleted successfully.");
-          router.push("/dashboard/settings/teams");
+          // F-25: "Team deleted successfully." after the server saved the deletion; a refused delete puts the team back.
+          void deleteTeamWithNotice(team).then((deleted) => {
+            if (deleted) router.push("/dashboard/settings/teams");
+          });
         }}
       />
     </div>
   );
 }
 
-export function TeamWizard({ team }: { team?: Team }) {
+/** /teams/[id]: reads the team from the shared teams store so a team created in this session opens too. */
+export function TeamDetailRoute({ id }: { id: string }) {
+  const teams = useTeams();
+  const team = teams.find((t) => String(t.id) === id);
+  if (!team) {
+    return (
+      <div className="flex flex-col gap-4">
+        <TeamBreadcrumb current="Team not found" />
+        <p className="text-muted-foreground text-sm">This team does not exist or was deleted.</p>
+      </div>
+    );
+  }
+  return <TeamDetails key={team.id} team={team} />;
+}
+
+export function TeamWizard() {
   const [step, setStep] = React.useState(0);
-  const [name, setName] = React.useState(team?.name ?? "");
-  if (team) return <TeamDetails team={team} />;
+  const [draft, setDraft] = React.useState<TeamDraft>({ name: "", description: "", icon: "", autoAssign: true });
+  const [createdId, setCreatedId] = React.useState<number | null>(null);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
@@ -399,8 +563,41 @@ export function TeamWizard({ team }: { team?: Team }) {
             <WizardSteps steps={createSteps} current={step} />
           </aside>
           <div className="p-6">
-            {step === 0 ? <DetailsStep name={name} onName={setName} onNext={() => setStep(1)} /> : null}
-            {step === 1 ? <AgentsStep name={name} onNext={() => setStep(2)} /> : null}
+            {step === 0 ? (
+              <DetailsStep
+                draft={draft}
+                onDraft={setDraft}
+                onNext={async () => {
+                  const id = createdId ?? teamsStore.nextId();
+                  const name = draft.name.trim();
+                  // F161: slug = the team's conversation view URL (/dashboard/chat/teams/<slug>) in the sidebar.
+                  const slug =
+                    name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9\u0600-\u06ff]+/g, "-")
+                      .replace(/^-|-$/g, "") || `team-${id}`;
+                  // F-6B: step 2 opens only once the team is saved; a failed save says why and keeps this step.
+                  await saveTeamsChange(() => teamsStore.save({ id, ...draft, name, slug, members: [] })).catch(
+                    (error: Error) => {
+                      const unsaved = createdId === null && teamsStore.find(id)?.name === name;
+                      if (error.message !== CHANGED_ELSEWHERE && unsaved) teamsStore.remove(id);
+                      throw error;
+                    },
+                  );
+                  setCreatedId(id);
+                  setStep(1);
+                }}
+              />
+            ) : null}
+            {step === 1 ? (
+              <AgentsStep
+                name={draft.name}
+                onNext={async (members) => {
+                  if (createdId !== null) await saveTeamsChange(() => teamsStore.update(createdId, { members }));
+                  setStep(2);
+                }}
+              />
+            ) : null}
             {step === 2 ? <FinishStep /> : null}
           </div>
         </div>

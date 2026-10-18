@@ -5,8 +5,10 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { Bot, FileText, Inbox, MessageCircleQuestion, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Bot, FileText, Inbox, MessageCircleQuestion, Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
+import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expanding-search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,12 +19,14 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CeUnavailableNotice, rejectCeWrite } from "@/lib/chatwoot/settings-adapter";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
 
-import { type Assistant, assistants } from "./data";
+import type { Assistant } from "./data";
 import { AssistantDialog, ConfirmDialog } from "./dialogs";
 import { CaptainShell, ChipSelect, RowMenuTrigger } from "./shared";
+import { useCaptainState } from "./store";
 
 const sortOptions = [
   { value: "updated", label: "Last updated" },
@@ -31,14 +35,26 @@ const sortOptions = [
 ];
 
 export function AssistantsList({ create = false }: { create?: boolean }) {
+  const [rawAssistants, setAssistants] = useCaptainState("assistants");
+  useLinkedAdapterStatus((s) => s.active);
+  const isLinked = linkedSession();
+  const assistants = isLinked ? [] : rawAssistants;
   const [creating, setCreating] = React.useState(create);
   const [editing, setEditing] = React.useState<Assistant | null>(null);
   const [deleting, setDeleting] = React.useState<Assistant | null>(null);
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState("updated");
 
+  const openCreate = () => {
+    if (linkedSession()) {
+      void rejectCeWrite("captain/assistants").catch((err: Error) => toast.error(err.message));
+      return;
+    }
+    setCreating(true);
+  };
+
   const q = query.trim().toLowerCase();
-  const rows = assistants
+  const rows = [...assistants]
     .filter((a) => !q || [a.name, a.productName, a.description].some((v) => v.toLowerCase().includes(q)))
     .sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
@@ -53,27 +69,28 @@ export function AssistantsList({ create = false }: { create?: boolean }) {
       nav={false}
       subtitle="Create an assistant to provide quick and accurate responses to your users. It can learn from your help articles and past conversations."
       actions={
-        <Button size="sm" onClick={() => setCreating(true)}>
+        <Button size="sm" onClick={openCreate}>
           <Plus /> Create a new assistant
         </Button>
       }
     >
+      <CeUnavailableNotice
+        area="captain/assistants"
+        title="Captain AI assistants are unavailable in Chatwoot Community Edition (501)"
+      />
       <Card>
         <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
           <CardTitle className="text-xl leading-none">All assistants</CardTitle>
           <CardDescription>Switch between assistants from the selector on every Captain page.</CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
-            <InputGroup className="h-7 w-full md:w-64">
-              <InputGroupAddon align="inline-start">
-                <Search className="size-3.5" />
-              </InputGroupAddon>
-              <InputGroupInput
-                className="h-7"
-                placeholder="Search assistants..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </InputGroup>
+            <ExpandingSearch
+              name="assistants"
+              label="Search assistants"
+              placeholder="Search assistants..."
+              className="w-full md:w-64"
+              value={query}
+              onChange={setQuery}
+            />
             <ChipSelect label="Sort" value={sort} options={sortOptions} onChange={setSort} align="end" />
           </CardAction>
         </CardHeader>
@@ -155,20 +172,49 @@ export function AssistantsList({ create = false }: { create?: boolean }) {
               </TableBody>
             </Table>
           ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Bot />
-                </EmptyMedia>
-                <EmptyTitle>No assistants available</EmptyTitle>
-                <EmptyDescription>Try a different search term.</EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button variant="outline" size="sm" onClick={() => setQuery("")}>
-                  Clear search
-                </Button>
-              </EmptyContent>
-            </Empty>
+            <>
+              {assistants.length === 0 && (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Bot />
+                    </EmptyMedia>
+                    <EmptyTitle>No assistants available</EmptyTitle>
+                    <EmptyDescription>
+                      Create an assistant to provide quick and accurate responses to your users. It can learn from your
+                      help articles and past conversations.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button size="sm" onClick={openCreate}>
+                      <Plus /> Create a new assistant
+                    </Button>
+                    <p className="max-w-md text-muted-foreground text-xs">
+                      <span className="font-medium text-foreground">Captain Assistant: </span>Captain Assistant engages
+                      directly with customers, learns from your help docs and past conversations, and delivers instant,
+                      accurate responses. It handles the initial queries, providing quick resolutions before
+                      transferring to an agent when needed.
+                    </p>
+                  </EmptyContent>
+                </Empty>
+              )}
+              {assistants.length > 0 && (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Bot />
+                    </EmptyMedia>
+                    <EmptyTitle>No assistants available</EmptyTitle>
+                    <EmptyDescription>Try a different search term.</EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button variant="outline" size="sm" onClick={() => setQuery("")}>
+                      Clear search
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -185,6 +231,11 @@ export function AssistantsList({ create = false }: { create?: boolean }) {
         onOpenChange={(o) => !o && setDeleting(null)}
         title="Are you sure to delete the assistant?"
         description="This action is permanent. Deleting this assistant will remove it from all connected inboxes and permanently erase all generated knowledge."
+        success="The assistant has been successfully deleted"
+        onConfirm={() => {
+          const target = deleting;
+          if (target) setAssistants((list) => list.filter((a) => a.id !== target.id));
+        }}
       />
     </CaptainShell>
   );
