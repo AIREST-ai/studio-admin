@@ -22,6 +22,7 @@ import {
   cleanQuery,
   containsBlocked6888,
   forbiddenWrite,
+  frozenSensitiveWriteReason,
   type GatewayMethod,
   matchRoute,
   roleAllows,
@@ -164,6 +165,9 @@ async function handle(method: GatewayMethod, request: Request, context: { params
 
   const route = matchRoute(method, segments);
   if (!route) return refuse(403, `refused: ${method} /${segments.join("/")} is not in the gateway's allow list`);
+
+  const frozen = frozenSensitiveWriteReason(method, segments, payload?.parsed);
+  if (frozen) return refuse(403, frozen);
 
   if (!roleAllows(await viewerPermissions(request), route.minRole))
     return refuse(403, `refused: ${method} /${segments.join("/")} is for administrators (View as)`);

@@ -64,7 +64,9 @@ export interface LinkedCwAdapter {
   addNote: (id: number, text: string) => void;
   deleteNote: (id: number, noteId: number) => void;
   editContact: (key: string, patch: Partial<Contact>) => void;
-  refuseFolderOp: () => void;
+  addFolder: (name: string, filters: FilterRow[]) => Folder;
+  updateFolder: (id: string, name: string, filters: FilterRow[]) => void;
+  deleteFolder: (id: string) => void;
 }
 
 let linkedAdapter: LinkedCwAdapter | null = null;
@@ -449,19 +451,18 @@ export const cw = {
     set({ search });
   },
   addFolder(name: string, filters: FilterRow[]): Folder {
-    const folder: Folder = { id: `f-${Date.now().toString(36)}`, name: name.trim() || "Untitled folder", filters };
     if (linkedAdapter) {
       dismissPreviewToastNextTick();
-      linkedAdapter.refuseFolderOp();
-      return folder;
+      return linkedAdapter.addFolder(name, filters);
     }
+    const folder: Folder = { id: `f-${Date.now().toString(36)}`, name: name.trim() || "Untitled folder", filters };
     set((state) => ({ folders: [...state.folders, folder], applied: null }));
     return folder;
   },
   updateFolder(id: string, name: string, filters: FilterRow[]) {
     if (linkedAdapter) {
       dismissPreviewToastNextTick();
-      linkedAdapter.refuseFolderOp();
+      linkedAdapter.updateFolder(id, name, filters);
       return;
     }
     set((state) => ({
@@ -473,7 +474,7 @@ export const cw = {
   deleteFolder(id: string) {
     if (linkedAdapter) {
       dismissPreviewToastNextTick();
-      linkedAdapter.refuseFolderOp();
+      linkedAdapter.deleteFolder(id);
       return;
     }
     set((state) => ({ folders: state.folders.filter((folder) => folder.id !== id) }));

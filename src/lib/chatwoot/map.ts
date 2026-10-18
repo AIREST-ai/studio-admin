@@ -570,6 +570,8 @@ export interface MappedConversationsResult {
   threadsByConvId: Record<number, CwMessage[]>;
   conversationAttrsByConvId: Record<number, Record<string, string>>;
   contactAttrsByConvId: Record<number, Record<string, string>>;
+  inboxIdByConvId: Record<number, number>;
+  mutedByConvId: Record<number, boolean>;
 }
 
 export function toStudioConversations(
@@ -589,6 +591,8 @@ export function toStudioConversations(
   const threadsByConvId: Record<number, CwMessage[]> = {};
   const conversationAttrsByConvId: Record<number, Record<string, string>> = {};
   const contactAttrsByConvId: Record<number, Record<string, string>> = {};
+  const inboxIdByConvId: Record<number, number> = {};
+  const mutedByConvId: Record<number, boolean> = {};
 
   for (const [index, item] of rawConvs.entries()) {
     const raw = obj(item);
@@ -728,6 +732,8 @@ export function toStudioConversations(
     tagsByConvId[String(idNum)] = labels;
     conversationAttrsByConvId[idNum] = customMap;
     contactAttrsByConvId[idNum] = senderCustomMap;
+    inboxIdByConvId[idNum] = inboxId;
+    mutedByConvId[idNum] = raw.muted === true;
   }
 
   return {
@@ -739,6 +745,8 @@ export function toStudioConversations(
     threadsByConvId,
     conversationAttrsByConvId,
     contactAttrsByConvId,
+    inboxIdByConvId,
+    mutedByConvId,
   };
 }
 
@@ -773,7 +781,11 @@ export function toDirectoryContact(value: unknown): DirectoryContact {
       createdSec && createdSec > 0
         ? new Date(createdSec * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
         : "Oct 17, 2026",
-    labels: [],
+    labels: Array.isArray(raw.labels)
+      ? raw.labels.filter((label): label is string => typeof label === "string")
+      : Array.isArray(raw.label_list)
+        ? raw.label_list.filter((label): label is string => typeof label === "string")
+        : [],
   };
 }
 

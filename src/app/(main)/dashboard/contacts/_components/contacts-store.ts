@@ -74,9 +74,13 @@ export interface LinkedContactsAdapter {
   merge: (primaryId: number, mergedId: number) => void;
   toggleBlock: (id: number) => { blocked: boolean; saved: Promise<boolean> };
   setAttr: (id: number, key: string, value: string | null) => void;
-  refuseContactLabels: () => void;
-  refuseContactNotes: () => void;
-  refuseContactSegments: () => void;
+  addLabels: (ids: number[], labels: string[]) => void;
+  removeLabels: (ids: number[], labels: string[]) => void;
+  addNote: (id: number, body: string) => void;
+  deleteNote: (id: number, noteId: number) => void;
+  addSegment: (name: string, filters: ContactFilter[]) => Segment;
+  updateSegment: (id: number, filters: ContactFilter[]) => void;
+  deleteSegment: (id: number) => void;
 }
 
 let linkedContactsAdapter: LinkedContactsAdapter | null = null;
@@ -254,7 +258,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   addLabels(ids, labels) {
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactLabels();
+      linkedContactsAdapter.addLabels(ids, labels);
       return;
     }
     set((state) => ({
@@ -266,7 +270,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   removeLabels(ids, labels) {
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactLabels();
+      linkedContactsAdapter.removeLabels(ids, labels);
       return;
     }
     set((state) => ({
@@ -278,7 +282,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   addNote(id, body) {
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactNotes();
+      linkedContactsAdapter.addNote(id, body);
       return;
     }
     const note: ContactNote = { id: Date.now(), author: "Arham Khan", time: "Just now", body };
@@ -287,7 +291,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   deleteNote(id, noteId) {
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactNotes();
+      linkedContactsAdapter.deleteNote(id, noteId);
       return;
     }
     set((state) => ({ notes: { ...state.notes, [id]: (state.notes[id] ?? []).filter((n) => n.id !== noteId) } }));
@@ -306,19 +310,18 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
     });
   },
   addSegment(name, filters) {
-    const segment: Segment = { id: Math.max(0, ...get().segments.map((s) => s.id)) + 1, name, filters };
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactSegments();
-      return segment;
+      return linkedContactsAdapter.addSegment(name, filters);
     }
+    const segment: Segment = { id: Math.max(0, ...get().segments.map((s) => s.id)) + 1, name, filters };
     set((state) => ({ segments: [...state.segments, segment] }));
     return segment;
   },
   updateSegment(id, filters) {
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactSegments();
+      linkedContactsAdapter.updateSegment(id, filters);
       return;
     }
     set((state) => ({ segments: state.segments.map((s) => (s.id === id ? { ...s, filters } : s)) }));
@@ -326,7 +329,7 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   deleteSegment(id) {
     if (linkedContactsAdapter) {
       dismissToastNextTick();
-      linkedContactsAdapter.refuseContactSegments();
+      linkedContactsAdapter.deleteSegment(id);
       return;
     }
     set((state) => ({ segments: state.segments.filter((s) => s.id !== id) }));

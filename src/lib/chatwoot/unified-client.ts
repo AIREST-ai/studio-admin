@@ -72,10 +72,14 @@ type S = SpecUnderGateway;
 /** The generated paths the gateway allows (task U-1 §1-b, §1-c, and U-3), with their allowed methods only. */
 export type SpecAllowedPaths = {
   "/profile": Only<S["/profile"], "get">;
-  "/conversations": Only<S["/conversations"], "get">;
+  "/conversations": Only<S["/conversations"], "get" | "post">;
   "/conversations/meta": Only<S["/conversations/meta"], "get">;
   "/conversations/{conversation_id}": Only<S["/conversations/{conversation_id}"], "get">;
   "/conversations/{conversation_id}/messages": Only<S["/conversations/{conversation_id}/messages"], "get" | "post">;
+  "/conversations/{conversation_id}/messages/{message_id}": Only<
+    S["/conversations/{conversation_id}/messages/{message_id}"],
+    "delete"
+  >;
   "/conversations/{conversation_id}/labels": Only<S["/conversations/{conversation_id}/labels"], "get" | "post">;
   "/conversations/{conversation_id}/toggle_status": Only<S["/conversations/{conversation_id}/toggle_status"], "post">;
   "/conversations/{conversation_id}/toggle_priority": Only<
@@ -87,6 +91,8 @@ export type SpecAllowedPaths = {
   "/contacts/search": Only<S["/contacts/search"], "get">;
   "/contacts/{id}": Only<S["/contacts/{id}"], "get" | "put" | "delete">;
   "/contacts/{id}/conversations": Only<S["/contacts/{id}/conversations"], "get">;
+  "/contacts/{id}/labels": Only<S["/contacts/{id}/labels"], "get" | "post">;
+  "/actions/contact_merge": Only<S["/actions/contact_merge"], "post">;
   "/inboxes": Only<S["/inboxes"], "get">;
   "/inboxes/{id}": Only<S["/inboxes/{id}"], "get" | "patch">;
   "/inbox_members/{inbox_id}": Only<S["/inbox_members/{inbox_id}"], "get" | "post">;
@@ -185,14 +191,47 @@ type RbPatchPutId = {
 } & { [K in Exclude<Method, "put" | "patch">]?: never };
 type Conv = { conversation_id: number };
 type Id = { id: number };
+type NoteId = { id: number; note_id: number };
+type RbPostConv = {
+  parameters: { query?: never; header?: never; path?: never; cookie?: never };
+  post: RbWrite<Conv>;
+} & { [K in Exclude<Method, "post">]?: never };
+type RbParticipants = {
+  parameters: { query?: never; header?: never; path?: never; cookie?: never };
+  get: RbGet<Conv>;
+  post: RbWrite<Conv>;
+  put: RbWrite<Conv>;
+  patch: RbWrite<Conv>;
+  delete: RbWrite<Conv>;
+} & { [K in Exclude<Method, "get" | "post" | "put" | "patch" | "delete">]?: never };
+type RbNotesCollection = {
+  parameters: { query?: never; header?: never; path?: never; cookie?: never };
+  get: RbGet<Id>;
+  post: RbWrite<Id>;
+} & { [K in Exclude<Method, "get" | "post">]?: never };
+type RbNotesMember = {
+  parameters: { query?: never; header?: never; path?: never; cookie?: never };
+  get: RbGet<NoteId>;
+  put: RbWrite<NoteId>;
+  patch: RbWrite<NoteId>;
+  delete: RbWrite<NoteId>;
+} & { [K in Exclude<Method, "get" | "put" | "patch" | "delete">]?: never };
 
 export type RoutesRbPaths = {
   /** routes.rb:116 resources :accounts (show only; writes are forbidden by gateway-policy) */
   "/accounts/{id}": RbItem<RbGet<Id>>;
   /** routes.rb:193 get :attachments (conversations member) */
   "/conversations/{conversation_id}/attachments": RbItem<RbGet<Conv>>;
-  /** routes.rb:178 resource :participants (show) */
-  "/conversations/{conversation_id}/participants": RbItem<RbGet<Conv>>;
+  /** routes.rb:178 resource :participants (show/create/update/destroy) */
+  "/conversations/{conversation_id}/participants": RbParticipants;
+  /** routes.rb:183-190 conversation member posts not in swagger */
+  "/conversations/{conversation_id}/mute": RbPostConv;
+  "/conversations/{conversation_id}/unmute": RbPostConv;
+  "/conversations/{conversation_id}/unread": RbPostConv;
+  "/conversations/{conversation_id}/transcript": RbPostConv;
+  /** routes.rb:243 resources :notes */
+  "/contacts/{id}/notes": RbNotesCollection;
+  "/contacts/{id}/notes/{note_id}": RbNotesMember;
   /**
    * In the task's allow list; routes.rb:241 opens contact_inboxes for create only, so Chatwoot answers 404 to GET
    * (the gateway passes that 404 on, it does not invent a list).

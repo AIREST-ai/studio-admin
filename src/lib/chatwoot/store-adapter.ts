@@ -36,6 +36,8 @@ import {
   type ConversationMeta,
   type CwMessage,
   type CwStatus,
+  type FilterRow,
+  type Folder,
   getLinkedThread,
   type Priority,
   setLinkedAgentIds,
@@ -43,10 +45,12 @@ import {
   setLinkedThreads,
 } from "@/app/(main)/dashboard/chat/_components/cw-data";
 import {
+  type ContactNote as ConvContactNote,
   contactKeyOf,
   type LinkedCwAdapter,
   restorePreviewCwState,
   setLinkedCwAdapter,
+  cw as studioCw,
   useCwStore,
 } from "@/app/(main)/dashboard/chat/_components/cw-store";
 import { setLinkedSimActionsAdapter } from "@/app/(main)/dashboard/chat/_components/sim-actions";
@@ -59,7 +63,10 @@ import {
 } from "@/app/(main)/dashboard/chat/_components/sim-thread-persist";
 import {
   type ContactDraft,
+  type ContactFilter,
+  type ContactNote,
   restorePreviewContacts,
+  type Segment,
   setLinkedContactsAdapter,
   showLinkedContacts,
   useContactsStore,
@@ -79,6 +86,7 @@ import {
   setLinkedNotificationsAdapter,
   showLinkedNotifications,
 } from "@/app/(main)/dashboard/notifications/_components/notifications-store";
+import { FROZEN_LIVE_INBOX_IDS, TEST_CONVERSATION_ID, TEST_INBOX_ID } from "@/lib/chatwoot/gateway-policy";
 import {
   toArticles,
   toCampaigns,
@@ -95,7 +103,14 @@ import {
   toSharedTeams,
   toStudioConversations,
 } from "@/lib/chatwoot/map";
-import { handleRealtimeSettingsEvent, mapRawMacros, registerLabelIds } from "@/lib/chatwoot/settings-adapter";
+import {
+  createLinkedCustomFilter,
+  deleteLinkedCustomFilter,
+  fetchLinkedCustomFilters,
+  handleRealtimeSettingsEvent,
+  mapRawMacros,
+  registerLabelIds,
+} from "@/lib/chatwoot/settings-adapter";
 import { formDataBody, scrubSecrets, cw as unifiedCw } from "@/lib/chatwoot/unified-client";
 import { linkedSession, setLinkedSession } from "@/lib/cw/persistence/client";
 import { showLinkedLists, useCwShared } from "@/lib/cw/store";
@@ -140,6 +155,8 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? 
 
 let agentNamesMap = new Map<number, string>();
 let currentPersonOfMap: Record<number, number> = {};
+/** V-16: conversation id → Chatwoot inbox id, filled on hydrate and live events. */
+let conversationInboxById: Record<number, number> = {};
 let activeRunId = 0;
 const hydratedThreads = new Set<number>();
 let activeEventSource: EventSource | null = null;
@@ -200,6 +217,183 @@ function refuseUnsupportedLinkedAction(feature: string, endpoint: string) {
       description: `${endpoint} is not enabled on the Studio gateway, so nothing was written to Chatwoot or to the local preview.`,
     });
   });
+}
+
+function rememberInboxMap(map: Record<number, number>): void {
+  conversationInboxById = { ...conversationInboxById, ...map };
+}
+
+function toastFrozen(reason: string): void {
+  queueMicrotask(() => {
+    toast.dismiss();
+    toast.error("Write refused during Meta review", { description: reason });
+  });
+}
+
+function frozenConversationReason(convId: number, action: string): string | null {
+  if (convId !== TEST_CONVERSATION_ID) {
+    return `refused: ${action} is limited to Studio Test conversation 2 during Meta review (403)`;
+  }
+  const inboxId = conversationInboxById[convId];
+  if (inboxId != null && FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
+    return "refused: writing to frozen live inboxes 9 and 10 is blocked (403)";
+  }
+  return null;
+}
+
+function frozenMergeReason(contactIds: number[]): string | null {
+  for (const [convStr, contactId] of Object.entries(currentPersonOfMap)) {
+    if (!contactIds.includes(contactId)) continue;
+    const inboxId = conversationInboxById[Number(convStr)];
+    if (inboxId != null && FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
+      return "refused: merging contacts of frozen live inboxes 9 and 10 is blocked (403)";
+    }
+  }
+  return null;
+}
+
+function customFilterQuery(
+  rows: { attribute: string; operator: string; value: string; join: "and" | "or" }[],
+): Record<string, unknown> {
+  return {
+    payload: rows.map((row, index) => ({
+      attribute_key: row.attribute,
+      filter_operator: row.operator,
+      values: row.value ? [row.value] : [],
+      ...(index < rows.length - 1 ? { query_operator: rows[index + 1]?.join ?? "and" } : {}),
+    })),
+  };
+}
+
+function rowsFromCustomQuery(query: Record<string, unknown>): {
+  attribute: string;
+  operator: string;
+  value: string;
+  join: "and" | "or";
+}[] {
+  const payload = Array.isArray(query.payload) ? query.payload : [];
+  return payload.map((item, index) => {
+    const raw = obj(item);
+    const values = Array.isArray(raw.values) ? raw.values : [];
+    const prev = index > 0 ? obj(payload[index - 1]) : null;
+    const join = prev && str(prev.query_operator) === "or" ? "or" : "and";
+    return {
+      attribute: str(raw.attribute_key) ?? "status",
+      operator: str(raw.filter_operator) ?? "equal_to",
+      value: values.length ? String(values[0]) : "",
+      join,
+    };
+  });
+}
+
+function folderFromFilter(filter: { id: number; name: string; query: Record<string, unknown> }): Folder {
+  return { id: String(filter.id), name: filter.name, filters: rowsFromCustomQuery(filter.query) as FilterRow[] };
+}
+
+function segmentFromFilter(filter: { id: number; name: string; query: Record<string, unknown> }): Segment {
+  return { id: filter.id, name: filter.name, filters: rowsFromCustomQuery(filter.query) as ContactFilter[] };
+}
+
+function noteTime(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    const ms = value > 1e11 ? value : value * 1000;
+    return new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  if (typeof value === "string" && value) {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) {
+      return new Date(parsed).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+  }
+  return "Just now";
+}
+
+function mapCwNote(value: unknown): { id: number; author: string; time: string; content: string } | null {
+  const raw = obj(value);
+  const id = num(raw.id);
+  if (id === null) return null;
+  const user = obj(raw.user);
+  return {
+    id,
+    author: str(user.name) ?? str(raw.user_name) ?? "Agent",
+    time: noteTime(raw.created_at),
+    content: str(raw.content) ?? "",
+  };
+}
+
+function notesList(data: unknown): { id: number; author: string; time: string; content: string }[] {
+  const raw = Array.isArray(data) ? data : Array.isArray(obj(data).payload) ? (obj(data).payload as unknown[]) : [];
+  return raw.map(mapCwNote).filter((note): note is NonNullable<typeof note> => note !== null);
+}
+
+async function patchCustomFilter(
+  id: number,
+  name: string,
+  query: Record<string, unknown>,
+  filterType: "conversation" | "contact",
+): Promise<void> {
+  const res = await unifiedCw.PATCH("/custom_filters/{custom_filter_id}", {
+    params: { path: { custom_filter_id: id } },
+    body: {
+      name,
+      filter_type: filterType,
+      query,
+      custom_filter: { name, filter_type: filterType, query },
+    } as never,
+  });
+  if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+}
+
+async function mergeContactsOnServer(baseId: number, mergeeId: number): Promise<void> {
+  const frozen = frozenMergeReason([baseId, mergeeId]);
+  if (frozen) throw new Error(frozen);
+  const res = await unifiedCw.POST("/actions/contact_merge", {
+    body: { base_contact_id: baseId, mergee_contact_id: mergeeId },
+  });
+  if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+}
+
+function applyLinkedContactMerge(primaryId: number, mergedId: number): void {
+  const frozen = frozenMergeReason([primaryId, mergedId]);
+  if (frozen) {
+    toastFrozen(frozen);
+    return;
+  }
+  const prevList = useContactsStore.getState().list;
+  const prevNotes = useContactsStore.getState().notes;
+  const primary = prevList.find((c) => c.id === primaryId);
+  const merged = prevList.find((c) => c.id === mergedId);
+  if (!primary || !merged) {
+    toast.error("Contacts not merged", { description: "One of the contacts is not loaded." });
+    return;
+  }
+  const combined = {
+    ...primary,
+    email: primary.email || merged.email,
+    phone: primary.phone || merged.phone,
+    company: primary.company || merged.company,
+    city: primary.city || merged.city,
+    country: primary.country || merged.country,
+    bio: primary.bio || merged.bio,
+    labels: Array.from(new Set([...primary.labels, ...merged.labels])),
+  };
+  useContactsStore.setState((state) => ({
+    list: state.list.filter((c) => c.id !== mergedId).map((c) => (c.id === primaryId ? combined : c)),
+    notes: { ...state.notes, [primaryId]: [...(state.notes[primaryId] ?? []), ...(state.notes[mergedId] ?? [])] },
+  }));
+  void mergeContactsOnServer(primaryId, mergedId)
+    .then(() => {
+      toast.success("Contacts merged in Chatwoot");
+    })
+    .catch((err) => {
+      useContactsStore.setState({ list: prevList, notes: prevNotes });
+      toast.error("Contacts not merged in Chatwoot", { description: formatGatewayError(err) });
+    });
 }
 
 /** Condition 6: Paginate through GET /conversations?status=all&assignee_type=all&page=N until exhausted. */
@@ -729,8 +923,28 @@ function installLinkedAdapters() {
           });
         });
     },
-    setParticipants() {
-      refuseUnsupportedLinkedAction("Updating conversation participants", "POST /conversations/{id}/participants");
+    setParticipants(id, participants) {
+      const prevMeta = useCwStore.getState().meta[id];
+      useCwStore.setState((state) => {
+        const cur = state.meta[id];
+        if (!cur) return state;
+        return { meta: { ...state.meta, [id]: { ...cur, participants } } };
+      });
+      void unifiedCw
+        .PATCH("/conversations/{conversation_id}/participants", {
+          params: { path: { conversation_id: id } },
+          body: { user_ids: participants },
+        })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          toast.success("Participants updated in Chatwoot");
+        })
+        .catch((err) => {
+          if (prevMeta) {
+            useCwStore.setState((state) => ({ meta: { ...state.meta, [id]: prevMeta } }));
+          }
+          toast.error("Participants not updated in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
     markRead(id) {
       useCwStore.setState((state) => ({
@@ -738,11 +952,53 @@ function installLinkedAdapters() {
         readCounts: { ...state.readCounts, [id]: state.unread[id] ?? 0 },
       }));
     },
-    markUnread() {
-      refuseUnsupportedLinkedAction("Marking conversation unread", "POST /conversations/{id}/unread");
+    markUnread(id) {
+      const prev = useCwStore.getState().unread[id] ?? 0;
+      useCwStore.setState((state) => ({ unread: { ...state.unread, [id]: Math.max(prev, 1) } }));
+      void unifiedCw
+        .POST("/conversations/{conversation_id}/unread", {
+          params: { path: { conversation_id: id } },
+        })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          toast.success("Conversation marked unread in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState((state) => ({ unread: { ...state.unread, [id]: prev } }));
+          toast.error("Conversation not marked unread in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
-    toggleMute() {
-      refuseUnsupportedLinkedAction("Blocking or muting contact", "POST /conversations/{id}/mute");
+    toggleMute(id) {
+      const frozen = frozenConversationReason(id, "mute/unmute");
+      if (frozen) {
+        toastFrozen(frozen);
+        return;
+      }
+      const wasMuted = useCwStore.getState().muted[id] === true;
+      const prevMeta = useCwStore.getState().meta[id];
+      useCwStore.setState((state) => {
+        const muted = { ...state.muted, [id]: !wasMuted };
+        const cur = state.meta[id];
+        if (!wasMuted && cur) {
+          return { muted, meta: { ...state.meta, [id]: { ...cur, status: "resolved", snoozedUntil: null } } };
+        }
+        return { muted };
+      });
+      const path = wasMuted ? "/conversations/{conversation_id}/unmute" : "/conversations/{conversation_id}/mute";
+      void unifiedCw
+        .POST(path, { params: { path: { conversation_id: id } } })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          toast.success(wasMuted ? "Conversation unmuted in Chatwoot" : "Conversation muted in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState((state) => {
+            const muted = { ...state.muted, [id]: wasMuted };
+            if (prevMeta) return { muted, meta: { ...state.meta, [id]: prevMeta } };
+            return { muted };
+          });
+          toast.error("Mute not updated in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
     deleteConversation() {
       refuseUnsupportedLinkedAction("Deleting conversation", "DELETE /conversations/{id}");
@@ -812,11 +1068,78 @@ function installLinkedAdapters() {
           });
         });
     },
-    addNote() {
-      refuseUnsupportedLinkedAction("Adding contact note", "POST /contacts/{id}/notes");
+    addNote(convId, text) {
+      const contactId = currentPersonOfMap[convId] ?? contactIdOf(convId);
+      if (contactId === null) {
+        toast.error("Note not saved", { description: "This conversation has no linked contact ID." });
+        return;
+      }
+      const tempId = Date.now();
+      const optimistic: ConvContactNote = {
+        id: tempId,
+        author: currentViewer().name,
+        time: "Just now",
+        text,
+      };
+      useCwStore.setState((state) => ({
+        notes: { ...state.notes, [convId]: [optimistic, ...(state.notes[convId] ?? [])] },
+      }));
+      void unifiedCw
+        .POST("/contacts/{id}/notes", {
+          params: { path: { id: contactId } },
+          body: { note: { content: text }, content: text },
+        })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          const mapped = mapCwNote(obj(res.data).payload ?? res.data);
+          if (mapped) {
+            const saved: ConvContactNote = {
+              id: mapped.id,
+              author: mapped.author,
+              time: mapped.time,
+              text: mapped.content,
+            };
+            useCwStore.setState((state) => ({
+              notes: {
+                ...state.notes,
+                [convId]: (state.notes[convId] ?? []).map((note) => (note.id === tempId ? saved : note)),
+              },
+            }));
+          }
+          toast.success("Note saved in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState((state) => ({
+            notes: {
+              ...state.notes,
+              [convId]: (state.notes[convId] ?? []).filter((note) => note.id !== tempId),
+            },
+          }));
+          toast.error("Note not saved in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
-    deleteNote() {
-      refuseUnsupportedLinkedAction("Deleting contact note", "DELETE /contacts/{id}/notes/{note_id}");
+    deleteNote(convId, noteId) {
+      const contactId = currentPersonOfMap[convId] ?? contactIdOf(convId);
+      if (contactId === null) {
+        toast.error("Note not deleted", { description: "This conversation has no linked contact ID." });
+        return;
+      }
+      const prev = useCwStore.getState().notes[convId] ?? [];
+      useCwStore.setState((state) => ({
+        notes: { ...state.notes, [convId]: (state.notes[convId] ?? []).filter((note) => note.id !== noteId) },
+      }));
+      void unifiedCw
+        .DELETE("/contacts/{id}/notes/{note_id}", {
+          params: { path: { id: contactId, note_id: noteId } },
+        })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          toast.success("Note deleted in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState((state) => ({ notes: { ...state.notes, [convId]: prev } }));
+          toast.error("Note not deleted in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
     editContact(key, patch) {
       const cId = resolveContactIdFromKey(key);
@@ -879,8 +1202,64 @@ function installLinkedAdapters() {
           });
         });
     },
-    refuseFolderOp() {
-      refuseUnsupportedLinkedAction("Saving custom folders", "POST/PUT/DELETE /custom_filters");
+    addFolder(name, filters) {
+      const tempId = `f-${Date.now().toString(36)}`;
+      const folder: Folder = { id: tempId, name: name.trim() || "Untitled folder", filters };
+      useCwStore.setState((state) => ({ folders: [...state.folders, folder], applied: null }));
+      void createLinkedCustomFilter(folder.name, customFilterQuery(filters), "conversation")
+        .then((created) => {
+          const saved = folderFromFilter(created);
+          useCwStore.setState((state) => ({
+            folders: state.folders.map((item) => (item.id === tempId ? saved : item)),
+          }));
+          toast.success("Folder saved in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState((state) => ({
+            folders: state.folders.filter((item) => item.id !== tempId),
+          }));
+          toast.error("Folder not saved in Chatwoot", { description: formatGatewayError(err) });
+        });
+      return folder;
+    },
+    updateFolder(id, name, filters) {
+      const numericId = Number.parseInt(id, 10);
+      if (!Number.isFinite(numericId)) {
+        toast.error("Folder not updated", { description: "This folder has no Chatwoot id yet." });
+        return;
+      }
+      const prev = useCwStore.getState().folders;
+      useCwStore.setState((state) => ({
+        folders: state.folders.map((folder) =>
+          folder.id === id ? { ...folder, name: name || folder.name, filters } : folder,
+        ),
+      }));
+      const nextName = name.trim() || prev.find((folder) => folder.id === id)?.name || "Untitled folder";
+      void patchCustomFilter(numericId, nextName, customFilterQuery(filters), "conversation")
+        .then(() => {
+          toast.success("Folder updated in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState({ folders: prev });
+          toast.error("Folder not updated in Chatwoot", { description: formatGatewayError(err) });
+        });
+    },
+    deleteFolder(id) {
+      const numericId = Number.parseInt(id, 10);
+      if (!Number.isFinite(numericId)) {
+        toast.error("Folder not deleted", { description: "This folder has no Chatwoot id yet." });
+        return;
+      }
+      const prev = useCwStore.getState().folders;
+      useCwStore.setState((state) => ({ folders: state.folders.filter((folder) => folder.id !== id) }));
+      void deleteLinkedCustomFilter(numericId)
+        .then(() => {
+          toast.success("Folder deleted in Chatwoot");
+        })
+        .catch((err) => {
+          useCwStore.setState({ folders: prev });
+          toast.error("Folder not deleted in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
   };
 
@@ -982,9 +1361,29 @@ function installLinkedAdapters() {
       keeping.set(tempId, promise);
       return tempId;
     },
-    async deleteMessage(): Promise<boolean> {
-      refuseUnsupportedLinkedAction("Deleting a message", "DELETE /conversations/{id}/messages/{id}");
-      return false;
+    async deleteMessage(convId: number, messageId: string): Promise<boolean> {
+      const frozen = frozenConversationReason(convId, "deleting a message");
+      if (frozen) {
+        toastFrozen(frozen);
+        return false;
+      }
+      const numericId = Number.parseInt(messageId, 10);
+      if (!Number.isFinite(numericId) || numericId <= 0) {
+        toast.error("Message not deleted", { description: "This message has no Chatwoot id yet." });
+        return false;
+      }
+      try {
+        const res = await unifiedCw.DELETE("/conversations/{conversation_id}/messages/{message_id}", {
+          params: { path: { conversation_id: convId, message_id: numericId } },
+        });
+        if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+        studioCw.deleteMessages([{ convId, messageId }]);
+        toast.success("Message deleted in Chatwoot");
+        return true;
+      } catch (err) {
+        toast.error("Message not deleted in Chatwoot", { description: formatGatewayError(err) });
+        return false;
+      }
     },
     async changeStatus(
       ids: number[],
@@ -1055,9 +1454,38 @@ function installLinkedAdapters() {
         return false;
       }
     },
-    async toggleBlock(): Promise<KeepOutcome> {
-      refuseUnsupportedLinkedAction("Blocking contact", "POST /conversations/{id}/mute");
-      return { ok: false, message: "Blocking contact is not enabled on the Studio gateway" };
+    async toggleBlock(convId: number): Promise<KeepOutcome> {
+      const frozen = frozenConversationReason(convId, "mute/unmute");
+      if (frozen) {
+        toastFrozen(frozen);
+        return { ok: false, message: frozen };
+      }
+      const wasMuted = useCwStore.getState().muted[convId] === true;
+      const prevMeta = useCwStore.getState().meta[convId];
+      useCwStore.setState((state) => {
+        const muted = { ...state.muted, [convId]: !wasMuted };
+        const cur = state.meta[convId];
+        if (!wasMuted && cur) {
+          return { muted, meta: { ...state.meta, [convId]: { ...cur, status: "resolved", snoozedUntil: null } } };
+        }
+        return { muted };
+      });
+      const path = wasMuted ? "/conversations/{conversation_id}/unmute" : "/conversations/{conversation_id}/mute";
+      try {
+        const res = await unifiedCw.POST(path, { params: { path: { conversation_id: convId } } });
+        if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+        toast.success(wasMuted ? "Conversation unmuted in Chatwoot" : "Conversation muted in Chatwoot");
+        return { ok: true };
+      } catch (err) {
+        useCwStore.setState((state) => {
+          const muted = { ...state.muted, [convId]: wasMuted };
+          if (prevMeta) return { muted, meta: { ...state.meta, [convId]: prevMeta } };
+          return { muted };
+        });
+        const message = formatGatewayError(err);
+        toast.error("Mute not updated in Chatwoot", { description: message });
+        return { ok: false, message };
+      }
     },
   };
 
@@ -1068,13 +1496,59 @@ function installLinkedAdapters() {
     finishSimCall() {
       refuseUnsupportedLinkedAction("Simulated voice call", "Voice call simulation");
     },
-    simSendTranscript() {
-      refuseUnsupportedLinkedAction("Sending email transcript", "POST /conversations/{id}/transcript");
-      return { saved: Promise.resolve(false) };
+    simSendTranscript(input) {
+      const frozen = frozenConversationReason(input.convId, "transcript");
+      if (frozen) {
+        toastFrozen(frozen);
+        return { saved: Promise.resolve(false) };
+      }
+      const saved = (async () => {
+        try {
+          const res = await unifiedCw.POST("/conversations/{conversation_id}/transcript", {
+            params: { path: { conversation_id: input.convId } },
+            body: { email: input.email },
+          });
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          toast.success("Transcript sent in Chatwoot", { description: `Sent to ${input.email}.` });
+          return true;
+        } catch (err) {
+          toast.error("Transcript not sent in Chatwoot", { description: formatGatewayError(err) });
+          return false;
+        }
+      })();
+      return { saved };
     },
-    simCreateConversation() {
-      refuseUnsupportedLinkedAction("Creating new conversation", "POST /conversations");
-      return { id: 0, saved: Promise.resolve(false) };
+    simCreateConversation(input) {
+      const contactId =
+        input.person?.contactId ??
+        (input.from ? (currentPersonOfMap[input.from.id] ?? contactIdOf(input.from.id)) : null);
+      if (contactId === null) {
+        toast.error("Conversation not created", { description: "No Chatwoot contact id for this person." });
+        return { id: 0, saved: Promise.resolve(false) };
+      }
+      const saved = (async () => {
+        try {
+          const res = await unifiedCw.POST("/conversations", {
+            body: {
+              source_id: `studio-test-${contactId}`,
+              inbox_id: TEST_INBOX_ID,
+              contact_id: contactId,
+              message: { content: input.text || input.subject || "New conversation" },
+            },
+          });
+          if (res.error || !res.data) throw new Error(formatGatewayError(res.error, res.response?.status));
+          const createdId = num(obj(res.data).id) ?? 0;
+          if (createdId > 0) conversationInboxById[createdId] = TEST_INBOX_ID;
+          toast.success("Conversation created in Chatwoot", {
+            description: createdId ? `Conversation #${createdId} on Studio Test inbox 3.` : undefined,
+          });
+          return createdId > 0;
+        } catch (err) {
+          toast.error("Conversation not created in Chatwoot", { description: formatGatewayError(err) });
+          return false;
+        }
+      })();
+      return { id: 0, saved };
     },
     simSaveContact(name, phone) {
       const digits = phone.replace(/\D/g, "");
@@ -1105,8 +1579,15 @@ function installLinkedAdapters() {
       useContactsStore.getState().remove([cId]);
       return convIds.length;
     },
-    simMergeContacts() {
-      refuseUnsupportedLinkedAction("Merging contacts", "POST /actions/contact_merge");
+    simMergeContacts(convId, keptKey) {
+      const mergeeId = currentPersonOfMap[convId] ?? contactIdOf(convId);
+      const keptConv = baseConversations.find((c) => contactKeyOf(c) === keptKey);
+      const keptId = keptConv ? (currentPersonOfMap[keptConv.id] ?? contactIdOf(keptConv.id)) : null;
+      if (mergeeId === null || keptId === null) {
+        toast.error("Contacts not merged", { description: "Could not resolve Chatwoot contact ids." });
+        return;
+      }
+      applyLinkedContactMerge(keptId, mergeeId);
     },
   });
 
@@ -1284,8 +1765,8 @@ function installLinkedAdapters() {
           });
         });
     },
-    merge() {
-      refuseUnsupportedLinkedAction("Merging contacts", "POST /actions/contact_merge");
+    merge(primaryId, mergedId) {
+      applyLinkedContactMerge(primaryId, mergedId);
     },
     toggleBlock() {
       refuseUnsupportedLinkedAction("Blocking contact", "PUT /contacts/{id} (blocked)");
@@ -1323,14 +1804,158 @@ function installLinkedAdapters() {
           });
         });
     },
-    refuseContactLabels() {
-      refuseUnsupportedLinkedAction("Assigning contact labels", "POST /contacts/{id}/labels");
+    addLabels(ids, labels) {
+      const prevList = useContactsStore.getState().list;
+      useContactsStore.setState((state) => ({
+        list: state.list.map((c) =>
+          ids.includes(c.id) ? { ...c, labels: Array.from(new Set([...c.labels, ...labels])) } : c,
+        ),
+      }));
+      void Promise.all(
+        ids.map(async (id) => {
+          const next = useContactsStore.getState().list.find((c) => c.id === id)?.labels ?? labels;
+          const res = await unifiedCw.POST("/contacts/{id}/labels", {
+            params: { path: { id } },
+            body: { labels: next },
+          });
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+        }),
+      )
+        .then(() => {
+          toast.success("Labels saved in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState({ list: prevList });
+          toast.error("Labels not saved in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
-    refuseContactNotes() {
-      refuseUnsupportedLinkedAction("Saving contact notes", "POST /contacts/{id}/notes");
+    removeLabels(ids, labels) {
+      const prevList = useContactsStore.getState().list;
+      useContactsStore.setState((state) => ({
+        list: state.list.map((c) =>
+          ids.includes(c.id) ? { ...c, labels: c.labels.filter((label) => !labels.includes(label)) } : c,
+        ),
+      }));
+      void Promise.all(
+        ids.map(async (id) => {
+          const next = useContactsStore.getState().list.find((c) => c.id === id)?.labels ?? [];
+          const res = await unifiedCw.POST("/contacts/{id}/labels", {
+            params: { path: { id } },
+            body: { labels: next },
+          });
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+        }),
+      )
+        .then(() => {
+          toast.success("Labels updated in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState({ list: prevList });
+          toast.error("Labels not updated in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
-    refuseContactSegments() {
-      refuseUnsupportedLinkedAction("Saving contact segments", "POST /custom_filters");
+    addNote(id, body) {
+      const tempId = Date.now();
+      const optimistic: ContactNote = { id: tempId, author: currentViewer().name, time: "Just now", body };
+      useContactsStore.setState((state) => ({
+        notes: { ...state.notes, [id]: [optimistic, ...(state.notes[id] ?? [])] },
+      }));
+      void unifiedCw
+        .POST("/contacts/{id}/notes", {
+          params: { path: { id } },
+          body: { note: { content: body }, content: body },
+        })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          const mapped = mapCwNote(obj(res.data).payload ?? res.data);
+          if (mapped) {
+            const saved: ContactNote = {
+              id: mapped.id,
+              author: mapped.author,
+              time: mapped.time,
+              body: mapped.content,
+            };
+            useContactsStore.setState((state) => ({
+              notes: {
+                ...state.notes,
+                [id]: (state.notes[id] ?? []).map((note) => (note.id === tempId ? saved : note)),
+              },
+            }));
+          }
+          toast.success("Note saved in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState((state) => ({
+            notes: { ...state.notes, [id]: (state.notes[id] ?? []).filter((note) => note.id !== tempId) },
+          }));
+          toast.error("Note not saved in Chatwoot", { description: formatGatewayError(err) });
+        });
+    },
+    deleteNote(id, noteId) {
+      const prev = useContactsStore.getState().notes[id] ?? [];
+      useContactsStore.setState((state) => ({
+        notes: { ...state.notes, [id]: (state.notes[id] ?? []).filter((note) => note.id !== noteId) },
+      }));
+      void unifiedCw
+        .DELETE("/contacts/{id}/notes/{note_id}", {
+          params: { path: { id, note_id: noteId } },
+        })
+        .then((res) => {
+          if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+          toast.success("Note deleted in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState((state) => ({ notes: { ...state.notes, [id]: prev } }));
+          toast.error("Note not deleted in Chatwoot", { description: formatGatewayError(err) });
+        });
+    },
+    addSegment(name, filters) {
+      const tempId = Math.max(0, ...useContactsStore.getState().segments.map((s) => s.id)) + 1;
+      const segment: Segment = { id: tempId, name, filters };
+      useContactsStore.setState((state) => ({ segments: [...state.segments, segment] }));
+      void createLinkedCustomFilter(name, customFilterQuery(filters), "contact")
+        .then((created) => {
+          const saved = segmentFromFilter(created);
+          useContactsStore.setState((state) => ({
+            segments: state.segments.map((item) => (item.id === tempId ? saved : item)),
+          }));
+          toast.success("Segment saved in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState((state) => ({
+            segments: state.segments.filter((item) => item.id !== tempId),
+          }));
+          toast.error("Segment not saved in Chatwoot", { description: formatGatewayError(err) });
+        });
+      return segment;
+    },
+    updateSegment(id, filters) {
+      const prev = useContactsStore.getState().segments;
+      const current = prev.find((item) => item.id === id);
+      if (!current) return;
+      useContactsStore.setState((state) => ({
+        segments: state.segments.map((item) => (item.id === id ? { ...item, filters } : item)),
+      }));
+      void patchCustomFilter(id, current.name, customFilterQuery(filters), "contact")
+        .then(() => {
+          toast.success("Segment updated in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState({ segments: prev });
+          toast.error("Segment not updated in Chatwoot", { description: formatGatewayError(err) });
+        });
+    },
+    deleteSegment(id) {
+      const prev = useContactsStore.getState().segments;
+      useContactsStore.setState((state) => ({ segments: state.segments.filter((item) => item.id !== id) }));
+      void deleteLinkedCustomFilter(id)
+        .then(() => {
+          toast.success("Segment deleted in Chatwoot");
+        })
+        .catch((err) => {
+          useContactsStore.setState({ segments: prev });
+          toast.error("Segment not deleted in Chatwoot", { description: formatGatewayError(err) });
+        });
     },
   });
 

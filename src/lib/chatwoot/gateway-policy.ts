@@ -274,6 +274,21 @@ export const ROUTES: readonly RouteRow[] = [
   v1(`portals/${ID}/categories`),
   v1("campaigns"),
   v1(`campaigns/${ID}`),
+  // ---- V-16: the 15 previously refused conversation/contact writes (Chatwoot v4.18.0 routes.rb)
+  v1("conversations", "agent", ["POST"]),
+  v1(`conversations/${ID}/mute`, "agent", ["POST"]),
+  v1(`conversations/${ID}/unmute`, "agent", ["POST"]),
+  v1(`conversations/${ID}/unread`, "agent", ["POST"]),
+  v1(`conversations/${ID}/transcript`, "agent", ["POST"]),
+  v1(`conversations/${ID}/participants`, "agent", ["POST", "PUT", "PATCH", "DELETE"]),
+  v1(`conversations/${ID}/messages/${ID}`, "agent", ["DELETE"]),
+  v1(`contacts/${ID}/notes`),
+  v1(`contacts/${ID}/notes`, "agent", ["POST"]),
+  v1(`contacts/${ID}/notes/${ID}`),
+  v1(`contacts/${ID}/notes/${ID}`, "agent", ["PUT", "PATCH", "DELETE"]),
+  v1(`contacts/${ID}/labels`),
+  v1(`contacts/${ID}/labels`, "agent", ["POST"]),
+  v1("actions/contact_merge", "agent", ["POST"]),
 ];
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
@@ -297,6 +312,72 @@ export function forbiddenWrite(method: string, segments: readonly string[]): str
 }
 
 export const BLOCKED_PHONE_SUFFIX = "6888";
+
+/** V-16: frozen Meta-review inboxes. Sensitive writes never reach these. */
+export const FROZEN_LIVE_INBOX_IDS = new Set<number>([9, 10]);
+/** V-16: the only inbox allowed for sensitive writes during Meta review (Studio Test). */
+export const TEST_INBOX_ID = 3;
+/** V-16: the only conversation allowed for mute/unmute/transcript/delete-message during Meta review. */
+export const TEST_CONVERSATION_ID = 2;
+
+const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript"]);
+
+function bodyInboxId(body: unknown): number | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const raw = (body as Record<string, unknown>).inbox_id;
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === "string" && /^\d{1,10}$/.test(raw)) return Number(raw);
+  return null;
+}
+
+/**
+ * V-16 Meta-review guard for destructive/sensitive writes.
+ * - delete message, mute/unmute, transcript: conversation id must be 2
+ * - create conversation: inbox_id must be 3, never 9 or 10
+ * - merge: refused if the body names inbox 9 or 10
+ * Returns a 403 reason, or null when the request may proceed.
+ */
+export function frozenSensitiveWriteReason(method: string, segments: readonly string[], body?: unknown): string | null {
+  if (method === "GET" || method === "HEAD") return null;
+
+  if (method === "DELETE" && segments.length === 4 && segments[0] === "conversations" && segments[2] === "messages") {
+    const convId = NUMBER.test(segments[1]) ? Number(segments[1]) : 0;
+    if (convId !== TEST_CONVERSATION_ID) {
+      return "refused: deleting a message is limited to Studio Test conversation 2 during Meta review (403)";
+    }
+  }
+
+  if (
+    method === "POST" &&
+    segments.length === 3 &&
+    segments[0] === "conversations" &&
+    SENSITIVE_CONVERSATION_MEMBER.has(segments[2])
+  ) {
+    const convId = NUMBER.test(segments[1]) ? Number(segments[1]) : 0;
+    if (convId !== TEST_CONVERSATION_ID) {
+      return `refused: ${segments[2]} is limited to Studio Test conversation 2 during Meta review (403)`;
+    }
+  }
+
+  if (method === "POST" && segments.length === 1 && segments[0] === "conversations") {
+    const inboxId = bodyInboxId(body);
+    if (inboxId !== null && FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
+      return "refused: creating a conversation on frozen live inboxes 9 and 10 is blocked (403)";
+    }
+    if (inboxId !== TEST_INBOX_ID) {
+      return "refused: creating a conversation is limited to Studio Test inbox 3 during Meta review (403)";
+    }
+  }
+
+  if (method === "POST" && segments.length === 2 && segments[0] === "actions" && segments[1] === "contact_merge") {
+    const inboxId = bodyInboxId(body);
+    if (inboxId !== null && FROZEN_LIVE_INBOX_IDS.has(inboxId)) {
+      return "refused: merging contacts of frozen live inboxes 9 and 10 is blocked (403)";
+    }
+  }
+
+  return null;
+}
 
 /**
  * V-1 safety guard: checks if a string is or contains a WhatsApp/phone number or identifier ending in 6888
