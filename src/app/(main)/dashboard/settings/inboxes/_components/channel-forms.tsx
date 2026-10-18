@@ -954,6 +954,22 @@ export function ChannelForm({ channel, onCreate }: { channel: Channel; onCreate:
             };
           }}
         >
+          <div className="rounded-lg border bg-emerald-50/60 p-3 dark:bg-emerald-950/30" data-webhook-ready>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+              </span>
+              <span className="font-medium text-sm text-emerald-800 dark:text-emerald-300">Webhook URL Ready</span>
+            </div>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Your encrypted Telegram webhook receiver is ready at{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
+                https://inbox.airest.ai/public/api/v1/accounts/&#123;id&#125;/inboxes/&#123;id&#125;/telegram/webhook
+              </code>
+              . The token you enter will be registered with Telegram once the inbox is created.
+            </p>
+          </div>
           <p className="rounded-lg border bg-muted/40 p-3 text-muted-foreground text-sm" data-preview-note>
             Preview — simulated: the token is checked for its form only. It is not sent to Telegram and not kept, so the
             bot's name is not read and no message arrives until the inbox is connected through the engine.
