@@ -20,7 +20,7 @@ async function latest(directory: string): Promise<number> {
 
 export async function GET(request: Request) {
   const origin = request.headers.get("origin");
-  const allowed = ["http://100.86.173.123:8798", "http://192.168.1.15:8798"];
+  const allowed = ["http://192.168.1.15:8798"];
   const headers: Record<string, string> = { "Cache-Control": "no-store", Vary: "Origin" };
   if (origin && allowed.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
   const version = await latest(path.join(process.cwd(), "src"));
