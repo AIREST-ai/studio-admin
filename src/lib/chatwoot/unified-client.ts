@@ -174,6 +174,15 @@ type RbPostId = {
   parameters: { query?: never; header?: never; path?: never; cookie?: never };
   post: RbWrite<Id>;
 } & { [K in Exclude<Method, "post">]?: never };
+type RbPostNoPath = {
+  parameters: { query?: never; header?: never; path?: never; cookie?: never };
+  post: RbWriteNoPath;
+} & { [K in Exclude<Method, "post">]?: never };
+type RbPatchPutId = {
+  parameters: { query?: never; header?: never; path?: never; cookie?: never };
+  put: RbWrite<Id>;
+  patch: RbWrite<Id>;
+} & { [K in Exclude<Method, "put" | "patch">]?: never };
 type Conv = { conversation_id: number };
 type Id = { id: number };
 
@@ -202,6 +211,10 @@ export type RoutesRbPaths = {
   "/automation_rules/{id}/clone": RbPostId;
   /** routes.rb:331 resources :notifications (index) */
   "/notifications": RbItem<RbGetNoPath>;
+  /** routes.rb:333 collection post :read_all */
+  "/notifications/read_all": RbPostNoPath;
+  /** routes.rb:331 member update (mark read) */
+  "/notifications/{id}": RbPatchPutId;
   /** routes.rb:561-563 (api/v2) live_reports & summary_reports & bot reports */
   "/live_reports/conversation_metrics": RbItem<RbGetNoPath>;
   "/live_reports/grouped_conversation_metrics": RbItem<RbGetNoPath>;

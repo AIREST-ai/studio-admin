@@ -37,7 +37,8 @@ function isStoreAdapterActive(state: LinkState): boolean {
       state.sections.contacts === true ||
       state.sections.lists === true ||
       state.sections.automation === true ||
-      state.sections.reports === true)
+      state.sections.reports === true ||
+      state.sections.notifications === true)
   );
 }
 
@@ -88,7 +89,8 @@ export function useSectionLinked(section: LinkSection): boolean {
     section === "contacts" ||
     section === "lists" ||
     section === "automation" ||
-    section === "reports"
+    section === "reports" ||
+    section === "notifications"
   ) {
     return false;
   }

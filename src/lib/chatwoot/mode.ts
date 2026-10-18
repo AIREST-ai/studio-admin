@@ -9,6 +9,7 @@
 import "server-only";
 
 import {
+  applyLinkedSectionDefaults,
   LINK_SECTIONS,
   type LinkMode,
   type LinkSection,
@@ -55,7 +56,8 @@ export async function readLinkState(): Promise<LinkState> {
   }
   const state = clean(saved);
   if (linkDisabled()) return { mode: "preview", sections: noSections(), changedAt: state.changedAt, disabled: true };
-  return { ...state, disabled: false };
+  // V-14: force notifications on while linked. Applied on read only so `.preview-state/chatwoot-link.json` is not rewritten.
+  return { ...state, sections: applyLinkedSectionDefaults(state.mode, state.sections), disabled: false };
 }
 
 export function sectionLinked(state: LinkState, section: LinkSection): boolean {

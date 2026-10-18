@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { create } from "zustand";
 
 import { useCwStore } from "@/app/(main)/dashboard/chat/_components/cw-store";
-import { loadPreviewSection, SectionConflict, savePreviewSection } from "@/lib/cw/persistence/client";
+import { linkedSession, loadPreviewSection, SectionConflict, savePreviewSection } from "@/lib/cw/persistence/client";
 import { FEED_ID_BASE, type FeedNotification } from "@/lib/notifications/feed";
 
 import { dueSnoozes, type InboxTab, returned } from "./my-inbox-filters";
@@ -35,6 +35,18 @@ import { buildNotification, type InboxNotification, notificationSeeds } from "./
 export const seedNotifications: InboxNotification[] = notificationSeeds
   .map((s, i) => buildNotification(s, i))
   .filter((n): n is InboxNotification => n !== null);
+
+/** V-14: live Chatwoot notifications via /api/cw. Null restores the preview seeds. */
+export interface LinkedNotificationsAdapter {
+  markRead(id: number): void;
+  markAllRead(): void;
+}
+
+let linkedNotificationsAdapter: LinkedNotificationsAdapter | null = null;
+
+export function setLinkedNotificationsAdapter(adapter: LinkedNotificationsAdapter | null): void {
+  linkedNotificationsAdapter = adapter;
+}
 
 export interface FeedEntry extends FeedNotification {
   unread: boolean;
@@ -73,6 +85,9 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   },
   update(id, patch) {
     set((s) => ({ items: s.items.map((n) => (n.id === id ? { ...n, ...patch } : n)) }));
+    if (linkedNotificationsAdapter && patch.unread === false) {
+      linkedNotificationsAdapter.markRead(id);
+    }
   },
   snooze(id, until) {
     set((s) => ({
@@ -95,6 +110,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
       items: s.items.map((n) => ({ ...n, unread: false })),
       feed: s.feed.some((f) => f.unread) ? s.feed.map((f) => ({ ...f, unread: false })) : s.feed,
     }));
+    linkedNotificationsAdapter?.markAllRead();
   },
   deleteAll() {
     set({ items: [] });
@@ -138,6 +154,16 @@ let saving = false;
 let again = false;
 let applying = false;
 
+/** V-14: replace My Inbox items with live Chatwoot rows (null restores the preview seeds). */
+export function showLinkedNotifications(items: InboxNotification[] | null): void {
+  applying = true;
+  try {
+    useNotificationsStore.setState({ items: items ?? seedNotifications });
+  } finally {
+    applying = false;
+  }
+}
+
 function fromItems(items: unknown[] | null): Map<number, SavedState> {
   const map = new Map<number, SavedState>();
   for (const raw of items ?? []) {
@@ -149,6 +175,8 @@ function fromItems(items: unknown[] | null): Map<number, SavedState> {
 
 /** Reads the saved copy and shows it, except the notifications this tab changed since its last read or save. */
 async function reloadKeepingOwn(): Promise<boolean> {
+  // V-14: linked mode must not read or rewrite `.preview-state/` for this section.
+  if (linkedSession()) return false;
   const before = saved;
   const section = await loadPreviewSection<unknown>(SECTION);
   rev = section.rev;
@@ -208,6 +236,7 @@ async function saveNow() {
 }
 
 function save() {
+  if (linkedSession()) return;
   if (phase !== "ready") return;
   if (saving) {
     again = true;
@@ -237,6 +266,11 @@ function startSaving() {
   useNotificationsStore.subscribe((state, before) => {
     if ((state.items !== before.items || state.feed !== before.feed) && !applying) save();
   });
+  // V-14: while linked, skip loading the preview section so live rows are not overwritten.
+  if (linkedSession()) {
+    phase = "ready";
+    return;
+  }
   reloadKeepingOwn()
     .then((own) => {
       phase = "ready";

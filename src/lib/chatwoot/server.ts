@@ -17,9 +17,16 @@
 // biome-ignore lint/correctness/noUndeclaredDependencies: Next.js resolves "server-only" itself (node_modules/next/dist/docs/01-app/02-guides/data-security.md)
 import "server-only";
 
-import type { LinkIdentity, LinkProblem, LinkProblemKind } from "@/lib/chatwoot-link-types";
+import {
+  applyLinkedSectionDefaults,
+  type LinkIdentity,
+  type LinkMode,
+  type LinkProblem,
+  type LinkProblemKind,
+  type LinkSection,
+} from "@/lib/chatwoot-link-types";
 
-import { containsBlocked6888 } from "./gateway-policy";
+import { containsBlocked6888, scrubSecrets } from "./gateway-policy";
 import { profileIdentity } from "./map";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -604,6 +611,26 @@ export function readTeams(): Promise<unknown> {
 }
 export function readAccountLabels(): Promise<unknown> {
   return accountGet("/labels");
+}
+
+/**
+ * V-14: default linked-mode section flags for the link server. Notifications is on whenever `mode === "linked"`;
+ * the `.preview-state/` files are not rewritten.
+ */
+export function defaultLinkedSections(
+  mode: LinkMode,
+  sections: Record<LinkSection, boolean>,
+): Record<LinkSection, boolean> {
+  return applyLinkedSectionDefaults(mode, sections);
+}
+
+/**
+ * V-14: GET /api/v1/accounts/{id}/notifications of the linked account. Scrubbed before return.
+ * Page size is Chatwoot's RESULTS_PER_PAGE (15).
+ */
+export async function readNotifications(page = 1): Promise<unknown> {
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  return scrubSecrets(await accountGet(`/notifications?page=${safePage}&includes[]=read&includes[]=snoozed`));
 }
 
 /* ------------------------------------------------------------------ U-1: the /api/cw gateway --------------------- */

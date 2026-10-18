@@ -7,7 +7,23 @@ export type LinkMode = "preview" | "linked";
 /** The sections of plan 2.2, in its order. U-2 & U-3 link conversations, contacts, lists, automation and reports. */
 export const LINK_SECTIONS = ["conversations", "contacts", "lists", "automation", "reports", "notifications"] as const;
 export type LinkSection = (typeof LINK_SECTIONS)[number];
-export const PHASE1_SECTIONS: readonly LinkSection[] = ["conversations", "contacts", "lists", "automation", "reports"];
+export const PHASE1_SECTIONS: readonly LinkSection[] = [
+  "conversations",
+  "contacts",
+  "lists",
+  "automation",
+  "reports",
+  "notifications",
+];
+
+/** V-14: when the engine is linked, My Inbox is on by default without rewriting `.preview-state/`. */
+export function applyLinkedSectionDefaults(
+  mode: LinkMode,
+  sections: Record<LinkSection, boolean>,
+): Record<LinkSection, boolean> {
+  if (mode === "linked") return { ...sections, notifications: true };
+  return sections;
+}
 
 export interface LinkState {
   mode: LinkMode;

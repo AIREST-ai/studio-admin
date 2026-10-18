@@ -189,6 +189,9 @@ export const ROUTES: readonly RouteRow[] = [
   v1("custom_attribute_definitions"),
   v1(`custom_attribute_definitions/${ID}`),
   v1("notifications"),
+  // V-14: mark-all-read and per-notification read state (Chatwoot routes.rb:331-340).
+  v1("notifications/read_all", "agent", ["POST"]),
+  v1(`notifications/${ID}`, "agent", ["PATCH", "PUT"]),
   v1("automation_rules", "admin"),
   v1(`automation_rules/${ID}`, "admin"),
   v1("webhooks", "admin"),

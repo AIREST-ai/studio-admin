@@ -24,12 +24,14 @@ import {
 } from "@/app/(main)/chat/_components/chat-tags-store";
 import {
   type Contact as ChatContact,
+  type Conversation,
   contactIdOf,
   replaceConversations,
   restorePreviewConversations,
 } from "@/app/(main)/chat/_components/data";
 import {
   baseConversations,
+  type ConversationMeta,
   type CwMessage,
   type CwStatus,
   getLinkedThread,
@@ -61,6 +63,14 @@ import {
   useContactsStore,
 } from "@/app/(main)/dashboard/contacts/_components/contacts-store";
 import type { Contact as DirectoryContact } from "@/app/(main)/dashboard/contacts/_components/data";
+import type {
+  InboxNotification,
+  NotificationType,
+} from "@/app/(main)/dashboard/notifications/_components/notification-data";
+import {
+  setLinkedNotificationsAdapter,
+  showLinkedNotifications,
+} from "@/app/(main)/dashboard/notifications/_components/notifications-store";
 import {
   toCwMessage,
   toCwMessages,
@@ -74,7 +84,7 @@ import {
   toStudioConversations,
 } from "@/lib/chatwoot/map";
 import { handleRealtimeSettingsEvent, mapRawMacros, registerLabelIds } from "@/lib/chatwoot/settings-adapter";
-import { formDataBody, cw as unifiedCw } from "@/lib/chatwoot/unified-client";
+import { formDataBody, scrubSecrets, cw as unifiedCw } from "@/lib/chatwoot/unified-client";
 import { linkedSession, setLinkedSession } from "@/lib/cw/persistence/client";
 import { showLinkedLists, useCwShared } from "@/lib/cw/store";
 import { canSeeConversation, currentViewer } from "@/lib/cw/view-as";
@@ -279,6 +289,197 @@ async function fetchAllContacts(): Promise<{
   }
 
   return { contacts: toDirectoryContacts(rawList), attrs };
+}
+
+const NOTIFICATION_TYPES: readonly NotificationType[] = [
+  "conversation_mention",
+  "conversation_assignment",
+  "conversation_creation",
+  "assigned_conversation_new_message",
+  "participating_conversation_new_message",
+  "sla_missed_first_response",
+  "sla_missed_next_response",
+  "sla_missed_resolution",
+];
+
+function asNotificationType(raw: string | null): NotificationType {
+  return NOTIFICATION_TYPES.includes(raw as NotificationType)
+    ? (raw as NotificationType)
+    : "assigned_conversation_new_message";
+}
+
+function toUnixSeconds(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value > 1e12 ? Math.floor(value / 1000) : value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+  }
+  return null;
+}
+
+function notificationRows(data: unknown): unknown[] {
+  const scrubbed = obj(scrubSecrets(data));
+  const inner = obj(scrubbed.data);
+  if (Array.isArray(inner.payload)) return inner.payload;
+  if (Array.isArray(scrubbed.payload)) return scrubbed.payload;
+  if (Array.isArray(inner.notifications)) return inner.notifications;
+  if (Array.isArray(scrubbed.notifications)) return scrubbed.notifications;
+  return [];
+}
+
+/** V-14: paginate GET /notifications (Chatwoot RESULTS_PER_PAGE = 15). */
+async function fetchAllNotifications(): Promise<unknown[]> {
+  const all: unknown[] = [];
+  const seen = new Set<number>();
+  const MAX_PAGES = 10;
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await unifiedCw.GET("/notifications", {
+      params: { query: { page, includes: "read,snoozed" } },
+    });
+    if (res.error || !res.data) {
+      if (page === 1) throw new Error(formatGatewayError(res.error, res.response?.status));
+      break;
+    }
+    const payload = notificationRows(res.data);
+    if (payload.length === 0) break;
+    let added = 0;
+    for (const item of payload) {
+      const id = num(obj(item).id);
+      if (id !== null && !seen.has(id)) {
+        seen.add(id);
+        all.push(item);
+        added++;
+      }
+    }
+    if (payload.length < 15 || added === 0) break;
+  }
+
+  return all;
+}
+
+function stubConversation(id: number, name: string, preview: string, minutesAgo: number): Conversation {
+  return {
+    id,
+    group: minutesAgo < 24 * 60 ? "Today" : "Yesterday",
+    name,
+    subject: `Chat · #${id}`,
+    preview,
+    time: minutesAgo < 1 ? "Just now" : `${minutesAgo}m`,
+    isUnread: true,
+    unreadCount: 1,
+    channel: "chat",
+    contact: {
+      name,
+      role: "",
+      company: "",
+      email: "",
+      phone: "",
+      website: "",
+      location: "",
+      timezone: "UTC+3",
+      status: "Lead",
+      qualifiedAt: "",
+      tags: [],
+    },
+    messages: [],
+    ago: minutesAgo,
+  };
+}
+
+function mapCwNotifications(
+  rawItems: unknown[],
+  conversations: Conversation[],
+  metaByConvId: Record<number, ConversationMeta>,
+  agentNames: Map<number, string>,
+): InboxNotification[] {
+  const byId = new Map(conversations.map((conversation) => [conversation.id, conversation]));
+  const out: InboxNotification[] = [];
+
+  for (const item of rawItems) {
+    const raw = obj(scrubSecrets(item));
+    const id = num(raw.id);
+    if (id === null) continue;
+    const actor = obj(raw.primary_actor);
+    const convId = num(actor.id) ?? num(actor.display_id) ?? num(raw.primary_actor_id);
+    if (convId === null) continue;
+    const createdSec = toUnixSeconds(raw.last_activity_at) ?? toUnixSeconds(raw.created_at);
+    const minutes = createdSec ? Math.max(0, Math.floor((Date.now() / 1000 - createdSec) / 60)) : 0;
+    const message =
+      str(raw.push_message_title) ??
+      str(raw.push_message_body) ??
+      str(obj(raw.meta).message) ??
+      `Conversation #${convId}`;
+    const contactName =
+      str(obj(obj(actor.meta).sender).name) ??
+      str(obj(actor.meta).sender_name) ??
+      str(actor.name) ??
+      `Conversation #${convId}`;
+    const conversation = byId.get(convId) ?? stubConversation(convId, contactName, message, minutes);
+    const meta = metaByConvId[convId];
+    const assigneeId = meta?.assigneeId ?? num(obj(obj(actor.meta).assignee).id);
+    const snoozedUntilSec = toUnixSeconds(raw.snoozed_until);
+    out.push({
+      id,
+      conversationId: convId,
+      type: asNotificationType(str(raw.notification_type)),
+      unread: raw.read_at == null || raw.read_at === "",
+      conversation,
+      contactName: conversation.contact?.name ?? conversation.name,
+      assigneeId,
+      assignee: assigneeId ? (agentNames.get(assigneeId) ?? null) : null,
+      actor: str(obj(raw.secondary_actor).name) ?? contactName,
+      message,
+      minutesAgo: minutes,
+      ...(snoozedUntilSec ? { snoozedUntil: snoozedUntilSec * 1000 } : {}),
+    });
+  }
+
+  return out;
+}
+
+const markingNotificationRead = new Set<number>();
+let markingAllNotifications = false;
+
+function markLinkedNotificationRead(id: number): void {
+  if (!linkedSession() || markingNotificationRead.has(id)) return;
+  markingNotificationRead.add(id);
+  void (async () => {
+    try {
+      const res = await unifiedCw.PATCH("/notifications/{id}", {
+        params: { path: { id } },
+        body: { read_at: new Date().toISOString() },
+      });
+      if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+    } catch (err) {
+      toast.error("Notification not marked read in Chatwoot", {
+        description: formatGatewayError(err),
+      });
+    } finally {
+      markingNotificationRead.delete(id);
+    }
+  })();
+}
+
+function markAllLinkedNotificationsRead(): void {
+  if (!linkedSession() || markingAllNotifications) return;
+  markingAllNotifications = true;
+  void (async () => {
+    try {
+      const res = await unifiedCw.POST("/notifications/read_all", {
+        body: {},
+      });
+      if (res.error) throw new Error(formatGatewayError(res.error, res.response?.status));
+    } catch (err) {
+      toast.error("Notifications not marked read in Chatwoot", {
+        description: formatGatewayError(err),
+      });
+    } finally {
+      markingAllNotifications = false;
+    }
+  })();
 }
 
 function triggerThreadRerender(convId: number, thread: CwMessage[]) {
@@ -1192,6 +1393,11 @@ function installLinkedAdapters() {
       return null;
     },
   });
+
+  setLinkedNotificationsAdapter({
+    markRead: markLinkedNotificationRead,
+    markAllRead: markAllLinkedNotificationsRead,
+  });
 }
 
 /** Enable linked mode across all 3 stores and load live data from /api/cw/... */
@@ -1236,6 +1442,7 @@ export async function enableLinkedStoreAdapter(): Promise<void> {
     contactEdits: {},
   });
   showLinkedContacts([], {});
+  showLinkedNotifications([]);
 
   try {
     const [agentsRes, inboxesRes, teamsRes, labelsRes, cannedRes, macrosRes, rawConvs, contactsData] =
@@ -1313,6 +1520,20 @@ export async function enableLinkedStoreAdapter(): Promise<void> {
       conversationsCount: mappedConvs.conversations.length,
       contactsCount: contactsData.contacts.length,
     });
+
+    try {
+      const rawNotes = await fetchAllNotifications();
+      if (runId !== activeRunId || !useLinkedAdapterStatus.getState().active) return;
+      showLinkedNotifications(
+        mapCwNotifications(rawNotes, mappedConvs.conversations, mappedConvs.metaByConvId, agentNamesMap),
+      );
+    } catch (noteErr) {
+      if (runId !== activeRunId) return;
+      showLinkedNotifications([]);
+      toast.error("Live notifications could not be loaded", {
+        description: formatGatewayError(noteErr),
+      });
+    }
 
     // Hydrate full message history for each loaded conversation in the background
     for (const conv of mappedConvs.conversations) {
@@ -1854,6 +2075,7 @@ export function disableLinkedStoreAdapter(): void {
   setLinkedThreadAdapter(null);
   setLinkedSimActionsAdapter(null);
   setLinkedContactsAdapter(null);
+  setLinkedNotificationsAdapter(null);
   setLinkedTagWriter(null);
   setLinkedAgentIds(null);
   setLinkedThreads(null);
@@ -1864,6 +2086,7 @@ export function disableLinkedStoreAdapter(): void {
     restorePreviewConversations();
     restorePreviewCwState();
     restorePreviewContacts();
+    showLinkedNotifications(null);
     replaceConversationTags({});
     useLabelSaves.setState({});
   }
