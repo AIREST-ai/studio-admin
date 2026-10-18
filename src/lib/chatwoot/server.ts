@@ -3,7 +3,7 @@
 // src/app/api/chatwoot/ import it ("server-only" makes a client import a build error:
 // node_modules/next/dist/docs/01-app/02-guides/data-security.md "Preventing client-side execution of server-only code").
 // - Address locked to the test copy: http://127.0.0.1:8810 by default (M-1); CHATWOOT_URL is accepted only with host
-//   127.0.0.1 or 100.86.173.123 and port 8810 or 8812. Anything else (inbox.airest.ai, qayyim-chatwoot on :3200, ...) is
+//   127.0.0.1 and port 8810 or 8812. Anything else (inbox.airest.ai, qayyim-chatwoot on :3200, ...) is
 //   refused here and never called: "refused: not the test copy".
 // - Auth header "api_access_token" (app/controllers/concerns/access_token_auth_helper.rb:9-12 on v4.18.0; Bearer only
 //   from v4.19.0). The token is read from its 600 file at each request (CHATWOOT_TOKEN_FILE, else
@@ -33,7 +33,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 // V-1 (2026-10-18, item 160.2 + 160.6): Studio Engine official live link to Chatwoot 3200 (with 8810 & 8812 kept for test/sim).
-export const TEST_COPY_HOSTS = ["127.0.0.1", "100.86.173.123"];
+export const TEST_COPY_HOSTS = ["127.0.0.1"];
 export const TEST_COPY_HOST = TEST_COPY_HOSTS[0];
 export const TEST_COPY_PORTS = ["3200", "8810", "8812"];
 const DEFAULT_BASE_URL = `http://${TEST_COPY_HOST}:3200`;

@@ -1,6 +1,6 @@
 // U-1 (item 159): THE one gateway from the Studio to Chatwoot: /api/cw/<path> -> chatwoot-copy (v4.18.0 CE).
-// Every call goes through src/lib/chatwoot/server.ts (gatewayCall): the address lock (127.0.0.1 / 100.86.173.123 on
-// 8810 / 8812 only), the identity check, the account id read from the profile on the server, and the token header added
+// Every call goes through src/lib/chatwoot/server.ts (gatewayCall): the address lock (127.0.0.1 on
+// 8810 / 8812 / 3200 only), the identity check, the account id read from the profile on the server, and the token header added
 // on the server. No secret reaches the browser: the token is never in a response, and every JSON answer is passed
 // through scrubSecrets (src/lib/chatwoot/gateway-policy.ts) first.
 // Order of the checks (each one answers alone and nothing is called after it):
