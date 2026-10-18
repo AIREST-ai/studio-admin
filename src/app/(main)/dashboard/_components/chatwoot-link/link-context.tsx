@@ -40,7 +40,9 @@ function isStoreAdapterActive(state: LinkState): boolean {
       state.sections.lists === true ||
       state.sections.automation === true ||
       state.sections.reports === true ||
-      state.sections.notifications === true)
+      state.sections.notifications === true ||
+      state.sections.helpCenter === true ||
+      state.sections.campaigns === true)
   );
 }
 

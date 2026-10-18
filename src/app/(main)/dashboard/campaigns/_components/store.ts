@@ -13,7 +13,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { create } from "zustand";
 
-import { loadPreviewSection, SectionConflict, savePreviewSection } from "@/lib/cw/persistence/client";
+import { linkedSession, loadPreviewSection, SectionConflict, savePreviewSection } from "@/lib/cw/persistence/client";
 
 import { type LiveChatCampaign, liveChatCampaigns, type OneOffCampaign, smsCampaigns, whatsappCampaigns } from "./data";
 
@@ -201,9 +201,16 @@ function save() {
     });
 }
 
-/** Reads the saved campaigns once per page load; from then on every change is saved. */
+/** Reads the saved campaigns once per page load; from then on every change is saved.
+ *  V-15: In linked mode, the store is fed from live Chatwoot data via store-adapter.ts and must not be
+ *  overwritten by preview seed data loaded from persistence. */
 export function startSaving() {
   if (typeof window === "undefined" || useCampaignsSave.getState().phase !== "idle") return;
+  if (linkedSession()) {
+    // Linked mode: store is managed by store-adapter.ts; skip preview persistence entirely.
+    useCampaignsSave.setState({ phase: "ready" });
+    return;
+  }
   useCampaignsSave.setState({ phase: "loading" });
   useCampaignsStore.subscribe((state, before) => {
     if (state !== before && !applying) save();

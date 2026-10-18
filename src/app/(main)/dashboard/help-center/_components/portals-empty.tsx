@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getInitials } from "@/lib/utils";
 
-import { articles, authorOf, categoryOf, statusLabel, statusTone } from "./data";
+import { authorOf, categoryOf, statusLabel, statusTone } from "./data";
+import { useHelpCenter } from "./hc-store";
 import { CreatePortalDialog } from "./help-center-dialogs";
 
 export function PortalsEmpty() {
   const [open, setOpen] = React.useState(false);
+  const { articles } = useHelpCenter();
   const sample = articles.slice(0, 8);
 
   return (

@@ -27,12 +27,12 @@ export const PHASE1_SECTIONS: readonly LinkSection[] = [
   "campaigns",
 ];
 
-/** V-14: when the engine is linked, My Inbox is on by default without rewriting `.preview-state/`. */
+/** V-14/V-15: when the engine is linked, My Inbox, Help Center and Campaigns are on by default without rewriting `.preview-state/`. */
 export function applyLinkedSectionDefaults(
   mode: LinkMode,
   sections: Record<LinkSection, boolean>,
 ): Record<LinkSection, boolean> {
-  if (mode === "linked") return { ...sections, notifications: true };
+  if (mode === "linked") return { ...sections, notifications: true, helpCenter: true, campaigns: true };
   return sections;
 }
 

@@ -1660,18 +1660,15 @@ export async function enableLinkedStoreAdapter(): Promise<void> {
     replaceConversationTags(mappedConvs.tagsByConvId);
     showLinkedContacts(contactsData.contacts, contactsData.attrs);
 
-    // V-15: Bind help center and campaigns live data
+    // V-15: Bind help center and campaigns live data — always update from live data (even empty, shows honest 0 count)
     replaceHelpCenterData(portalsData.portals, portalsData.articles, portalsData.categories, portalsData.locales);
-    if (campaignsData.live.length > 0) {
-      useCampaignsStore.setState({
-        live: campaignsData.live,
-        sms: campaignsData.sms,
-        whatsapp: campaignsData.whatsapp,
-        instagram: [],
-        messenger: [],
-      });
-    }
-    // Always mark campaign save as ready even if empty (shows honest 0 count)
+    useCampaignsStore.setState({
+      live: campaignsData.live,
+      sms: campaignsData.sms,
+      whatsapp: campaignsData.whatsapp,
+      instagram: [],
+      messenger: [],
+    });
     useCampaignsSave.setState({ phase: "ready", savedAt: new Date().toISOString(), error: null });
 
     useCwStore.setState({
