@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, useEffect, useState } from "react";
+import { createContext, use, useEffect, useLayoutEffect, useState } from "react";
 
 import { type StoreApi, useStore } from "zustand";
 
@@ -45,7 +45,7 @@ export function PreferencesStoreProvider({
 }) {
   const [store] = useState<StoreApi<PreferencesState>>(() => createPreferencesStore(initialValues));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const domPrefs = readDomPreferences();
     const resolvedThemeMode = applyThemeMode(domPrefs.theme_mode);
     store.setState({

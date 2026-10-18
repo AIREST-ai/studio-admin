@@ -39,7 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html
       lang="en"
-      className={theme_mode === "dark" ? "dark" : undefined}
+      className={theme_mode === "light" ? undefined : "dark"}
       style={{ colorScheme: theme_mode === "dark" ? "dark" : "light" }}
       data-theme-mode={theme_mode}
       data-theme-preset={theme_preset}

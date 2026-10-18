@@ -78,7 +78,7 @@ try {
 }
 
 const defaultLightPrimaryRegex = /:root\s*{[^}]*--primary:\s*([^;]+);/;
-const defaultDarkPrimaryRegex = /\.dark\s*{[^}]*--primary:\s*([^;]+);/;
+const defaultDarkPrimaryRegex = /\.dark(?:\s*,\s*html\[data-theme-mode="dark"\])?\s*\{[^}]*--primary:\s*([^;]+);/;
 
 const defaultLightPrimaryMatch = globalContent.match(defaultLightPrimaryRegex);
 const defaultDarkPrimaryMatch = globalContent.match(defaultDarkPrimaryRegex);

@@ -96,7 +96,8 @@ These serve as the fallback; there is no separate default.css file. */
   --foreground: oklch(0.145 0 0);
 }
 
-.dark {
+.dark,
+html[data-theme-mode="dark"] {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -141,6 +142,11 @@ These serve as the fallback; there is no separate default.css file. */
   }
   html {
     @apply font-sans;
+  }
+
+  html.dark,
+  html[data-theme-mode="dark"] {
+    color-scheme: dark;
   }
 }
 

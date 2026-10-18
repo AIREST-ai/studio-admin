@@ -5,7 +5,9 @@ function resolveThemeMode(mode: ThemeMode): ResolvedThemeMode {
     const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
     return prefersDark ? "dark" : "light";
   }
-  return mode === "dark" ? "dark" : "light";
+  // V-24: default is dark. Only an explicit "light" choice turns the class off.
+  if (mode === "light") return "light";
+  return "dark";
 }
 
 export function applyThemeMode(mode: ThemeMode): ResolvedThemeMode {

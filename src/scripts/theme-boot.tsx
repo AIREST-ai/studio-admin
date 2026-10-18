@@ -57,15 +57,32 @@ export function ThemeBootScript() {
         });
 
         var mode = preferences.theme_mode;
-        var resolvedMode =
-          mode === "system" && window.matchMedia
-            ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-            : mode === "dark"
-              ? "dark"
-              : "light";
+        // V-24: default is dark. Only an explicit "light" (or system+light OS) turns the class off.
+        function applyResolved() {
+          var currentMode = root.getAttribute("data-theme-mode") || mode;
+          var wantDark;
+          if (currentMode === "light") {
+            wantDark = false;
+          } else if (currentMode === "system" && window.matchMedia) {
+            wantDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          } else {
+            wantDark = true;
+          }
+          root.classList.toggle("dark", wantDark);
+          root.style.colorScheme = wantDark ? "dark" : "light";
+        }
 
-        root.classList.toggle("dark", resolvedMode === "dark");
-        root.style.colorScheme = resolvedMode;
+        applyResolved();
+
+        // React 19 streaming hydration on async pages (e.g. /dashboard/calls)
+        // can strip html.dark after this script. Restore it while the
+        // stored preference still wants dark.
+        if (typeof MutationObserver === "function") {
+          var observer = new MutationObserver(function () {
+            applyResolved();
+          });
+          observer.observe(root, { attributes: true, attributeFilter: ["class", "data-theme-mode"] });
+        }
 
       } catch (e) {
         console.warn("ThemeBootScript error:", e);
