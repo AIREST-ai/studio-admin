@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useActiveCaptainClient } from "@/app/(main)/dashboard/captain/_components/store";
 import { csatRatingLabels } from "@/app/(main)/dashboard/chat/_components/cw-data";
 import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -68,6 +69,16 @@ interface EvaluationItem {
   summaryAr: string;
   criteria: CriteriaBreakdown;
   latencyMs: number;
+  rating?: number;
+  contact?: string;
+  subject?: string;
+  feedback?: string;
+  model?: string;
+  provider?: string;
+  agentModel?: string;
+  agentVendor?: string;
+  judgeVendor?: string;
+  triggerSource?: string;
   verifyRunId: string;
   tracingId: string;
   evaluatedAt: string;
@@ -292,6 +303,15 @@ function AiQualityDetailPanel({
           <div className="flex flex-col gap-1 text-xs">
             <p className="text-foreground text-sm">{evaluation.verdict}</p>
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+              <span>
+                Judge: {evaluation.model ?? "azure-deepseek-v4.1-flash"} (
+                {evaluation.judgeVendor ?? evaluation.provider ?? "cross-vendor"})
+              </span>
+              <span>·</span>
+              <span>
+                Agent: {evaluation.agentModel ?? "gpt-4.1-mini"} ({evaluation.agentVendor ?? "openai"})
+              </span>
+              <span>·</span>
               <span>Run ID: {evaluation.verifyRunId.slice(0, 8)}</span>
               <span>·</span>
               <span>Latency: {evaluation.latencyMs} ms</span>
@@ -446,7 +466,7 @@ function CsatBody() {
   const [filters, setFilters] = React.useState<FilterValues>({});
   const [reviewFilter, setReviewFilter] = React.useState<ReviewStatusFilter>("all");
   const [expanded, setExpanded] = React.useState<number | null>(1);
-  const [clientId] = React.useState<string>("client_test_a");
+  const [clientId, setClientId] = useActiveCaptainClient();
   const [notesByConv, setNotesByConv] = React.useState<Record<string, ReviewNoteItem>>({});
   const [evalsByConv, setEvalsByConv] = React.useState<Record<string, EvaluationItem>>({});
   const [evalSummary, setEvalSummary] = React.useState<EvalSummaryData | null>(null);
@@ -493,23 +513,47 @@ function CsatBody() {
     void ensureLinkedCsatLoaded(period);
   }, [period, isLinked]);
 
-  const usingLiveRows = isLinked && csatRows.length > 0;
+  const usingLiveRows = isLinked;
+
+  const realEvaluatedRows: CsatResponse[] = React.useMemo(() => {
+    return Object.values(evalsByConv)
+      .filter((ev) => ev && ev.triggerSource !== "seed")
+      .map((ev) => {
+        const ratingNum = Math.max(1, Math.min(5, Math.round(Number(ev.rating ?? 5)))) as 1 | 2 | 3 | 4 | 5;
+        return {
+          id: ev.conversationId,
+          contact: ev.contact || `Contact #${ev.conversationId}`,
+          contactId: ev.conversationId,
+          email: `conv${ev.conversationId}@${clientId}.studio.local`,
+          conversation: ev.conversationId,
+          subject: ev.subject || `Conversation #${ev.conversationId}`,
+          rating: ratingNum,
+          feedback: ev.feedback || ev.verdict,
+          agent: ev.agentModel ? `AI Agent (${ev.agentModel})` : "AI Captain",
+          inbox: "Live Linked Inbox",
+          team: null,
+          time: formatTimestamp(ev.evaluatedAt),
+        };
+      });
+  }, [evalsByConv, clientId]);
 
   const baseRows: CsatResponse[] = usingLiveRows
-    ? csatRows.map((r) => ({
-        id: r.id,
-        contact: r.contact,
-        contactId: r.id,
-        email: r.email,
-        conversation: r.conversation,
-        subject: `Conversation #${r.conversation}`,
-        rating: r.rating,
-        feedback: r.feedback,
-        agent: r.agent,
-        inbox: r.inbox,
-        team: null,
-        time: r.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      }))
+    ? csatRows.length > 0
+      ? csatRows.map((r) => ({
+          id: r.id,
+          contact: r.contact,
+          contactId: r.id,
+          email: r.email,
+          conversation: r.conversation,
+          subject: `Conversation #${r.conversation}`,
+          rating: r.rating,
+          feedback: r.feedback,
+          agent: r.agent,
+          inbox: r.inbox,
+          team: null,
+          time: r.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        }))
+      : realEvaluatedRows
     : csatResponses;
 
   const periodFilteredRows = baseRows.filter((r) => {
@@ -563,7 +607,36 @@ function CsatBody() {
         title="CSAT Reports"
         description="How satisfied customers are after a conversation, from their survey ratings, automated quality rubrics, and review notes."
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex items-center rounded-md border bg-background p-0.5 text-xs"
+            data-testid="csat-report-client-switcher"
+          >
+            <button
+              type="button"
+              data-testid="csat-switch-client-test-a"
+              onClick={() => setClientId("client_test_a")}
+              className={
+                clientId === "client_test_a"
+                  ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground"
+                  : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"
+              }
+            >
+              client_test_a
+            </button>
+            <button
+              type="button"
+              data-testid="csat-switch-client-test-b"
+              onClick={() => setClientId("client_test_b")}
+              className={
+                clientId === "client_test_b"
+                  ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground"
+                  : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"
+              }
+            >
+              client_test_b
+            </button>
+          </div>
           <Button variant="outline" size="sm" onClick={() => void loadEvalAndNotes()} disabled={loadingEval}>
             <RefreshCw className={cn("size-3.5", loadingEval && "animate-spin")} />
             Refresh AI Quality
@@ -661,21 +734,21 @@ function CsatBody() {
             <div className="rounded-lg border bg-background/60 p-3">
               <div className="text-muted-foreground text-xs">Avg AI Quality Score</div>
               <div className="mt-1 font-semibold text-2xl tabular-nums">
-                {evalSummary ? `${evalSummary.avgJudgeScore}%` : "85%"}
+                {evalSummary ? `${evalSummary.avgJudgeScore}%` : "0%"}
               </div>
               <div className="text-muted-foreground text-xs tabular-nums">
                 {evalSummary
-                  ? `${evalSummary.passedCount} passed · ${evalSummary.needsReviewCount} needs review`
-                  : "4 passed · 1 needs review"}
+                  ? `${evalSummary.passedCount} passed · ${evalSummary.needsReviewCount} needs review (${clientId})`
+                  : `0 passed · 0 needs review (${clientId})`}
               </div>
             </div>
             <div className="rounded-lg border bg-background/60 p-3">
               <div className="text-muted-foreground text-xs">Evaluated Conversations</div>
               <div className="mt-1 font-semibold text-2xl tabular-nums">
-                {evalSummary ? evalSummary.totalEvaluated : 5}
+                {evalSummary ? evalSummary.totalEvaluated : 0}
               </div>
               <div className="text-muted-foreground text-xs tabular-nums">
-                {evalSummary ? `${evalSummary.verifyRunsCount} verification runs` : "5 verification runs"}
+                {evalSummary ? `${evalSummary.verifyRunsCount} verification runs` : "0 verification runs"}
               </div>
             </div>
             <div className="rounded-lg border bg-background/60 p-3">

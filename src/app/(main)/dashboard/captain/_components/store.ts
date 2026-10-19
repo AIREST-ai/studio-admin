@@ -36,7 +36,22 @@ type Key = keyof CaptainState;
 const state: CaptainState = { ...initial };
 const listeners = new Set<() => void>();
 
+const ACTIVE_CLIENT_STORAGE_KEY = "studio_active_captain_client_id";
 let activeClientId: "client_test_a" | "client_test_b" = "client_test_a";
+
+function readStoredCaptainClient(): "client_test_a" | "client_test_b" {
+  if (typeof window === "undefined") return activeClientId;
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_CLIENT_STORAGE_KEY)?.trim();
+    if (raw === "client_test_a" || raw === "client_test_b") {
+      activeClientId = raw;
+      return raw;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return activeClientId;
+}
 const clientListeners = new Set<() => void>();
 
 function notifyListeners() {
@@ -58,7 +73,7 @@ function subscribeClient(cb: () => void) {
 }
 
 export function getActiveCaptainClient(): "client_test_a" | "client_test_b" {
-  return activeClientId;
+  return readStoredCaptainClient();
 }
 
 export async function reloadCaptainClientState(clientId: "client_test_a" | "client_test_b" = activeClientId) {

@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { AlertTriangle, Bot, CheckCheck, MessagesSquare, RefreshCw, ShieldCheck, UserRoundCheck } from "lucide-react";
 
+import { useActiveCaptainClient } from "@/app/(main)/dashboard/captain/_components/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -80,13 +81,14 @@ function BotMetricCards() {
 }
 
 function BotLiveEvaluationBar() {
+  const [clientId, setClientId] = useActiveCaptainClient();
   const [summary, setSummary] = React.useState<LiveBotEvalSummary | null>(null);
   const [loading, setLoading] = React.useState(false);
 
   const fetchSummary = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/cw/csat-notes?clientId=client_test_a", {
+      const res = await fetch(`/api/cw/csat-notes?clientId=${encodeURIComponent(clientId)}`, {
         method: "GET",
         cache: "no-store",
       });
@@ -100,7 +102,7 @@ function BotLiveEvaluationBar() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clientId]);
 
   React.useEffect(() => {
     void fetchSummary();
@@ -125,20 +127,40 @@ function BotLiveEvaluationBar() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void fetchSummary()} disabled={loading}>
-            <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
-            Refresh Telemetry
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-md border bg-background p-0.5 text-xs" data-testid="bot-report-client-switcher">
+              <button
+                type="button"
+                data-testid="switch-client-test-a"
+                onClick={() => setClientId("client_test_a")}
+                className={clientId === "client_test_a" ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground" : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"}
+              >
+                client_test_a
+              </button>
+              <button
+                type="button"
+                data-testid="switch-client-test-b"
+                onClick={() => setClientId("client_test_b")}
+                className={clientId === "client_test_b" ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground" : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"}
+              >
+                client_test_b
+              </button>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void fetchSummary()} disabled={loading}>
+              <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
+              Refresh Telemetry
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-lg border bg-background/60 p-3">
             <div className="text-muted-foreground text-xs">Evaluated Conversations</div>
-            <div className="mt-1 font-semibold text-2xl tabular-nums">{summary ? summary.totalEvaluated : 5}</div>
+            <div className="mt-1 font-semibold text-2xl tabular-nums">{summary ? summary.totalEvaluated : 0}</div>
             <div className="text-muted-foreground text-xs tabular-nums">
               {summary
-                ? `${summary.verifyRunsCount} verification runs · ${summary.tracingCount} traces`
-                : "5 verification runs · 5 traces"}
+                ? `${summary.verifyRunsCount} verification runs · ${summary.tracingCount} traces (${clientId})`
+                : `0 verification runs · 0 traces (${clientId})`}
             </div>
           </div>
 
