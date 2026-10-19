@@ -229,14 +229,32 @@ async function runLobePsql(sql: string): Promise<string> {
   return stdout.trim();
 }
 
-async function deriveSsoHmacKey(): Promise<string> {
-  try {
-    const content = await readFile("/Users/ali/lobehub-hub/chatwoot-copy/live-3200-token.txt", "utf8");
-    if (content.trim()) return `studio-oidc-v8:${content.trim()}`;
-  } catch {
-    // fallback to internal deterministic key
+export const SSO_SIGNING_SECRET_PATHS = [
+  "/etc/airest-secrets/sso_signing_secret",
+  "/etc/airest-inbox/sso_signing_secret",
+  "/Users/ali/server-work/ai-home/vendor/studio-admin/.studio-data/secrets/sso_signing_secret",
+] as const;
+
+export async function deriveSsoHmacKey(candidatePaths: readonly string[] = SSO_SIGNING_SECRET_PATHS): Promise<string> {
+  let sawWeakSecret = false;
+  for (const secretPath of candidatePaths) {
+    let raw: string;
+    try {
+      raw = await readFile(secretPath, "utf8");
+    } catch {
+      continue;
+    }
+    const trimmed = raw.trim();
+    if (trimmed.length < 32) {
+      sawWeakSecret = true;
+      break;
+    }
+    return `studio-oidc-vault:${trimmed}`;
   }
-  return "studio-oidc-v8:isolated-workspace-handoff-key";
+  if (sawWeakSecret) {
+    throw new Error("SSO_SIGNING_SECRET_WEAK: Fail-closed — sso_signing_secret must be at least 32 characters");
+  }
+  throw new Error("SSO_SIGNING_SECRET_MISSING: Fail-closed — sso_signing_secret not found in vault paths");
 }
 
 export interface SsoOidcEndpoints {
