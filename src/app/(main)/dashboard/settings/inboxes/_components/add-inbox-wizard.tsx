@@ -205,6 +205,11 @@ function FinishStep({ created, inboxId }: { created: CreatedInbox; inboxId: numb
       </div>
       <div className="grid gap-2">
         <h2 className="font-semibold text-xl">Your Inbox is ready!</h2>
+        {created.phone ? (
+          <p className="font-mono text-emerald-500 text-sm" data-testid="finish-phone-number">
+            Connected Number: {created.phone}
+          </p>
+        ) : null}
         <p className="text-muted-foreground text-sm leading-relaxed">
           {c === "website"
             ? "You have successfully finished creating a website channel. Copy the code shown below and paste it on your website. Next time a customer use the live chat, the conversation will automatically appear on your inbox."
@@ -268,12 +273,12 @@ function FinishStep({ created, inboxId }: { created: CreatedInbox; inboxId: numb
         <CopyRow
           label="Callback URL"
           help="You have to configure the message callback URL in Bandwidth with the URL mentioned here."
-          value={`${BASE_URL}/webhooks/sms/${created.phone?.replace("+", "") ?? "97444001144"}`}
+          value={`${BASE_URL}/webhooks/sms/${created.phone?.replace("+", "") ?? "pending-number"}`}
         />
       ) : null}
-      {created.provider === "whatsapp_cloud" ? (
+      {created.provider === "whatsapp_cloud" || (c === "whatsapp" && created.provider === "embedded") ? (
         <>
-          <CopyRow label="Webhook URL" value={`${BASE_URL}/webhooks/whatsapp/${created.phone ?? "+97444001122"}`} />
+          <CopyRow label="Webhook URL" value={`${BASE_URL}/webhooks/whatsapp/${created.phone ?? "pending-number"}`} />
           <CopyRow label="Webhook Verification Token" value={previewValue(self, "wa-verify", 12).toLowerCase()} />
           <p className="text-muted-foreground text-xs">{PREVIEW_ADDRESS_NOTE}</p>
           <Button
@@ -416,9 +421,19 @@ export function AddInboxWizard() {
                   channel={channel}
                   onCreate={(result) => {
                     if (saving) return;
+                    const id = inboxesStore.nextId();
+                    if (
+                      result.channel === "facebook" ||
+                      result.channel === "instagram" ||
+                      (result.channel === "whatsapp" && result.provider === "embedded")
+                    ) {
+                      setInboxId(id);
+                      setCreated({ ...result, channelParams: undefined });
+                      setStep(result.channel === "whatsapp" && result.provider === "embedded" ? 3 : 2);
+                      return;
+                    }
                     // F161: the new inbox goes into the shared inboxes store, so it is listed and "More settings"
                     // opens it.
-                    const id = inboxesStore.nextId();
                     const provider: Inbox["provider"] =
                       result.provider === "twilio" || result.provider === "whatsapp_cloud"
                         ? result.provider
@@ -485,6 +500,15 @@ export function AddInboxWizard() {
                 saveError={saveError}
                 onNext={(agents) => {
                   if (inboxId === null || saving) return;
+                  if (
+                    created &&
+                    (created.channel === "facebook" ||
+                      created.channel === "instagram" ||
+                      (created.channel === "whatsapp" && created.provider === "embedded"))
+                  ) {
+                    setStep(3);
+                    return;
+                  }
                   saveThen(
                     () => inboxesStore.update(inboxId, { agents }),
                     () => undefined,

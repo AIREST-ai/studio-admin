@@ -464,12 +464,46 @@ function useWhatsappEmbeddedSignup(configId: string, fbAppId: string, fbApiVersi
 
       // Listen for postMessage from Meta Embedded Signup popup
       const listener = (event: MessageEvent) => {
-        if (!event.origin.endsWith("facebook.com")) return;
-        const data = event.data as Record<string, unknown> | undefined;
-        if (data?.type === "WA_EMBEDDED_SIGNUP") {
-          const wabaId = typeof data.waba_id === "string" ? data.waba_id : "";
-          const phoneNumberId = typeof data.phone_number_id === "string" ? data.phone_number_id : "";
-          const businessId = typeof data.business_id === "string" ? data.business_id : "";
+        if (
+          !event.origin.endsWith("facebook.com") &&
+          !event.origin.endsWith("fb.com") &&
+          event.origin !== window.location.origin
+        ) {
+          return;
+        }
+        let parsed: Record<string, unknown> | undefined;
+        if (typeof event.data === "string") {
+          try {
+            parsed = JSON.parse(event.data) as Record<string, unknown>;
+          } catch {
+            return;
+          }
+        } else if (event.data && typeof event.data === "object") {
+          parsed = event.data as Record<string, unknown>;
+        }
+        if (parsed?.type === "WA_EMBEDDED_SIGNUP") {
+          const nested = (parsed.data && typeof parsed.data === "object" ? parsed.data : parsed) as Record<
+            string,
+            unknown
+          >;
+          const wabaId =
+            typeof nested.waba_id === "string"
+              ? nested.waba_id
+              : typeof parsed.waba_id === "string"
+                ? parsed.waba_id
+                : "";
+          const phoneNumberId =
+            typeof nested.phone_number_id === "string"
+              ? nested.phone_number_id
+              : typeof parsed.phone_number_id === "string"
+                ? parsed.phone_number_id
+                : "";
+          const businessId =
+            typeof nested.business_id === "string"
+              ? nested.business_id
+              : typeof parsed.business_id === "string"
+                ? parsed.business_id
+                : "";
           window.removeEventListener("message", listener);
 
           // Now we need the code — FB.login was already called, we get it from the auth response
@@ -594,7 +628,8 @@ function MetaReadinessPanel({
     readiness: { https: boolean; adminRole: boolean; metaAppConfigured: boolean };
   } | null;
 }) {
-  const isHttps = typeof window !== "undefined" ? window.isSecureContext : false;
+  const isHttps =
+    Boolean(metaConfig?.readiness?.https) || (typeof window !== "undefined" && window.location.protocol === "https:");
 
   if (!metaConfig) {
     return (
@@ -616,7 +651,13 @@ function MetaReadinessPanel({
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">HTTPS</span>
           <span className={isHttps ? "text-emerald-600" : "text-orange-600"}>
-            {isHttps ? "✓ Enabled" : "✗ Required"}
+            {isHttps ? "✓ Enabled" : "✗ Required (HTTPS needed for Meta OAuth)"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Admin Role</span>
+          <span className={adminOk ? "text-emerald-600" : "text-orange-600"}>
+            {adminOk ? "✓ Administrator" : "✗ Agent (Admin required)"}
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -775,7 +816,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
   }, []);
 
   if (!connected) {
-    if (fbAuth.error) {
+    if (fbAuth.error || pagesError) {
       return (
         <div className="mx-auto grid max-w-lg justify-items-center gap-5 py-6 text-center">
           <MetaReadinessPanel
@@ -799,12 +840,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
               accessed by {accountName}.
             </p>
           </div>
-          {fbAuth.error ? (
-            <Alert className="text-left border-destructive/30 bg-destructive/5">
-              <CircleAlert className="text-destructive" />
-              <AlertDescription className="text-destructive">{fbAuth.error}</AlertDescription>
-            </Alert>
-          ) : null}
+          <SaveFailed error={fbAuth.error || pagesError} />
           <Button
             onClick={() => {
               fbAuth.start((omniauthToken: string) => {
@@ -976,13 +1012,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
         title="Inbox Details"
         description={`From the dropdown below, select the Facebook Page you want to connect to ${accountName}. You can also give a custom name to your inbox for better identification.`}
       />
-      {pagesError ? (
-        <Alert className="border-destructive/30 bg-destructive/5">
-          <CircleAlert className="text-destructive" />
-          <AlertDescription className="text-destructive">{pagesError}</AlertDescription>
-        </Alert>
-      ) : null}
-      <SaveFailed error={createError} />
+      <SaveFailed error={pagesError || createError} />
       <FieldGroup className="gap-4">
         <Field data-invalid={pageError || undefined}>
           <FieldLabel htmlFor="fb-page">Choose Page</FieldLabel>
@@ -1286,13 +1316,7 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
         </button>
         .
       </p>
-      {wsAuth.error ? (
-        <Alert className="border-destructive/30 bg-destructive/5">
-          <CircleAlert className="text-destructive" />
-          <AlertDescription className="text-destructive">{wsAuth.error}</AlertDescription>
-        </Alert>
-      ) : null}
-      <SaveFailed error={createError} />
+      <SaveFailed error={createError || wsAuth.error} />
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" disabled={busy} onClick={handleConnect}>
           {busy ? <Loader2 className="animate-spin" /> : null}
@@ -1769,18 +1793,19 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
       .catch(() => {});
   }, []);
 
-  const handleConnect = () => {
-    // Snapshot existing inboxes BEFORE opening popup to exclude prior IG inboxes
-    fetch("/api/cw/inboxes")
-      .then((res) => res.json())
-      .then((data) => {
-        const inboxes: Array<{ id: number; channel_type?: string }> = Array.isArray(data)
-          ? data
-          : ((data as { payload?: Array<{ id: number; channel_type?: string }> }).payload ?? []);
-        const igIds = new Set(inboxes.filter((ibx) => ibx.channel_type === "Channel::Instagram").map((ibx) => ibx.id));
-        priorIgIdsRef.current = igIds;
-      })
-      .catch(() => {});
+  const handleConnect = async () => {
+    // Snapshot existing inboxes BEFORE opening popup to exclude prior IG inboxes (such as inbox 9)
+    try {
+      const res = await fetch("/api/cw/inboxes");
+      const data = await res.json();
+      const inboxes: Array<{ id: number; channel_type?: string }> = Array.isArray(data)
+        ? data
+        : ((data as { payload?: Array<{ id: number; channel_type?: string }> }).payload ?? []);
+      const igIds = new Set(inboxes.filter((ibx) => ibx.channel_type === "Channel::Instagram").map((ibx) => ibx.id));
+      priorIgIdsRef.current = igIds;
+    } catch {
+      // ignore snapshot failure
+    }
 
     igAuth.start((popup) => {
       setStarted(true);
@@ -1847,10 +1872,7 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
           <Icon className="size-7 text-pink-600" />
         </div>
         <h2 className="font-medium text-lg">Connect your Instagram Profile</h2>
-        <Alert className="text-left border-destructive/30 bg-destructive/5">
-          <CircleAlert className="text-destructive" />
-          <AlertDescription className="text-destructive">{igAuth.error}</AlertDescription>
-        </Alert>
+        <SaveFailed error={igAuth.error} />
         <Button onClick={handleConnect} disabled={igAuth.busy} type="button">
           {igAuth.busy ? <Loader2 className="animate-spin" /> : null}
           Continue with Instagram

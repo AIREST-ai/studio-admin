@@ -1,7 +1,7 @@
 // V-37: Serves Meta public identifiers (APP_ID, CONFIGURATION_ID, API version) to the browser.
 // Secrets (APP_SECRET) are NEVER served — they stay in the server environment.
 // The endpoint requires linked mode; in preview mode it returns available: false.
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { readLinkState } from "@/lib/chatwoot/mode";
 
@@ -9,7 +9,35 @@ export const dynamic = "force-dynamic";
 
 const headers = { "Cache-Control": "no-store" };
 
-export async function GET() {
+function isAgentViewer(req: NextRequest): boolean {
+  const cookieHeader = req.headers.get("cookie") || "";
+  if (/(?:^|;\s*)(?:studio_view_as|cw_view_as|vw_as)\s*=\s*(?:2|agent)\b/i.test(cookieHeader)) {
+    return true;
+  }
+  const studioCookie = req.cookies.get("studio_view_as")?.value?.trim().toLowerCase();
+  const cwCookie = req.cookies.get("cw_view_as")?.value?.trim().toLowerCase();
+  const vwCookie = req.cookies.get("vw_as")?.value?.trim().toLowerCase();
+  return (
+    studioCookie === "2" ||
+    studioCookie === "agent" ||
+    cwCookie === "2" ||
+    cwCookie === "agent" ||
+    vwCookie === "2" ||
+    vwCookie === "agent"
+  );
+}
+
+function isHttpsRequest(req: NextRequest): boolean {
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  if (forwardedProto === "https") return true;
+  try {
+    return new URL(req.url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export async function GET(req: NextRequest) {
   const state = await readLinkState();
   const linked = state.mode === "linked" && !state.disabled;
 
@@ -20,6 +48,9 @@ export async function GET() {
     process.env.WHATSAPP_CONFIGURATION_ID?.trim() || process.env.NEXT_PUBLIC_WHATSAPP_CONFIGURATION_ID?.trim() || "";
   const instagramAppId = process.env.INSTAGRAM_APP_ID?.trim() || process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID?.trim() || "";
   const fbApiVersion = process.env.FACEBOOK_API_VERSION?.trim() || "v22.0";
+
+  const httpsReady = isHttpsRequest(req);
+  const adminRoleReady = linked && !isAgentViewer(req);
 
   return NextResponse.json(
     {
@@ -43,10 +74,8 @@ export async function GET() {
       },
       // Readiness indicators requested by V-25/V-37
       readiness: {
-        // R2: HTTPS is checked via window.isSecureContext in the client (MetaReadinessPanel),
-        // so we don't hardcode false here. The client-side panel merges both sources.
-        https: true, // server readiness: the endpoint is accessible
-        adminRole: true, // The endpoint itself is admin-gated via the caller's context
+        https: httpsReady,
+        adminRole: adminRoleReady,
         metaAppConfigured: Boolean(fbAppId),
       },
     },
