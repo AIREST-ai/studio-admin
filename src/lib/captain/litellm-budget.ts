@@ -1,10 +1,18 @@
 import { rejectForbiddenPhone } from "@/lib/lobehub/provision";
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const STUDIO_DATA_DIR = "/Users/ali/server-work/ai-home/vendor/studio-admin/.studio-data";
+export const SECRETS_DIR = path.join(STUDIO_DATA_DIR, "secrets");
 export const BUDGETS_FILE_PATH = path.join(STUDIO_DATA_DIR, "captain-budgets.json");
+export const LITELLM_BASE_URL = "http://127.0.0.1:4001";
+
+const MASTER_KEY_CANDIDATES = [
+  "/etc/airest-secrets/litellm_master_key",
+  path.join(SECRETS_DIR, "litellm_master_key"),
+] as const;
 
 export const ALLOWED_CAPTAIN_CLIENTS = new Set(["client_test_a", "client_test_b", "default_studio"]);
 const FORBIDDEN_TEAM_IDS = ["fahad", "user_0ig", "user_0igqijtu4mcdijum5zvdysw6kvk", "admin", "root"];
@@ -17,6 +25,8 @@ export const TOOL_MAX_OUTPUT_BYTES = 16_384;
 export interface ClientBudgetRecord {
   clientId: string;
   virtualKeyId: string;
+  keyAlias?: string;
+  litellmSynced?: boolean;
   gatewayPort: 4001;
   gatewayHealthy: boolean;
   maxBudgetUsd: number;
@@ -67,7 +77,7 @@ export function validateCaptainClientId(rawClientId: unknown): string {
 
   const lower = trimmed.toLowerCase();
   for (const forbidden of FORBIDDEN_TEAM_IDS) {
-    if (lower === forbidden || lower.includes(forbidden)) {
+    if (lower === forbidden || lower.includes(forbidden) || lower.startsWith("agt_")) {
       throw new CaptainBudgetError(
         `Refused: team or primary identifier "${trimmed}" cannot be accessed or modified (403)`,
         403,
@@ -92,6 +102,8 @@ function defaultRecordFor(clientId: string, gatewayHealthy = true): ClientBudget
   return {
     clientId,
     virtualKeyId: `vk_isolated_${clientId}_4001`,
+    keyAlias: `studio_isolated_${clientId}`,
+    litellmSynced: false,
     gatewayPort: 4001,
     gatewayHealthy,
     maxBudgetUsd: isClientB ? 15.0 : 25.0,
@@ -116,7 +128,7 @@ export async function checkGateway4001Health(): Promise<boolean> {
     return cachedHealth.ok;
   }
   try {
-    const res = await fetch("http://127.0.0.1:4001/health/liveliness", {
+    const res = await fetch(`${LITELLM_BASE_URL}/health/liveliness`, {
       method: "GET",
       cache: "no-store",
       signal: AbortSignal.timeout(2_500),
@@ -128,6 +140,183 @@ export async function checkGateway4001Health(): Promise<boolean> {
     cachedHealth = { ok: false, at: Date.now() };
     return false;
   }
+}
+
+async function readLiteLLMMasterKey(): Promise<string | null> {
+  for (const candidate of MASTER_KEY_CANDIDATES) {
+    try {
+      const raw = await readFile(candidate, "utf8");
+      const trimmed = raw.trim();
+      if (trimmed.length >= 16) return trimmed;
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
+
+function clientKeySecretPath(clientId: string): string {
+  const safeId = validateCaptainClientId(clientId);
+  return path.join(SECRETS_DIR, `litellm_vk_${safeId}`);
+}
+
+function maskVirtualKeyId(clientId: string, rawKey: string): string {
+  const digest = createHash("sha256").update(rawKey).digest("hex").slice(0, 12);
+  return `vk_litellm_${clientId}_${digest}`;
+}
+
+interface LiteLLMKeyInfo {
+  key_alias?: string;
+  user_id?: string;
+  spend?: number;
+  max_budget?: number | null;
+  rpm_limit?: number | null;
+  tpm_limit?: number | null;
+  blocked?: boolean | null;
+}
+
+async function fetchLiteLLMKeyInfo(masterKey: string, rawKey: string): Promise<LiteLLMKeyInfo | null> {
+  try {
+    const res = await fetch(`${LITELLM_BASE_URL}/key/info?key=${encodeURIComponent(rawKey)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${masterKey}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { info?: LiteLLMKeyInfo } & LiteLLMKeyInfo;
+    return data.info ?? data;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureLiteLLMVirtualKey(
+  clientId: string,
+  record: ClientBudgetRecord,
+): Promise<{ rawKey: string; info: LiteLLMKeyInfo | null } | null> {
+  const validClientId = validateCaptainClientId(clientId);
+  const masterKey = await readLiteLLMMasterKey();
+  if (!masterKey) return null;
+
+  await mkdir(SECRETS_DIR, { recursive: true, mode: 0o700 });
+  const keyFile = clientKeySecretPath(validClientId);
+
+  try {
+    const existingRaw = (await readFile(keyFile, "utf8")).trim();
+    if (existingRaw.startsWith("sk-")) {
+      const info = await fetchLiteLLMKeyInfo(masterKey, existingRaw);
+      if (info) {
+        return { rawKey: existingRaw, info };
+      }
+    }
+  } catch {
+    // key file does not exist yet
+  }
+
+  const keyAlias = `studio_isolated_${validClientId}`;
+  try {
+    const genRes = await fetch(`${LITELLM_BASE_URL}/key/generate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${masterKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: validClientId,
+        key_alias: keyAlias,
+        max_budget: record.maxBudgetUsd,
+        rpm_limit: record.rpmLimit,
+        tpm_limit: record.tpmLimit,
+        metadata: {
+          isolated_studio_client: true,
+          client_id: validClientId,
+        },
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (!genRes.ok) {
+      return null;
+    }
+
+    const genData = (await genRes.json()) as { key?: string };
+    const newKey = typeof genData.key === "string" ? genData.key.trim() : "";
+    if (!newKey.startsWith("sk-")) {
+      return null;
+    }
+
+    await writeFile(keyFile, `${newKey}\n`, { encoding: "utf8", mode: 0o600 });
+    await chmod(keyFile, 0o600);
+    const info = await fetchLiteLLMKeyInfo(masterKey, newKey);
+    return { rawKey: newKey, info };
+  } catch {
+    return null;
+  }
+}
+
+async function syncLiteLLMBudgetUpdate(
+  clientId: string,
+  record: ClientBudgetRecord,
+  patch?: ClientBudgetPatch,
+): Promise<{ rawKey: string; info: LiteLLMKeyInfo | null } | null> {
+  const validClientId = validateCaptainClientId(clientId);
+  const masterKey = await readLiteLLMMasterKey();
+  if (!masterKey) return null;
+
+  const ensured = await ensureLiteLLMVirtualKey(validClientId, record);
+  if (!ensured) return null;
+
+  const { rawKey } = ensured;
+  try {
+    await fetch(`${LITELLM_BASE_URL}/key/update`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${masterKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        key: rawKey,
+        user_id: validClientId,
+        max_budget: record.maxBudgetUsd,
+        rpm_limit: record.rpmLimit,
+        tpm_limit: record.tpmLimit,
+        blocked: record.blocked,
+        ...(patch?.resetSpent === true ? { spend: 0 } : {}),
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(6_000),
+    });
+
+    if (patch && typeof patch.blocked === "boolean") {
+      const blockEndpoint = patch.blocked ? "/key/block" : "/key/unblock";
+      await fetch(`${LITELLM_BASE_URL}${blockEndpoint}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${masterKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ key: rawKey }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(6_000),
+      });
+    }
+
+    const updatedInfo = await fetchLiteLLMKeyInfo(masterKey, rawKey);
+    return { rawKey, info: updatedInfo };
+  } catch {
+    return ensured;
+  }
+}
+
+export async function getClientLiteLLMVirtualKey(rawClientId: string): Promise<string | null> {
+  const clientId = validateCaptainClientId(rawClientId);
+  const gatewayHealthy = await checkGateway4001Health();
+  const store = await readAllBudgets(gatewayHealthy);
+  const current = store[clientId] ?? defaultRecordFor(clientId, gatewayHealthy);
+  const ensured = await ensureLiteLLMVirtualKey(clientId, current);
+  return ensured?.rawKey ?? null;
 }
 
 async function readAllBudgets(gatewayHealthy: boolean): Promise<Record<string, ClientBudgetRecord>> {
@@ -149,10 +338,16 @@ async function readAllBudgets(gatewayHealthy: boolean): Promise<Record<string, C
       store[cid] = defaultRecordFor(cid, gatewayHealthy);
       changed = true;
     } else {
+      const sanitizedVkId =
+        typeof store[cid].virtualKeyId === "string" && !store[cid].virtualKeyId.startsWith("sk-")
+          ? store[cid].virtualKeyId
+          : `vk_isolated_${cid}_4001`;
       store[cid] = {
         ...defaultRecordFor(cid, gatewayHealthy),
         ...store[cid],
+        virtualKeyId: sanitizedVkId,
         clientId: cid,
+        keyAlias: `studio_isolated_${cid}`,
         gatewayPort: 4001,
         gatewayHealthy,
         maxStepsPerTurn: MAX_STEPS_PER_TURN,
@@ -178,7 +373,58 @@ export async function getClientBudget(rawClientId: string): Promise<ClientBudget
   const clientId = validateCaptainClientId(rawClientId);
   const gatewayHealthy = await checkGateway4001Health();
   const store = await readAllBudgets(gatewayHealthy);
-  return store[clientId];
+  const current = store[clientId] ?? defaultRecordFor(clientId, gatewayHealthy);
+
+  if (gatewayHealthy) {
+    const synced = await ensureLiteLLMVirtualKey(clientId, current);
+    if (synced) {
+      const maskedId = maskVirtualKeyId(clientId, synced.rawKey);
+      const info = synced.info;
+      const remoteMax =
+        typeof info?.max_budget === "number" && Number.isFinite(info.max_budget)
+          ? Number(info.max_budget.toFixed(4))
+          : current.maxBudgetUsd;
+      const remoteRpm =
+        typeof info?.rpm_limit === "number" && Number.isFinite(info.rpm_limit)
+          ? Math.round(info.rpm_limit)
+          : current.rpmLimit;
+      const remoteTpm =
+        typeof info?.tpm_limit === "number" && Number.isFinite(info.tpm_limit)
+          ? Math.round(info.tpm_limit)
+          : current.tpmLimit;
+      const remoteSpend =
+        typeof info?.spend === "number" && Number.isFinite(info.spend) ? Number(info.spend.toFixed(4)) : 0;
+      const remoteBlocked = typeof info?.blocked === "boolean" ? info.blocked : current.blocked;
+
+      const merged: ClientBudgetRecord = {
+        ...current,
+        virtualKeyId: maskedId,
+        keyAlias: `studio_isolated_${clientId}`,
+        litellmSynced: true,
+        gatewayHealthy: true,
+        maxBudgetUsd: remoteMax,
+        spentUsd: Number(Math.max(current.spentUsd, remoteSpend).toFixed(4)),
+        rpmLimit: remoteRpm,
+        tpmLimit: remoteTpm,
+        blocked: remoteBlocked,
+      };
+
+      if (
+        merged.virtualKeyId !== current.virtualKeyId ||
+        merged.litellmSynced !== current.litellmSynced ||
+        merged.maxBudgetUsd !== current.maxBudgetUsd ||
+        merged.rpmLimit !== current.rpmLimit ||
+        merged.tpmLimit !== current.tpmLimit ||
+        merged.blocked !== current.blocked
+      ) {
+        store[clientId] = { ...merged, updatedAt: new Date().toISOString() };
+        await saveAllBudgets(store);
+      }
+      return store[clientId];
+    }
+  }
+
+  return current;
 }
 
 export async function updateClientBudget(rawClientId: string, patch: ClientBudgetPatch): Promise<ClientBudgetRecord> {
@@ -216,8 +462,9 @@ export async function updateClientBudget(rawClientId: string, patch: ClientBudge
 
   const nextSpent = patch.resetSpent === true ? 0 : current.spentUsd;
 
-  const updated: ClientBudgetRecord = {
+  let updated: ClientBudgetRecord = {
     ...current,
+    keyAlias: `studio_isolated_${clientId}`,
     gatewayHealthy,
     maxBudgetUsd: nextMaxBudget,
     spentUsd: nextSpent,
@@ -230,6 +477,18 @@ export async function updateClientBudget(rawClientId: string, patch: ClientBudge
     toolMaxOutputBytes: TOOL_MAX_OUTPUT_BYTES,
     updatedAt: new Date().toISOString(),
   };
+
+  if (gatewayHealthy) {
+    const synced = await syncLiteLLMBudgetUpdate(clientId, updated, patch);
+    if (synced) {
+      updated = {
+        ...updated,
+        virtualKeyId: maskVirtualKeyId(clientId, synced.rawKey),
+        litellmSynced: true,
+        blocked: typeof synced.info?.blocked === "boolean" ? synced.info.blocked : updated.blocked,
+      };
+    }
+  }
 
   store[clientId] = updated;
   await saveAllBudgets(store);
