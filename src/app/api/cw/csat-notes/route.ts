@@ -165,6 +165,7 @@ async function handleWrite(req: Request) {
       const subject = typeof body.subject === "string" ? body.subject : undefined;
       const messagesText = typeof body.messagesText === "string" ? body.messagesText : undefined;
       const bypassDedup = body.force === true || body.bypassDedup === true;
+      const agentModel = typeof body.agentModel === "string" ? body.agentModel.trim() : undefined;
 
       const evaluation = await runConversationEvaluation({
         clientId,
@@ -176,6 +177,7 @@ async function handleWrite(req: Request) {
         messagesText,
         triggerSource: "manual_ui",
         bypassDedup,
+        agentModel,
       });
 
       const updatedState = await getClientEvalStateAndSummary(clientId);

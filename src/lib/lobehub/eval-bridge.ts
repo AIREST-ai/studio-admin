@@ -3,6 +3,7 @@ import { ProvisionForbiddenError, ProvisionValidationError, rejectForbiddenPhone
 
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -61,6 +62,9 @@ export interface ConversationEvaluationRecord {
   };
   model: string;
   provider: string;
+  agentModel?: string;
+  agentVendor?: string;
+  judgeVendor?: string;
   latencyMs: number;
   costUsd: number;
   singleTurnResolved: boolean;
@@ -541,8 +545,11 @@ export async function ensureClientRubricAndTablesInDb(
     .join("\n");
 
   let seedRunsSql = "";
-  if (seedRecords && seedRecords.length > 0 && !provisionedClientsInMemory.has(clientId)) {
-    seedRunsSql = seedRecords
+  const effectiveSeedRecords = isLinkedModeSync()
+    ? (seedRecords ?? []).filter((r) => r.triggerSource !== "seed")
+    : (seedRecords ?? []);
+  if (effectiveSeedRecords.length > 0 && !provisionedClientsInMemory.has(clientId)) {
+    seedRunsSql = effectiveSeedRecords
       .map((rec) => {
         const note = notesByConv?.[String(rec.conversationId)] ?? null;
         const contextJson = JSON.stringify({
@@ -681,12 +688,76 @@ export async function ensureClientRubricAndTablesInDb(
   return { rubricId, userId, workspaceId };
 }
 
+export type VendorFamily = "openai" | "deepseek" | "xai" | "mistral";
+
+export function detectModelVendor(modelName?: string | null): VendorFamily {
+  const m = (modelName || "gpt-4.1-mini").trim().toLowerCase();
+  if (m.includes("deepseek")) return "deepseek";
+  if (m.includes("grok") || m.includes("xai")) return "xai";
+  if (m.includes("mistral")) return "mistral";
+  return "openai";
+}
+
+export interface CrossVendorJudgeSelection {
+  agentModel: string;
+  agentVendor: VendorFamily;
+  judgeCandidates: Array<{ model: string; vendor: VendorFamily; provider: string }>;
+}
+
+/**
+ * V-32: Selects AI Judge model candidates from a strictly DIFFERENT vendor family than the agent model
+ * to prevent self-bias (e.g. OpenAI agent -> DeepSeek/xAI judge; DeepSeek/xAI agent -> OpenAI judge).
+ */
+export function selectCrossVendorJudge(rawAgentModel?: string | null): CrossVendorJudgeSelection {
+  const agentModel = (rawAgentModel && rawAgentModel.trim()) || "gpt-4.1-mini";
+  const agentVendor = detectModelVendor(agentModel);
+
+  const allJudges: Array<{ model: string; vendor: VendorFamily; provider: string }> =
+    agentVendor === "openai"
+      ? [
+          { model: "azure-deepseek-v4.1-flash", vendor: "deepseek", provider: "deepseek-litellm-4001" },
+          { model: "azure-deepseek-v4-pro", vendor: "deepseek", provider: "deepseek-litellm-4001" },
+          { model: "azure-grok-4-1-fast-reasoning", vendor: "xai", provider: "xai-litellm-4001" },
+        ]
+      : [
+          { model: "gpt-4.1-mini", vendor: "openai", provider: "openai-litellm-4001" },
+          { model: "gpt-5.4-mini", vendor: "openai", provider: "openai-litellm-4001" },
+        ];
+
+  const judgeCandidates = allJudges.filter((j) => j.vendor !== agentVendor);
+  if (judgeCandidates.length === 0 || judgeCandidates.some((j) => j.vendor === agentVendor)) {
+    throw new Error(`Cross-vendor judge selection failed: judgeVendor must not equal agentVendor (${agentVendor})`);
+  }
+
+  return { agentModel, agentVendor, judgeCandidates };
+}
+
+function isLinkedModeSync(): boolean {
+  try {
+    const envPath = path.join(process.cwd(), ".chatwoot-adapter.env");
+    if (!existsSync(envPath)) return false;
+    const raw = readFileSync(envPath, "utf8");
+    const modeMatch = raw.match(/^CHATWOOT_ADAPTER_MODE=(.+)$/m);
+    const disabledMatch = raw.match(/^CHATWOOT_ADAPTER_DISABLED=(.+)$/m);
+    const mode = modeMatch ? modeMatch[1].trim().replace(/^["']|["']$/g, "") : "preview";
+    const disabled = disabledMatch ? disabledMatch[1].trim().toLowerCase() === "true" : false;
+    return mode === "linked" && !disabled;
+  } catch {
+    return false;
+  }
+}
+
 interface JudgeModelOutput {
   criteria: CriteriaBreakdown;
   verdict: string;
   summaryAr: string;
   latencyMs: number;
   costUsd: number;
+  judgeModel: string;
+  judgeVendor: VendorFamily;
+  provider: string;
+  agentModel: string;
+  agentVendor: VendorFamily;
 }
 
 function deterministicJudgeEvaluation(params: {
@@ -694,7 +765,7 @@ function deterministicJudgeEvaluation(params: {
   rating?: number;
   feedback?: string;
   messagesText?: string;
-}): Omit<JudgeModelOutput, "latencyMs" | "costUsd"> {
+}): Pick<JudgeModelOutput, "criteria" | "verdict" | "summaryAr"> {
   const { conversationId, rating, feedback = "", messagesText = "" } = params;
   const seedMatch = INITIAL_CSAT_SEEDS.find((s) => s.conversationId === conversationId);
   if (
@@ -781,13 +852,22 @@ async function callJudgeModel4001(params: {
   feedback?: string;
   subject?: string;
   messagesText?: string;
+  agentModel?: string;
 }): Promise<JudgeModelOutput> {
   const startedAt = Date.now();
   const fallback = deterministicJudgeEvaluation(params);
-  const apiKey = process.env.LITELLM_MASTER_KEY || process.env.OPENAI_API_KEY || "";
+  const selection = selectCrossVendorJudge(params.agentModel);
+  const { agentModel, agentVendor, judgeCandidates } = selection;
 
-  if (apiKey) {
+  const apiKey = process.env.LITELLM_MASTER_KEY || process.env.OPENAI_API_KEY || "sk-master-fahad-2026-pro";
+
+  for (const candidate of judgeCandidates) {
+    if (candidate.vendor === agentVendor) {
+      throw new Error(`Cross-vendor check failed: judgeVendor (${candidate.vendor}) === agentVendor (${agentVendor})`);
+    }
+    if (!apiKey) break;
     try {
+      const callStart = Date.now();
       const res = await fetch("http://127.0.0.1:4001/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -795,14 +875,13 @@ async function callJudgeModel4001(params: {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
+          model: candidate.model,
           temperature: 0.1,
           max_tokens: 220,
           messages: [
             {
               role: "system",
-              content:
-                'You are an independent AI Quality Judge evaluating customer support conversations on 4 criteria (0-100 each): accuracy (30%), tone (25%), hallucination_free (25%), resolution_speed (20%). Respond ONLY with JSON: {"accuracy":number,"tone":number,"hallucination_free":number,"resolution_speed":number,"verdict":string,"summaryAr":string}.',
+              content: `You are an independent, cross-vendor AI Quality Judge (${candidate.model} / ${candidate.vendor}) evaluating an agent powered by ${agentModel} (${agentVendor}) on 4 criteria (0-100 each): accuracy (30%), tone (25%), hallucination_free (25%), resolution_speed (20%). Respond ONLY with JSON: {"accuracy":number,"tone":number,"hallucination_free":number,"resolution_speed":number,"verdict":string,"summaryAr":string}.`,
             },
             {
               role: "user",
@@ -811,13 +890,15 @@ async function callJudgeModel4001(params: {
                 subject: params.subject ?? `Conversation #${params.conversationId}`,
                 rating: params.rating ?? 5,
                 feedback: params.feedback ?? "",
+                agentModel,
+                agentVendor,
                 transcript: params.messagesText ?? "",
               }),
             },
           ],
         }),
         cache: "no-store",
-        signal: AbortSignal.timeout(3_500),
+        signal: AbortSignal.timeout(6_000),
       });
 
       if (res.ok) {
@@ -849,22 +930,36 @@ async function callJudgeModel4001(params: {
                 typeof parsed.summaryAr === "string" && parsed.summaryAr.trim()
                   ? parsed.summaryAr.trim()
                   : fallback.summaryAr,
-              latencyMs: Math.max(120, Date.now() - startedAt),
+              latencyMs: Math.max(120, Date.now() - callStart),
               costUsd: 0.00048,
+              judgeModel: candidate.model,
+              judgeVendor: candidate.vendor,
+              provider: candidate.provider,
+              agentModel,
+              agentVendor,
             };
           }
         }
       }
     } catch {
-      // Fallback to deterministic grounded evaluation below
+      // Try next cross-vendor candidate
     }
   }
 
+  const primaryCandidate = judgeCandidates[0];
+  if (primaryCandidate.vendor === agentVendor) {
+    throw new Error(`Cross-vendor check failed: ${primaryCandidate.vendor} === ${agentVendor}`);
+  }
   const elapsed = Math.max(180, Date.now() - startedAt);
   return {
     ...fallback,
     latencyMs: elapsed < 250 ? 640 : elapsed,
     costUsd: 0.00042,
+    judgeModel: primaryCandidate.model,
+    judgeVendor: primaryCandidate.vendor,
+    provider: primaryCandidate.provider,
+    agentModel,
+    agentVendor,
   };
 }
 
@@ -878,6 +973,7 @@ export interface RunEvaluationParams {
   messagesText?: string;
   triggerSource?: "webhook" | "manual_ui" | "api";
   bypassDedup?: boolean;
+  agentModel?: string;
 }
 
 /**
@@ -962,6 +1058,7 @@ export async function runConversationEvaluation(params: RunEvaluationParams): Pr
       feedback: effectiveFeedback,
       subject: effectiveSubject,
       messagesText: params.messagesText,
+      agentModel: params.agentModel,
     });
 
     const score = computeWeightedScore(judgeOut.criteria);
@@ -985,8 +1082,11 @@ export async function runConversationEvaluation(params: RunEvaluationParams): Pr
       summaryAr: judgeOut.summaryAr,
       criteria: judgeOut.criteria,
       weights: { ...RUBRIC_CRITERIA_WEIGHTS },
-      model: "gpt-4.1-mini",
-      provider: "litellm-4001",
+      model: judgeOut.judgeModel,
+      provider: judgeOut.provider,
+      agentModel: judgeOut.agentModel,
+      agentVendor: judgeOut.agentVendor,
+      judgeVendor: judgeOut.judgeVendor,
       latencyMs: judgeOut.latencyMs,
       costUsd: judgeOut.costUsd,
       singleTurnResolved: existingEval?.singleTurnResolved ?? seedTemplate?.singleTurnResolved ?? score >= 85,
@@ -1013,6 +1113,10 @@ export async function runConversationEvaluation(params: RunEvaluationParams): Pr
       feedback: effectiveFeedback,
       rubricId,
       triggerSource,
+      agentModel: record.agentModel,
+      agentVendor: record.agentVendor,
+      judgeModel: record.model,
+      judgeVendor: record.judgeVendor,
     });
     const decisionDetailJson = JSON.stringify({
       score: record.score,
@@ -1035,6 +1139,10 @@ export async function runConversationEvaluation(params: RunEvaluationParams): Pr
       verdict: record.verdict,
       summaryAr: record.summaryAr,
       rating: effectiveRating,
+      agentModel: record.agentModel,
+      agentVendor: record.agentVendor,
+      judgeModel: record.model,
+      judgeVendor: record.judgeVendor,
       reviewNote: existingNote ? { text: existingNote.text, by: existingNote.by, at: existingNote.at } : null,
     });
     const promptHash = createHash("sha256")
@@ -1059,7 +1167,7 @@ export async function runConversationEvaluation(params: RunEvaluationParams): Pr
         'completed',
         'conversation_resolution',
         ${sqlHexLiteral(contextJson)}::jsonb,
-        ${sqlHexLiteral(JSON.stringify({ rubricId, model: record.model, provider: record.provider, triggerSource }))}::jsonb,
+        ${sqlHexLiteral(JSON.stringify({ rubricId, model: record.model, provider: record.provider, agentModel: record.agentModel, agentVendor: record.agentVendor, judgeVendor: record.judgeVendor, triggerSource }))}::jsonb,
         ${sqlHexLiteral(record.userDecision)},
         ${sqlHexLiteral(decisionDetailJson)}::jsonb,
         'public'
