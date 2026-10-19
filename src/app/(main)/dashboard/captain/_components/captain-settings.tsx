@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import Link from "next/link";
+
 import {
   Bot,
   CheckCircle2,
@@ -562,6 +564,13 @@ export function CaptainSettings() {
             >
               <KeyRound className="size-3.5" />
               {busyAction === "sso" ? "Signing Session..." : "Open Isolated Workspace (SSO)"}
+            </Button>
+
+            <Button asChild size="sm" variant="outline" data-testid="open-ai-workspace-page-btn">
+              <Link href="/dashboard/ai-workspace">
+                <Layers className="size-3.5" />
+                AI Workspace Console
+              </Link>
             </Button>
           </div>
 
