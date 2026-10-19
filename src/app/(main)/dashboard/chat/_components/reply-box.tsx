@@ -540,6 +540,60 @@ export function ReplyBox({
     });
   };
 
+  const [captainLoading, setCaptainLoading] = useState(false);
+  const [captainDraftMeta, setCaptainDraftMeta] = useState<{
+    tokens: number;
+    model: string;
+    costUsd: number;
+  } | null>(null);
+
+  const runCaptainAssistant = async (actionMode: string) => {
+    if (captainLoading) return;
+    setCaptainLoading(true);
+    try {
+      const res = await fetch("/api/captain/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: "client_test_a",
+          inboxId: 3,
+          conversationId: 2,
+          mode: actionMode,
+          contactName: firstName,
+          subject: conversation.subject,
+          draftText: text,
+          messages: conversation.messages.slice(-6).map((m) => ({
+            kind: m.kind,
+            text: m.text,
+          })),
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        suggestion?: string;
+        model?: string;
+        usage?: { totalTokens?: number; costUsd?: number };
+      };
+      if (!res.ok || !data.ok || !data.suggestion) {
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      if (actionMode === "summarize") setMode("note");
+      setText(data.suggestion, true);
+      setCaptainDraftMeta({
+        tokens: data.usage?.totalTokens ?? 0,
+        model: data.model ?? "gpt-4.1-mini",
+        costUsd: data.usage?.costUsd ?? 0,
+      });
+      focusEnd();
+      toast.success("Captain draft inserted for review (not sent)");
+    } catch (error) {
+      toast.error((error as Error).message || "Captain assistant failed");
+    } finally {
+      setCaptainLoading(false);
+    }
+  };
+
   const insert = (value: string) => {
     setText((prev) => (prev ? `${prev}${prev.endsWith(" ") || prev.endsWith("\n") ? "" : " "}${value}` : value), true);
     focusEnd();
@@ -1197,6 +1251,26 @@ export function ReplyBox({
             </TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-1">
+            {captainDraftMeta && (
+              <span
+                data-testid="captain-draft-status"
+                className="hidden rounded border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 font-mono text-[10px] text-violet-300 sm:inline-block"
+              >
+                Draft Only · Not Sent · {captainDraftMeta.tokens}t
+              </span>
+            )}
+            <InputGroupButton
+              type="button"
+              size="sm"
+              data-testid="captain-smart-reply-btn"
+              aria-label="Suggest Captain Reply"
+              disabled={templateOnly || captainLoading}
+              onClick={() => void runCaptainAssistant("reply_suggestion")}
+              className="h-7 gap-1 px-2 text-violet-600 text-xs hover:bg-violet-100 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-500/20"
+            >
+              <Sparkles className="size-3.5" />
+              <span>{captainLoading ? "Drafting..." : "Captain Draft"}</span>
+            </InputGroupButton>
             {/* ReplyTopPanel: Copilot (AI Assist) menu, then the editor size toggle. */}
             <DropdownMenu>
               <Tip label="AI Assist">
@@ -1205,7 +1279,7 @@ export function ReplyBox({
                     aria-label="AI Assist"
                     type="button"
                     size="icon-sm"
-                    disabled={templateOnly}
+                    disabled={templateOnly || captainLoading}
                     className="text-violet-600 hover:bg-violet-100 hover:text-violet-700 data-[state=open]:bg-violet-100 dark:text-violet-400 dark:data-[state=open]:bg-violet-500/20 dark:hover:bg-violet-500/20"
                   >
                     <Sparkles />
@@ -1218,11 +1292,9 @@ export function ReplyBox({
                   <div key={option.key}>
                     {index === 2 && <DropdownMenuSeparator />}
                     <DropdownMenuItem
-                      disabled={index > 1 && !text.trim()}
+                      disabled={(index > 1 && !text.trim()) || captainLoading}
                       onSelect={() => {
-                        if (option.key === "summarize") setMode("note");
-                        setText(transform(option.key, text, firstName, conversation.subject), true);
-                        focusEnd();
+                        void runCaptainAssistant(option.key);
                       }}
                     >
                       {option.label}
