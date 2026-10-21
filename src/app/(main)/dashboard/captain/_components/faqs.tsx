@@ -41,14 +41,14 @@ import { CaptainShell, ChipSelect, RowMenuTrigger, ToneBadge } from "./shared";
 import { nextId, setCaptainList, useCaptainState } from "./store";
 
 const statusOptions = [
-  { value: "all", label: "All" },
-  { value: "approved", label: "Approved" },
-  { value: "pending", label: "Pending" },
+  { value: "all", label: "الكل" },
+  { value: "approved", label: "معتمدة" },
+  { value: "pending", label: "معلقة" },
 ];
 const sourceOptions = [
-  { value: "all", label: "All sources" },
-  { value: "documents", label: "Documents" },
-  { value: "conversations", label: "Conversations" },
+  { value: "all", label: "كل المصادر" },
+  { value: "documents", label: "المستندات" },
+  { value: "conversations", label: "المحادثات" },
 ];
 
 function SearchBox({
@@ -99,60 +99,60 @@ export function FaqsPage() {
   function approve(ids: number[]) {
     setItems((list) => list.map((f) => (ids.includes(f.id) ? { ...f, status: "approved" as const } : f)));
     setSelected([]);
-    toast.success(ids.length > 1 ? "FAQs approved successfully" : "FAQ approved successfully");
+    toast.success(ids.length > 1 ? "تم اعتماد الأسئلة بنجاح" : "تم اعتماد السؤال بنجاح");
   }
 
   return (
     <CaptainShell
-      title="FAQs"
-      subtitle="Questions and answers your assistant uses to reply. Captain generates them from documents and resolved conversations."
+      title="الأسئلة الشائعة"
+      subtitle="أسئلة وأجوبة يستخدمها مساعدك الذكي للرد. يولدها الكابتن من المستندات والمحادثات المحلولة."
       actions={
         <Button size="sm" onClick={() => setCreating(true)}>
-          <Plus /> Create new FAQ
+          <Plus /> إضافة سؤال جديد
         </Button>
       }
     >
       <Alert className="flex items-center gap-3">
         <Sparkles className="size-4 text-primary" />
         <AlertDescription className="flex-1 text-foreground">
-          Captain grouped recurring customer questions into FAQ suggestions.
+          جمّع الكابتن الأسئلة المتكررة من العملاء في اقتراحات أسئلة شائعة.
         </AlertDescription>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/dashboard/captain/faqs/suggestions">Review suggestions</Link>
+          <Link href="/dashboard/captain/faqs/suggestions">مراجعة الاقتراحات</Link>
         </Button>
       </Alert>
 
       <Card>
         <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-          <CardTitle className="text-xl leading-none">All FAQs</CardTitle>
+          <CardTitle className="text-xl leading-none">كل الأسئلة الشائعة</CardTitle>
           <CardDescription>
-            {items.filter((f) => f.status === "approved").length} approved ·{" "}
-            {items.filter((f) => f.status === "pending").length} pending
+            {items.filter((f) => f.status === "approved").length} معتمدة ·{" "}
+            {items.filter((f) => f.status === "pending").length} معلقة
           </CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
-            <SearchBox value={query} onChange={setQuery} placeholder="Search FAQs..." />
+            <SearchBox value={query} onChange={setQuery} placeholder="ابحث في الأسئلة الشائعة…" />
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 px-0">
           <div className="flex flex-wrap items-center gap-3 px-4">
-            <ChipSelect label="Status" value={status} options={statusOptions} onChange={setStatus} />
-            <ChipSelect label="Source" value={source} options={sourceOptions} onChange={setSource} />
+            <ChipSelect label="الحالة" value={status} options={statusOptions} onChange={setStatus} />
+            <ChipSelect label="المصدر" value={source} options={sourceOptions} onChange={setSource} />
           </div>
           <div className="flex min-h-8 flex-wrap items-center gap-2 px-4">
             <span className="text-muted-foreground text-sm tabular-nums">
-              {selected.length} {selected.length === 1 ? "FAQ selected" : "FAQs selected"}
+              {selected.length} {selected.length === 1 ? "محدد" : "محدد"}
             </span>
             {selected.length > 0 && (
               <>
                 <Button variant="ghost" size="sm" onClick={() => setSelected(allSelected ? [] : rows.map((r) => r.id))}>
-                  {allSelected ? `Unselect all (${rows.length})` : `Select all (${rows.length})`}
+                  {allSelected ? `إلغاء تحديد الكل (${rows.length})` : `تحديد الكل (${rows.length})`}
                 </Button>
                 <div className="ms-auto flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => approve(selected)}>
-                    <Check /> Approve
+                    <Check /> اعتماد
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => setDeleting("bulk")}>
-                    <Trash2 /> Delete
+                    <Trash2 /> حذف
                   </Button>
                 </div>
               </>
@@ -164,17 +164,17 @@ export function FaqsPage() {
                 <TableRow>
                   <TableHead className="w-10 py-4">
                     <Checkbox
-                      aria-label="Select all FAQs"
+                      aria-label="تحديد الكل"
                       checked={allSelected}
                       onCheckedChange={(c) => setSelected(c ? rows.map((r) => r.id) : [])}
                     />
                   </TableHead>
-                  <TableHead className="py-4 font-normal">Question and answer</TableHead>
-                  <TableHead className="py-4 font-normal">Source</TableHead>
-                  <TableHead className="py-4 font-normal">Status</TableHead>
-                  <TableHead className="py-4 font-normal">Created</TableHead>
+                  <TableHead className="py-4 font-normal">السؤال والجواب</TableHead>
+                  <TableHead className="py-4 font-normal">المصدر</TableHead>
+                  <TableHead className="py-4 font-normal">الحالة</TableHead>
+                  <TableHead className="py-4 font-normal">تاريخ الإنشاء</TableHead>
                   <TableHead className="py-4 font-normal">
-                    <div className="text-right">Actions</div>
+                    <div className="text-right">إجراءات</div>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -189,7 +189,7 @@ export function FaqsPage() {
                     >
                       <TableCell className="py-4 align-top">
                         <Checkbox
-                          aria-label={`Select ${f.question}`}
+                          aria-label={`تحديد: ${f.question}`}
                           checked={selected.includes(f.id)}
                           onCheckedChange={(c) => setSelected((p) => (c ? [...p, f.id] : p.filter((x) => x !== f.id)))}
                         />
@@ -221,9 +221,9 @@ export function FaqsPage() {
                       </TableCell>
                       <TableCell className="py-4">
                         {f.status === "approved" ? (
-                          <ToneBadge tone="green">Approved</ToneBadge>
+                          <ToneBadge tone="green">معتمدة</ToneBadge>
                         ) : (
-                          <ToneBadge tone="amber">Pending</ToneBadge>
+                          <ToneBadge tone="amber">معلقة</ToneBadge>
                         )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-4 text-muted-foreground text-sm">
@@ -231,19 +231,19 @@ export function FaqsPage() {
                       </TableCell>
                       <TableCell className="py-4 text-right">
                         <DropdownMenu>
-                          <RowMenuTrigger label={`Open actions for ${f.question}`} />
+                          <RowMenuTrigger label={`إجراءات السؤال: ${f.question}`} />
                           <DropdownMenuContent align="end" className="w-40">
                             {f.status === "pending" && (
                               <DropdownMenuItem onSelect={() => approve([f.id])}>
-                                <Check /> Approve
+                                <Check /> اعتماد
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onSelect={() => setEditing(f)}>
-                              <Pencil /> Edit
+                              <Pencil /> تعديل
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(f)}>
-                              <Trash2 /> Delete
+                              <Trash2 /> حذف
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -256,13 +256,11 @@ export function FaqsPage() {
           ) : (
             <Empty className="border-t">
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Search />
-                </EmptyMedia>
-                <EmptyTitle>No FAQs Found</EmptyTitle>
+                <EmptyMedia variant="icon" />
+                <EmptyTitle>لا توجد أسئلة شائعة</EmptyTitle>
                 <EmptyDescription>
-                  FAQs help your assistant provide quick and accurate answers to questions from your customers. They can
-                  be generated automatically from your content or can be added manually.
+                  الأسئلة الشائعة تساعد مساعدك الذكي في تقديم إجابات سريعة ودقيقة لأسئلة عملائك. يمكن توليدها آلياً من
+                  محتواك أو إضافتها يدوياً.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
@@ -275,7 +273,7 @@ export function FaqsPage() {
                     setSource("all");
                   }}
                 >
-                  Clear active filters
+                  مسح عوامل التصفية
                 </Button>
               </EmptyContent>
             </Empty>
@@ -293,8 +291,8 @@ export function FaqsPage() {
       <ConfirmDialog
         open={deleting !== null && deleting !== "bulk"}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Are you sure to delete the FAQ?"
-        success="FAQ deleted successfully"
+        title="هل أنت متأكد من حذف هذا السؤال الشائع؟"
+        success="تم حذف السؤال بنجاح"
         onConfirm={() => {
           const target = deleting;
           if (target && target !== "bulk") setItems((list) => list.filter((f) => f.id !== target.id));
@@ -303,10 +301,10 @@ export function FaqsPage() {
       <ConfirmDialog
         open={deleting === "bulk"}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Delete FAQs?"
-        description="Are you sure you want to delete the selected FAQs? This action cannot be undone."
-        confirm="Yes, delete all"
-        success="FAQs deleted successfully"
+        title="حذف الأسئلة الشائعة؟"
+        description="هل أنت متأكد من حذف الأسئلة المحددة؟ لا يمكن التراجع عن هذا الإجراء."
+        confirm="نعم، احذف الكل"
+        success="تم حذف الأسئلة بنجاح"
         onConfirm={() => {
           setItems((list) => list.filter((f) => !selected.includes(f.id)));
           setSelected([]);
@@ -345,28 +343,27 @@ function ReviewDialog({
         {s && (
           <>
             <DialogHeader>
-              <DialogTitle>Review FAQ suggestion</DialogTitle>
+              <DialogTitle>مراجعة اقتراح سؤال شائع</DialogTitle>
               <DialogDescription>
-                Captain grouped {s.conversations} conversations into this suggestion. Review the evidence and refine the
-                FAQ before approval.
+                يضم هذا الاقتراح {s.conversations} محادثة من بيانات مساحة الاختبار. راجع السؤال والجواب قبل الاعتماد.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
               <div className="grid content-start gap-3">
                 <div className="grid gap-2">
-                  <Label>Question</Label>
+                  <Label>السؤال</Label>
                   <Input value={question} onChange={(e) => setQuestion(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Answer</Label>
+                  <Label>الجواب</Label>
                   <Textarea value={answer} onChange={(e) => setAnswer(e.target.value)} className="min-h-32" />
                 </div>
               </div>
               <div className="grid content-start gap-2">
                 <div className="flex items-center justify-between">
-                  <Label>Source conversations</Label>
+                  <Label>المحادثات المصدر</Label>
                   <span className="text-muted-foreground text-xs tabular-nums">
-                    {Math.min(visible, s.conversations)} of {s.conversations}
+                    {Math.min(visible, s.conversations)} من {s.conversations}
                   </span>
                 </div>
                 <div className="grid max-h-72 gap-2 overflow-y-auto">
@@ -378,7 +375,7 @@ function ReviewDialog({
                     >
                       <div className="flex justify-between text-xs">
                         <span className="font-medium">{c.name}</span>
-                        <span className="text-muted-foreground">Conversation {c.id}</span>
+                        <span className="text-muted-foreground">محادثة {c.id}</span>
                       </div>
                       <span className="text-muted-foreground">{c.text}</span>
                     </Link>
@@ -386,26 +383,26 @@ function ReviewDialog({
                 </div>
                 {visible < sourceConversations.length && (
                   <Button variant="ghost" size="sm" onClick={() => setVisible(sourceConversations.length)}>
-                    Load more
+                    تحميل المزيد
                   </Button>
                 )}
               </div>
             </div>
             <DialogFooter className="sm:justify-between">
               <Button variant="ghost" onClick={() => onDismiss(s)}>
-                Dismiss
+                تجاهل
               </Button>
               <div className="flex gap-2">
                 <DialogClose asChild>
-                  <Button variant="outline" onClick={() => toast.success("Suggestion updated.")}>
-                    Save changes
+                  <Button variant="outline" onClick={() => toast.success("تم تحديث الاقتراح.")}>
+                    حفظ التغييرات
                   </Button>
                 </DialogClose>
                 <Button
                   disabled={!question.trim() || !answer.trim()}
                   onClick={() => onApprove({ ...s, question: question.trim(), answer: answer.trim() })}
                 >
-                  Approve FAQ
+                  اعتماد السؤال
                 </Button>
               </div>
             </DialogFooter>
@@ -438,32 +435,32 @@ export function FaqSuggestionsPage() {
     ]);
     setItems((list) => list.filter((x) => x.id !== s.id));
     setReviewing(null);
-    toast.success("FAQ approved and added to Captain's knowledge.");
+    toast.success("تم اعتماد السؤال وإضافته لمعرفة الكابتن.");
   }
   function dismiss(s: Suggestion) {
     setItems((list) => list.filter((x) => x.id !== s.id));
     setReviewing(null);
-    toast.success("Suggestion dismissed.");
+    toast.success("تم تجاهل الاقتراح.");
   }
 
   return (
     <CaptainShell
-      title="FAQ suggestions"
-      subtitle="Captain grouped recurring customer questions into FAQ suggestions. Approve them so your assistant can resolve more on its own."
+      title="اقتراحات الأسئلة الشائعة"
+      subtitle="جمّع الكابتن الأسئلة المتكررة من العملاء في اقتراحات أسئلة شائعة. اعتمدها ليتمكن مساعدك من حل المزيد بنفسه."
       actions={
         <Button size="sm" variant="outline" asChild>
-          <Link href="/dashboard/captain/faqs">Back to FAQs</Link>
+          <Link href="/dashboard/captain/faqs">العودة للأسئلة الشائعة</Link>
         </Button>
       }
     >
       <Card>
         <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
           <CardTitle className="text-xl leading-none">
-            {rows.length} {rows.length === 1 ? "suggestion to review" : "suggestions to review"}
+            {rows.length} {rows.length === 1 ? "اقتراح للمراجعة" : "اقتراح للمراجعة"}
           </CardTitle>
-          <CardDescription>Ranked by customer demand</CardDescription>
+          <CardDescription>مرتبة حسب طلب العملاء</CardDescription>
           <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end">
-            <SearchBox value={query} onChange={setQuery} placeholder="Search suggestions..." />
+            <SearchBox value={query} onChange={setQuery} placeholder="ابحث في الاقتراحات…" />
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
@@ -472,10 +469,10 @@ export function FaqSuggestionsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12 py-4 font-normal">#</TableHead>
-                  <TableHead className="py-4 font-normal">Suggested FAQ</TableHead>
-                  <TableHead className="py-4 font-normal">Demand</TableHead>
+                  <TableHead className="py-4 font-normal">السؤال المقترح</TableHead>
+                  <TableHead className="py-4 font-normal">الطلب</TableHead>
                   <TableHead className="py-4 font-normal">
-                    <div className="text-right">Actions</div>
+                    <div className="text-right">إجراءات</div>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -495,26 +492,26 @@ export function FaqSuggestionsPage() {
                     </TableCell>
                     <TableCell className="py-4">
                       <ToneBadge tone="violet">
-                        {s.conversations} {s.conversations === 1 ? "conversation" : "conversations"}
+                        {s.conversations} {s.conversations === 1 ? "محادثة" : "محادثة"}
                       </ToneBadge>
                     </TableCell>
                     <TableCell className="py-4">
                       <div className="flex items-center justify-end gap-2">
                         <Button size="sm" onClick={() => approve(s)}>
-                          <Check /> Approve
+                          <Check /> اعتماد
                         </Button>
                         <DropdownMenu>
-                          <RowMenuTrigger label={`Open actions for ${s.question}`} />
+                          <RowMenuTrigger label={`إجراءات الاقتراح: ${s.question}`} />
                           <DropdownMenuContent align="end" className="w-44">
                             <DropdownMenuItem onSelect={() => setReviewing(s)}>
-                              <MessageSquare /> Review sources
+                              <MessageSquare /> مراجعة المصادر
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => approve(s)}>
-                              <Check /> Approve
+                              <Check /> اعتماد
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant="destructive" onSelect={() => dismiss(s)}>
-                              <X /> Dismiss
+                              <X /> تجاهل
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -530,13 +527,13 @@ export function FaqSuggestionsPage() {
                 <EmptyMedia variant="icon">
                   <Check />
                 </EmptyMedia>
-                <EmptyTitle>The review queue is clear</EmptyTitle>
-                <EmptyDescription>New FAQ suggestions will appear here when they are ready to review.</EmptyDescription>
+                <EmptyTitle>قائمة المراجعة فارغة</EmptyTitle>
+                <EmptyDescription>ستظهر اقتراحات الأسئلة الشائعة الجديدة هنا حين تكون جاهزة للمراجعة.</EmptyDescription>
               </EmptyHeader>
               {query && (
                 <EmptyContent>
                   <Button variant="outline" size="sm" onClick={() => setQuery("")}>
-                    Clear search
+                    مسح البحث
                   </Button>
                 </EmptyContent>
               )}

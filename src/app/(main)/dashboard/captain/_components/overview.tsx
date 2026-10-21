@@ -30,6 +30,7 @@ import {
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,7 +54,7 @@ import { EmployeeEvaluation } from "../_overview-ai/employee-cards";
 import { AssistantPicker, RangePicker } from "../_overview-ai/top-pickers";
 import { handoffReasons, trend } from "./data";
 import { CaptainShell, useCurrentAssistant } from "./shared";
-import { useActiveCaptainClient } from "./store";
+import { useActiveCaptainClient, useCaptainList } from "./store";
 
 const PAGE_T = {
   title: "نظرة عامة",
@@ -287,6 +288,42 @@ function Hint({ text, note }: { text: string; note?: string }) {
   );
 }
 
+function FaqSuggestionBanner() {
+  const suggestions = useCaptainList("suggestions");
+  const pendingSuggestions = suggestions.slice(0, 3);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>اقتراحات الأسئلة الشائعة</CardTitle>
+        <CardDescription>
+          راجع السؤال والجواب قبل اعتمادهما. الأعداد تخص بيانات مساحة الاختبار وليست أداء شركتك.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid min-w-0 gap-3">
+        {pendingSuggestions.length ? (
+          <ul className="grid min-w-0 gap-2">
+            {pendingSuggestions.map((suggestion) => (
+              <li key={suggestion.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 flex-1 break-words">{suggestion.question}</span>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/dashboard/captain/faqs/suggestions" aria-label={`مراجعة: ${suggestion.question}`}>
+                    مراجعة
+                  </Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">لا توجد اقتراحات للمراجعة حالياً.</p>
+        )}
+        <Link href="/dashboard/captain/faqs/suggestions" className="justify-self-start text-primary hover:underline">
+          عرض كل الاقتراحات ({suggestions.length})
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function CaptainOverview() {
   const assistant = useCurrentAssistant();
   const [clientId, setClientId] = useActiveCaptainClient();
@@ -374,12 +411,19 @@ export function CaptainOverview() {
       className="@container/overview"
       actions={
         <>
-          <div className="inline-flex items-center rounded-md border bg-background p-0.5 text-xs" data-testid="captain-overview-client-switcher">
+          <div
+            className="inline-flex items-center rounded-md border bg-background p-0.5 text-xs"
+            data-testid="captain-overview-client-switcher"
+          >
             <button
               type="button"
               data-testid="overview-switch-client-test-a"
               onClick={() => setClientId("client_test_a")}
-              className={clientId === "client_test_a" ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground" : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"}
+              className={
+                clientId === "client_test_a"
+                  ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground"
+                  : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"
+              }
             >
               client_test_a
             </button>
@@ -387,7 +431,11 @@ export function CaptainOverview() {
               type="button"
               data-testid="overview-switch-client-test-b"
               onClick={() => setClientId("client_test_b")}
-              className={clientId === "client_test_b" ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground" : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"}
+              className={
+                clientId === "client_test_b"
+                  ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground"
+                  : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"
+              }
             >
               client_test_b
             </button>
@@ -450,6 +498,9 @@ export function CaptainOverview() {
         </div>
       </section>
 
+      {/* اقتراحات الأسئلة الشائعة من الكابتن — العامل الثالث CMP-249 */}
+      <FaqSuggestionBanner />
+
       {/* أمر فهد البندان 48 و49: بطاقات تقييم الموظفين وكشف التهرب اللطيف */}
       <EmployeeEvaluation />
 
@@ -506,7 +557,9 @@ export function CaptainOverview() {
             <CardContent className="grid @2xl/overview:grid-cols-[1fr_auto_1fr_auto_1fr] @2xl/overview:items-center gap-4">
               {flowColumns.map((col, ci) => (
                 <React.Fragment key={col[0].label}>
-                  {ci > 0 && <ArrowRight className="@2xl/overview:block hidden size-4 text-muted-foreground rtl:rotate-180" />}
+                  {ci > 0 && (
+                    <ArrowRight className="@2xl/overview:block hidden size-4 text-muted-foreground rtl:rotate-180" />
+                  )}
                   <div className="grid gap-2">
                     {col.map((n) => (
                       <div key={n.label} className="grid gap-1.5 rounded-lg border p-3">

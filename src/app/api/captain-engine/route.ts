@@ -662,11 +662,7 @@ async function writeCompanyState(companyId: string, state: CompanyEngineState): 
   await fs.writeFile(file, JSON.stringify(state, null, 2), "utf8");
 }
 
-function analyzeEvaluation(
-  customerText: string,
-  agentReply: string,
-  agentName = "موظف الاختبار",
-): EvalCaseResult {
+function analyzeEvaluation(customerText: string, agentReply: string, agentName = "موظف الاختبار"): EvalCaseResult {
   const c = customerText.trim();
   const r = agentReply.trim();
 
@@ -729,38 +725,61 @@ function analyzeEvaluation(
   const hasDodge = dodgePhrases.some((w) => r.includes(w));
   const hasRealAction = realActionWords.some((w) => r.includes(w));
 
-  const politeDodge = (hasSweet && hasDodge && !hasRealAction) || (hasDodge && !hasRealAction);
-  const politenessScore = hasSweet ? 94 : hasRealAction ? 90 : 65;
-  const resolutionScore = politeDodge ? 14 : hasRealAction ? 95 : hasAnger ? 35 : 78;
+  // CMP-249: نفي بمستوى الجملة — لا تكتفي بمطابقة كلمات الإجراء وحدها بل تتحقق من خلو الجملة
+  // التي تحمل كلمة الإجراء من أدوات النفي. القواعد المحلية لا تثبت التنفيذ؛ تمنح درجة متوسطة لا عالية.
+  const normalizeClause = (t: string) => t.replace(/[ً-ٰٟ]/g, "").replace(/[أإآ]/g, "ا");
+  const clauses = normalizeClause(r).split(/[.!?؟؛;\n]|(?:،?\s+(?:لكن|ولكن)\s+)/);
+  const negPat = /(?:^|\s)(?:لم|لن|لا|ما|ليس|لست|غير|بدون)(?:\s|$)/;
+  const hasNegation = clauses.some((c) => negPat.test(c));
+  const effectiveAction = clauses.some((c) =>
+    realActionWords.some((aw) => {
+      const idx = c.indexOf(normalizeClause(aw));
+      return idx >= 0 && !negPat.test(c.slice(0, idx));
+    }),
+  );
+
+  const politeDodge = (hasSweet && hasDodge && !effectiveAction) || (hasDodge && !effectiveAction);
+  const politenessScore = hasSweet ? 94 : effectiveAction ? 90 : 65;
+  const resolutionScore = politeDodge ? 14 : effectiveAction ? 70 : hasAnger ? 35 : 45;
   const overallScore = politeDodge
     ? Math.round(resolutionScore * 0.75 + politenessScore * 0.25)
     : Math.round(resolutionScore * 0.65 + politenessScore * 0.35);
 
-  let verdictLabel = "معالجة متوازنة";
-  let verdictTone: "danger" | "warning" | "success" = "success";
-  let explanation = "الرد يعالج استفسار العميل بوضوح ودون تهرب.";
-  let coachingTip = "استمر على هذا النهج المباشر في تقديم الحلول الموثقة للعميل.";
+  let verdictLabel = "تقييم نصي أولي — الحل غير متحقق";
+  let verdictTone: "danger" | "warning" | "success" = "warning";
+  let explanation = "تحليل قواعد محلية للنص فقط؛ لا توجد أدلة كافية لإثبات تنفيذ الحل أو اكتماله.";
+  let coachingTip = "تحقق من نتيجة الإجراء في النظام قبل اعتماد اكتمال الحل.";
 
   if (politeDodge && hasAnger) {
     verdictLabel = "خطر مزدوج: تصعيد غضب + تهرب من الحل";
     verdictTone = "danger";
     explanation = "العميل في حالة غضب وتصعيد، والرد يتهرب من المعالجة الفعلية بدل التدخل الفوري وحل أصل المشكلة.";
     coachingTip = "يجب التدخل الفوري لتهدئة العميل وتنفيذ الإجراء في النظام دون إحالته لقسم مجهول.";
+  } else if (hasNegation && !effectiveAction) {
+    verdictLabel = "نفي أو رفض — التنفيذ غير مثبت";
+    verdictTone = "warning";
+    explanation = "رصدت القواعد المحلية نفياً أو رفضاً في النص؛ ذكر كلمات الإجراء لا يثبت تنفيذه.";
+    coachingTip = "إن تعذّر تنفيذ الطلب، قدّم بديلاً واضحاً أو اشرح الخطوة التالية ولا تترك العميل بلا خيار.";
   } else if (politeDodge) {
     verdictLabel = "سلبي — تهرب لطيف من معالجة المشكلة";
     verdictTone = "danger";
     explanation = "رد مؤدب ظاهرياً («أبشر طال عمرك / تؤمر وتدلل») لكنه خلا من أي إجراء عملي أو حل فعلي لمشكلة العميل.";
     coachingTip = "وجّه الموظف لتنفيذ خطوة عملية واضحة في نفس الرسالة بدل الوعود العائمة أو الإحالة المبهمة.";
-  } else if (hasAnger && !hasRealAction) {
+  } else if (hasAnger && !effectiveAction && !hasNegation) {
     verdictLabel = "تصعيد نبرة غضب يحتاج تدخلاً فورياً";
     verdictTone = "warning";
     explanation = "نبرة العميل حادة بسبب التأخير أو تكرار التواصل، والرد لم يقدم إثباتاً عملياً ينهي سبب الغضب.";
     coachingTip = "اعتذر عن التأخير بوضوح وقدّم حلاً عملياً فورياً ينهي معاناة العميل.";
-  } else if (hasRealAction) {
-    verdictLabel = "إيجابي — حل حقيقي موثق بأسلوب بشري";
+  } else if (hasNegation && !politeDodge) {
+    verdictLabel = "سلبي — رفض أو نفي دون حل بديل";
+    verdictTone = "warning";
+    explanation = "الرد احتوى على نفي أو رفض لطلب العميل دون تقديم مسار بديل أو حل عملي.";
+    coachingTip = "إن تعذّر تنفيذ الطلب، قدّم بديلاً واضحاً أو اشرح الخطوة التالية ولا تترك العميل بلا خيار.";
+  } else if (effectiveAction) {
+    verdictLabel = "إجراء مذكور في الرد — يحتاج تحققاً";
     verdictTone = "success";
-    explanation = "الرد جمع بين الاحترام والفعل المباشر في النظام لحل المشكلة من جذورها دون مماطلة.";
-    coachingTip = "أداء ممتاز! تم إنجاز الحل الفعلي وتوثيقه للعميل من أول رد.";
+    explanation = "يتضمن النص إجراءً بصيغة مثبتة، لكن القواعد المحلية لا تتحقق من تنفيذه في النظام.";
+    coachingTip = "راجع سجل الإجراء ونتيجته قبل اعتبار المشكلة محلولة.";
   }
 
   return {
@@ -778,14 +797,14 @@ function analyzeEvaluation(
     explanation,
     coachingTip,
     axes: {
-      understanding: politeDodge ? 28 : hasRealAction ? 95 : 75,
-      action: politeDodge ? 12 : hasRealAction ? 96 : 70,
+      understanding: politeDodge ? 28 : effectiveAction ? 70 : hasNegation ? 55 : 50,
+      action: politeDodge ? 12 : effectiveAction ? 70 : hasNegation ? 20 : 40,
       resolution: resolutionScore,
-      effort: politeDodge ? 18 : hasRealAction ? 92 : 74,
+      effort: politeDodge ? 18 : effectiveAction ? 70 : hasNegation ? 25 : 50,
       tone: politenessScore,
     },
     createdAt: "الآن",
-    evaluatedByModel: "captain-hybrid-sol",
+    evaluatedByModel: "local-rules-fallback",
   };
 }
 
