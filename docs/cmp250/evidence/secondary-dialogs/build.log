@@ -1,0 +1,480 @@
+
+> studio-admin@2.2.0 build
+> next build
+
+▲ Next.js 16.3.8 (Turbopack)
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /tmp/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /tmp/paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/package-lock.json
+
+✓ Running next.config.mjs took 11ms
+- Experiments (use with caution):
+  ⨯ turbopackServerFastRefresh
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 23.5s
+  Running TypeScript ...
+src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx(232,7): error TS2345: Argument of type 'string' is not assignable to parameter of type '() => void'.
+src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx(234,10): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/app/(main)/dashboard/chat/_components/reply-box.tsx(566,21): error TS2339: Property 'kind' does not exist on type 'Message'.
+src/app/api/captain-engine/route.ts(1046,53): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+Failed to type check.
+
+Turbopack build encountered 16 warnings:
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts:102:27
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m100 |[0m   [36mfor[0m ([36mconst[0m file [36mof[0m candidates) {
+  [90m101 |[0m     [36mtry[0m {
+[33m[1m>[0m [90m102 |[0m       [36mconst[0m text = ([36mawait[0m readFile(file, [32m"utf8"[0m)).trim();
+  [90m    |[0m                           [33m[1m^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m103 |[0m       [36mif[0m (text && ![35m/\s/[0m.test(text) && text.length <= [35m256[0m) [36mreturn[0m text;
+  [90m104 |[0m     } [36mcatch[0m {
+  [90m105 |[0m       [90m// try next candidate[0m
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import trace:
+  App Route:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/captain/run/route.ts:60:26
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m58 |[0m   [36mfor[0m ([36mconst[0m candidate [36mof[0m candidates) {
+  [90m59 |[0m     [36mtry[0m {
+[33m[1m>[0m [90m60 |[0m       [36mconst[0m raw = ([36mawait[0m readFile(candidate, [32m"utf8"[0m)).trim();
+  [90m   |[0m                          [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m61 |[0m       [36mif[0m (raw.length >= [35m16[0m) [36mreturn[0m raw;
+  [90m62 |[0m     } [36mcatch[0m {
+  [90m63 |[0m       [90m// continue[0m
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import trace:
+  App Route:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/captain/run/route.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/comments/[action]/route.ts:118:27
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m116 |[0m   [36mfor[0m ([36mconst[0m file [36mof[0m candidates) {
+  [90m117 |[0m     [36mtry[0m {
+[33m[1m>[0m [90m118 |[0m       [36mconst[0m text = ([36mawait[0m readFile(file, [32m"utf8"[0m)).trim();
+  [90m    |[0m                           [33m[1m^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m119 |[0m       [36mif[0m (text && ![35m/\s/[0m.test(text) && text.length <= [35m256[0m) [36mreturn[0m text;
+  [90m120 |[0m     } [36mcatch[0m {
+  [90m121 |[0m       [90m// try next candidate[0m
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import trace:
+  App Route:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/comments/[action]/route.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/audit/server.ts:24:29
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m22 |[0m   [36mif[0m (fromEnv) [36mreturn[0m fromEnv;
+  [90m23 |[0m   [36mtry[0m {
+[33m[1m>[0m [90m24 |[0m     [36mconst[0m fromFile = ([36mawait[0m readFile([33mAUDIT_KEY_FILE[0m, [32m"utf8"[0m)).trim();
+  [90m   |[0m                             [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m25 |[0m     [36mreturn[0m fromFile || [36mnull[0m;
+  [90m26 |[0m   } [36mcatch[0m {
+  [90m27 |[0m     [36mreturn[0m [36mnull[0m;
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/audit/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/audit/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/audit/retraced.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/notifications-feed/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/bigcapital/server.ts:37:24
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m35 |[0m   [36mif[0m (process.env.[33mBIGCAPITAL_API_KEY[0m) [36mreturn[0m process.env.[33mBIGCAPITAL_API_KEY[0m;
+  [90m36 |[0m   [36mtry[0m {
+[33m[1m>[0m [90m37 |[0m     cachedKey = ([36mawait[0m readFile([33mKEY_FILE[0m, [32m"utf8"[0m)).trim();
+  [90m   |[0m                        [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m38 |[0m   } [36mcatch[0m {
+  [90m39 |[0m     [36mthrow[0m [36mnew[0m [33mBigcapitalError[0m([32m"The invoices server's API key is not configured on the prev...[0m
+  [90m40 |[0m   }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/bigcapital/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/bigcapital/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/invoices/[id]/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/captain/litellm-budget.ts:148:25
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m146 |[0m   [36mfor[0m ([36mconst[0m candidate [36mof[0m [33mMASTER_KEY_CANDIDATES[0m) {
+  [90m147 |[0m     [36mtry[0m {
+[33m[1m>[0m [90m148 |[0m       [36mconst[0m raw = [36mawait[0m readFile(candidate, [32m"utf8"[0m);
+  [90m    |[0m                         [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m149 |[0m       [36mconst[0m trimmed = raw.trim();
+  [90m150 |[0m       [36mif[0m (trimmed.length >= [35m16[0m) [36mreturn[0m trimmed;
+  [90m151 |[0m     } [36mcatch[0m {
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/captain/litellm-budget.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/captain/litellm-budget.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/captain-state/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/captain/studio-tools.ts:339:27
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m337 |[0m   [36mfor[0m ([36mconst[0m file [36mof[0m candidates) {
+  [90m338 |[0m     [36mtry[0m {
+[33m[1m>[0m [90m339 |[0m       [36mconst[0m text = ([36mawait[0m readFile(file, [32m"utf8"[0m)).trim();
+  [90m    |[0m                           [33m[1m^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m340 |[0m       [36mif[0m (text && ![35m/\s/[0m.test(text) && text.length <= [35m256[0m) [36mreturn[0m text;
+  [90m341 |[0m     } [36mcatch[0m {
+  [90m342 |[0m       [90m// continue[0m
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/captain/studio-tools.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/captain/studio-tools.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/mcp/studio/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/realtime-bus.ts:215:10
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m213 |[0m [36mfunction[0m readDiskJournal(): [33mDiskJournalData[0m | [36mnull[0m {
+  [90m214 |[0m   [36mtry[0m {
+[33m[1m>[0m [90m215 |[0m     [36mif[0m (!existsSync([33mDISK_JOURNAL_PATH[0m)) [36mreturn[0m [36mnull[0m;
+  [90m    |[0m          [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m216 |[0m     [36mconst[0m raw = readFileSync([33mDISK_JOURNAL_PATH[0m, [32m"utf8"[0m);
+  [90m217 |[0m     [36mconst[0m parsed = [33mJSON[0m.parse(raw);
+  [90m218 |[0m     [36mif[0m (!parsed || [36mtypeof[0m parsed !== [32m"object"[0m) [36mreturn[0m [36mnull[0m;
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.existsSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/realtime-bus.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/realtime-bus.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/realtime-bus.ts:216:17
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m214 |[0m   [36mtry[0m {
+  [90m215 |[0m     [36mif[0m (!existsSync([33mDISK_JOURNAL_PATH[0m)) [36mreturn[0m [36mnull[0m;
+[33m[1m>[0m [90m216 |[0m     [36mconst[0m raw = readFileSync([33mDISK_JOURNAL_PATH[0m, [32m"utf8"[0m);
+  [90m    |[0m                 [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m217 |[0m     [36mconst[0m parsed = [33mJSON[0m.parse(raw);
+  [90m218 |[0m     [36mif[0m (!parsed || [36mtypeof[0m parsed !== [32m"object"[0m) [36mreturn[0m [36mnull[0m;
+  [90m219 |[0m     [36mconst[0m seq = [36mtypeof[0m parsed.seq === [32m"number"[0m && [33mNumber[0m.isFinite(parsed.seq) ? parsed.se...
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFileSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/realtime-bus.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/realtime-bus.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts:138:13
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m136 |[0m       [36mconst[0m candidate = path.join(dir, name);
+  [90m137 |[0m       [36mtry[0m {
+[33m[1m>[0m [90m138 |[0m         [36mif[0m (existsSync(candidate)) {
+  [90m    |[0m             [33m[1m^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m139 |[0m           [36mconst[0m val = readFileSync(candidate, [32m"utf8"[0m).trim();
+  [90m140 |[0m           [36mif[0m (val && ![35m/\s/[0m.test(val)) [36mreturn[0m candidate;
+  [90m141 |[0m         }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.existsSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts:298:20
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m296 |[0m   } [36mcatch[0m {
+  [90m297 |[0m     [36mtry[0m {
+[33m[1m>[0m [90m298 |[0m       text = [36mawait[0m readFile(tokenFile(), [32m"utf8"[0m);
+  [90m    |[0m                    [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m299 |[0m     } [36mcatch[0m {
+  [90m300 |[0m       [36mthrow[0m [36mnew[0m [33mChatwootError[0m([32m"no-token"[0m, [32m"not linked: no token"[0m, [35m503[0m);
+  [90m301 |[0m     }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts:139:23
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m137 |[0m       [36mtry[0m {
+  [90m138 |[0m         [36mif[0m (existsSync(candidate)) {
+[33m[1m>[0m [90m139 |[0m           [36mconst[0m val = readFileSync(candidate, [32m"utf8"[0m).trim();
+  [90m    |[0m                       [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m140 |[0m           [36mif[0m (val && ![35m/\s/[0m.test(val)) [36mreturn[0m candidate;
+  [90m141 |[0m         }
+  [90m142 |[0m       } [36mcatch[0m {
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFileSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts:136:25
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m134 |[0m   [36mfor[0m ([36mconst[0m dir [36mof[0m vaultDirs) {
+  [90m135 |[0m     [36mfor[0m ([36mconst[0m name [36mof[0m candidateNames) {
+[33m[1m>[0m [90m136 |[0m       [36mconst[0m candidate = path.join(dir, name);
+  [90m    |[0m                         [33m[1m^^^^^^^^^^^^^^^^^^^^[0m
+  [90m137 |[0m       [36mtry[0m {
+  [90m138 |[0m         [36mif[0m (existsSync(candidate)) {
+  [90m139 |[0m           [36mconst[0m val = readFileSync(candidate, [32m"utf8"[0m).trim();
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: path.join(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/davis/server.ts:117:29
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m115 |[0m [36masync[0m [36mfunction[0m readPasswords(): [33mPromise[0m<[33mRecord[0m<string, string>> {
+  [90m116 |[0m   [36mtry[0m {
+[33m[1m>[0m [90m117 |[0m     [36mreturn[0m [33mJSON[0m.parse([36mawait[0m readFile([33mUSERS_FILE[0m, [32m"utf8"[0m)) [36mas[0m [33mRecord[0m<string, string>;
+  [90m    |[0m                             [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m118 |[0m   } [36mcatch[0m {
+  [90m119 |[0m     [36mreturn[0m {};
+  [90m120 |[0m   }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/davis/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/davis/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calendar-davis/share/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/system-vault.ts:47:17
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m45 |[0m   [36mif[0m (!found) [36mreturn[0m [36mnull[0m;
+  [90m46 |[0m   [36mtry[0m {
+[33m[1m>[0m [90m47 |[0m     [36mconst[0m val = readFileSync(found, [32m"utf8"[0m).trim();
+  [90m   |[0m                 [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m48 |[0m     [36mreturn[0m val || [36mnull[0m;
+  [90m49 |[0m   } [36mcatch[0m {
+  [90m50 |[0m     [36mreturn[0m [36mnull[0m;
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFileSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/system-vault.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/system-vault.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/chatwoot/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/cw/webhook/route.ts
+
+
+./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/twenty/server.ts:53:24
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m51 |[0m   [36mif[0m (process.env.[33mTWENTY_API_KEY[0m) [36mreturn[0m process.env.[33mTWENTY_API_KEY[0m;
+  [90m52 |[0m   [36mtry[0m {
+[33m[1m>[0m [90m53 |[0m     cachedKey = ([36mawait[0m readFile([33mKEY_FILE[0m, [32m"utf8"[0m)).trim();
+  [90m   |[0m                        [33m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m54 |[0m   } [36mcatch[0m {
+  [90m55 |[0m     [36mthrow[0m [36mnew[0m [33mTwentyError[0m([32m"The tasks server's API key is not configured on the preview ser...[0m
+  [90m56 |[0m   }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/twenty/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/lib/twenty/server.ts
+    ./paperclip-run-unassigned-0e0dfb70-4ad-ZjXu8u/cmp250-secondary-build-1y_d6zo0/src/app/api/tasks-twenty/[id]/route.ts
+
+

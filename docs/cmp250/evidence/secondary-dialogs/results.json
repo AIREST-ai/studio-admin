@@ -1,0 +1,135 @@
+{
+  "results": [
+    {
+      "route": "categories",
+      "width": 568,
+      "height": 320,
+      "geometry": {
+        "top": 16,
+        "bottom": 304,
+        "left": 16,
+        "right": 552,
+        "client": 288,
+        "scroll": 529,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "locales",
+      "width": 568,
+      "height": 320,
+      "geometry": {
+        "top": 16,
+        "bottom": 304,
+        "left": 16,
+        "right": 552,
+        "client": 288,
+        "scroll": 317,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "categories",
+      "width": 320,
+      "height": 568,
+      "geometry": {
+        "top": 16,
+        "bottom": 552,
+        "left": 16,
+        "right": 304,
+        "client": 536,
+        "scroll": 569,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "locales",
+      "width": 320,
+      "height": 568,
+      "geometry": {
+        "top": 115.5,
+        "bottom": 452.5,
+        "left": 16,
+        "right": 304,
+        "client": 337,
+        "scroll": 337,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "categories",
+      "width": 390,
+      "height": 844,
+      "geometry": {
+        "top": 157.5,
+        "bottom": 686.5,
+        "left": 16,
+        "right": 374,
+        "client": 529,
+        "scroll": 529,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "locales",
+      "width": 390,
+      "height": 844,
+      "geometry": {
+        "top": 263.5,
+        "bottom": 580.5,
+        "left": 16,
+        "right": 374,
+        "client": 317,
+        "scroll": 317,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "categories",
+      "width": 1440,
+      "height": 900,
+      "geometry": {
+        "top": 205.5,
+        "bottom": 694.5,
+        "left": 464,
+        "right": 976,
+        "client": 489,
+        "scroll": 489,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    },
+    {
+      "route": "locales",
+      "width": 1440,
+      "height": 900,
+      "geometry": {
+        "top": 311.5,
+        "bottom": 588.5,
+        "left": 496,
+        "right": 944,
+        "client": 277,
+        "scroll": 277,
+        "overflow": "auto"
+      },
+      "keyboardCancel": true,
+      "escapeCloses": true
+    }
+  ],
+  "pageErrors": [],
+  "blockedWrites": [],
+  "portalData": "browser fixture only"
+}
