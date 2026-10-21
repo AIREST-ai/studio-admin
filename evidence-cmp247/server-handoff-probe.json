@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-21T13:05:11.758Z",
+  "serverRestartedForHandoff": true,
+  "serverCommand": "next dev --webpack --hostname 127.0.0.1 --port 8821",
+  "applicationCommit": "39bb6a245086d84c7cfa2f69f4804b81caddd497",
+  "workspace": "/Users/ali/server-work/ai-home/vendor/جولة-245-عامل-1",
+  "url": "http://127.0.0.1:8821/dashboard/start?first=1",
+  "httpStatus": 200,
+  "finalUrl": "http://127.0.0.1:8821/dashboard/start?first=1",
+  "channelButtons": 8,
+  "scope": "Live local test link; welcome and channel preview only. Real registration and first sign-in were not implemented."
+}

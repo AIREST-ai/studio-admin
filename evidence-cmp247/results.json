@@ -1,0 +1,109 @@
+{
+  "startedAt": "2026-10-21T12:35:22.760Z",
+  "base": "http://127.0.0.1:8821",
+  "checks": [
+    {
+      "screen": "desktop",
+      "name": "registration validation and first welcome; no account or credential transfer",
+      "passed": true,
+      "result": {
+        "url": "http://127.0.0.1:8821/dashboard/start?first=1",
+        "credentialTransfer": false,
+        "realAccountCreated": false,
+        "cookieContainsOnlyEntryKind": true
+      }
+    },
+    {
+      "screen": "desktop",
+      "name": "all eight channels remain selectable, stationary and inside mobile viewport",
+      "passed": false,
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(Math.abs(before.x - after.x) < 2 && Math.abs(before.y - after.y) < 2)\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "in-page channel form opens and closes with Escape without losing selection",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 1\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "refused channel save remains an error, not a successful connection (injected HTTP503)",
+      "passed": false,
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-emma-connect]')\u001b[22m\n\u001b[2m    - locator resolved to <button data-slot=\"button\" data-size=\"default\" data-variant=\"outline\" aria-haspopup=\"dialog\" data-emma-connect=\"true\" data-glass-connect-button=\"true\" class=\"group/button inline-flex shrink-0 items-center border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive ari…>…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" data-slot=\"dialog-overlay\" class=\"fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0\"></div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" data-slot=\"dialog-overlay\" class=\"fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0\"></div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    38 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" data-slot=\"dialog-overlay\" class=\"fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0\"></div> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "returning owner login reaches summary; unchecked remember lasts one day",
+      "passed": true,
+      "result": {
+        "url": "http://127.0.0.1:8821/dashboard/reports/summary",
+        "previewCookieDays": 1,
+        "credentialTransfer": false,
+        "roleSource": "existing viewer context"
+      }
+    },
+    {
+      "screen": "desktop",
+      "name": "remembered preview login lasts 30 days",
+      "passed": true,
+      "result": {
+        "previewCookieDays": 30,
+        "realAuthentication": false
+      }
+    },
+    {
+      "screen": "phone",
+      "name": "registration validation and first welcome; no account or credential transfer",
+      "passed": true,
+      "result": {
+        "url": "http://127.0.0.1:8821/dashboard/start?first=1",
+        "credentialTransfer": false,
+        "realAccountCreated": false,
+        "cookieContainsOnlyEntryKind": true
+      }
+    },
+    {
+      "screen": "phone",
+      "name": "all eight channels remain selectable, stationary and inside mobile viewport",
+      "passed": false,
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(Math.abs(before.x - after.x) < 2 && Math.abs(before.y - after.y) < 2)\n"
+    },
+    {
+      "screen": "phone",
+      "name": "in-page channel form opens and closes with Escape without losing selection",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n\n0 !== 1\n"
+    },
+    {
+      "screen": "phone",
+      "name": "refused channel save remains an error, not a successful connection (injected HTTP503)",
+      "passed": false,
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-emma-connect]')\u001b[22m\n\u001b[2m    - locator resolved to <button data-slot=\"button\" data-size=\"default\" data-variant=\"outline\" aria-haspopup=\"dialog\" data-emma-connect=\"true\" data-glass-connect-button=\"true\" class=\"group/button inline-flex shrink-0 items-center border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive ari…>…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" data-slot=\"dialog-overlay\" class=\"fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0\"></div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" data-slot=\"dialog-overlay\" class=\"fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0\"></div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    38 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" data-slot=\"dialog-overlay\" class=\"fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0\"></div> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n"
+    },
+    {
+      "screen": "phone",
+      "name": "returning owner login reaches summary; unchecked remember lasts one day",
+      "passed": true,
+      "result": {
+        "url": "http://127.0.0.1:8821/dashboard/reports/summary",
+        "previewCookieDays": 1,
+        "credentialTransfer": false,
+        "roleSource": "existing viewer context"
+      }
+    },
+    {
+      "screen": "phone",
+      "name": "remembered preview login lasts 30 days",
+      "passed": true,
+      "result": {
+        "previewCookieDays": 30,
+        "realAuthentication": false
+      }
+    }
+  ],
+  "pageErrors": [],
+  "faultInjections": [],
+  "previousAttempt": "first-attempt-results.json; stopped after translated selectors and pre-hydration native submit were diagnosed",
+  "liveAgentLogin": "Not tested: every available live account member is an administrator. Role routing is unit-tested separately.",
+  "finishedAt": "2026-10-21T12:36:20.343Z"
+}

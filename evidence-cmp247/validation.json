@@ -1,0 +1,35 @@
+{
+  "executedAt": "2026-10-21T12:54:05.921Z",
+  "version": "39bb6a245086d84c7cfa2f69f4804b81caddd497",
+  "results": [
+    {
+      "command": "npx",
+      "args": [
+        "tsc",
+        "--noEmit",
+        "--pretty",
+        "false"
+      ],
+      "status": 1,
+      "stdout": "src/app/(main)/dashboard/chat/_components/reply-box.tsx(566,21): error TS2339: Property 'kind' does not exist on type 'Message'.\nsrc/app/api/captain-engine/route.ts(1046,53): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.\n",
+      "stderr": ""
+    },
+    {
+      "command": "npx",
+      "args": [
+        "biome",
+        "check",
+        "src/app/(main)/auth/_components/login-form.tsx",
+        "src/app/(main)/auth/_components/register-form.tsx",
+        "src/app/(main)/auth/_components/preview-entry.tsx",
+        "src/lib/preview-signin/client.ts",
+        "src/lib/preview-signin/shared.ts",
+        "src/app/(main)/dashboard/start",
+        "src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx"
+      ],
+      "status": 0,
+      "stdout": "Checked 11 files in 441ms. No fixes applied.\n",
+      "stderr": ""
+    }
+  ]
+}

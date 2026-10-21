@@ -1,0 +1,88 @@
+{
+  "startedAt": "2026-10-21T12:38:30.231Z",
+  "checks": [
+    {
+      "screen": "unit",
+      "name": "entry decision: agent, new owner, returning owner",
+      "passed": true,
+      "result": {
+        "scenarios": 4,
+        "scope": "real routing function, not an authenticated agent session"
+      }
+    },
+    {
+      "screen": "desktop",
+      "name": "stationary selection and no overflow for all eight channels after layout fix",
+      "passed": true,
+      "result": {
+        "channels": 8,
+        "horizontalOverflow": false
+      }
+    },
+    {
+      "screen": "desktop",
+      "name": "channel form opens in place and Escape closes without changing selection",
+      "passed": true,
+      "result": {
+        "escapeCloses": true,
+        "selectionPreserved": true
+      }
+    },
+    {
+      "screen": "desktop",
+      "name": "actual API inbox creation and service readback; only the temporary test inbox is deleted",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'AIREST Test'\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "injected save refusal: dialog stays open and no success result appears",
+      "passed": false,
+      "error": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByRole('alert') to be visible\u001b[22m\n"
+    },
+    {
+      "screen": "phone",
+      "name": "stationary selection and no overflow for all eight channels after layout fix",
+      "passed": true,
+      "result": {
+        "channels": 8,
+        "horizontalOverflow": false
+      }
+    },
+    {
+      "screen": "phone",
+      "name": "channel form opens in place and Escape closes without changing selection",
+      "passed": true,
+      "result": {
+        "escapeCloses": true,
+        "selectionPreserved": true
+      }
+    },
+    {
+      "screen": "phone",
+      "name": "actual API inbox creation and service readback; only the temporary test inbox is deleted",
+      "passed": false,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'AIREST Test'\n"
+    },
+    {
+      "screen": "phone",
+      "name": "injected save refusal: dialog stays open and no success result appears",
+      "passed": false,
+      "error": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByRole('alert') to be visible\u001b[22m\n"
+    },
+    {
+      "screen": "no-js",
+      "name": "login and register cannot accept typed credentials before hydration",
+      "passed": true,
+      "result": {
+        "fieldsDisabledBeforeHydration": true,
+        "nativeGetCredentialQueryPrevented": true
+      }
+    }
+  ],
+  "cleanups": [],
+  "unavailable": [
+    "Real user registration and agent login: no account service or live agent exists in this version"
+  ],
+  "finishedAt": "2026-10-21T12:39:16.142Z"
+}

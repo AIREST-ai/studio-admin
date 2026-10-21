@@ -1,0 +1,20 @@
+{
+  "source": "Recovered from the terminal result of cmp247-api-audit.cjs, execution session 58848; not a new test run",
+  "startedAt": "2026-10-21T12:43:29.628Z",
+  "finishedAt": "2026-10-21T12:44:31.641Z",
+  "version": "0734eb44de166c789989a4ced23ae86af03db4a8",
+  "checks": [
+    { "screen": "desktop", "realCreationPassed": true, "inboxId": 13, "accountName": "AIREST Test", "readbackPassed": true, "externalProviderConnected": false },
+    { "screen": "phone", "realCreationPassed": true, "inboxId": 14, "accountName": "AIREST Test", "readbackPassed": true, "externalProviderConnected": false }
+  ],
+  "requests": [
+    { "screen": "desktop", "path": "/api/cw/inboxes", "method": "POST", "status": 200 },
+    { "screen": "phone", "path": "/api/cw/inboxes", "method": "POST", "status": 200 }
+  ],
+  "cleanups": [
+    { "temporaryInboxId": 13, "status": 403, "retried": false },
+    { "temporaryInboxId": 14, "status": 403, "retried": false }
+  ],
+  "historicalRefusalChecks": "Both timed out; they are not accepted. The later readiness-gated refusal-results.json is the successful replacement evidence.",
+  "recoveryReason": "The audit helper writes progress to api-results.json; a later refusal-only run overwrote that progress file. This receipt preserves the original terminal evidence explicitly."
+}

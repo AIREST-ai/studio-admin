@@ -1,0 +1,42 @@
+{
+  "startedAt": "2026-10-21T12:50:28.459Z",
+  "checks": [
+    {
+      "screen": "desktop",
+      "name": "save refusal has no successful connection claim (injected, up to real waiter timeout)",
+      "passed": true,
+      "result": {
+        "faultInjected": true,
+        "error": "لم يكتمل الربط: CMP247 injected rejection",
+        "successfulConnectionClaim": false
+      }
+    },
+    {
+      "screen": "phone",
+      "name": "save refusal has no successful connection claim (injected, up to real waiter timeout)",
+      "passed": true,
+      "result": {
+        "faultInjected": true,
+        "error": "لم يكتمل الربط: CMP247 injected rejection",
+        "successfulConnectionClaim": false
+      }
+    }
+  ],
+  "requests": [
+    {
+      "screen": "desktop",
+      "path": "/api/cw/inboxes",
+      "method": "POST",
+      "status": 503
+    },
+    {
+      "screen": "phone",
+      "path": "/api/cw/inboxes",
+      "method": "POST",
+      "status": 503
+    }
+  ],
+  "cleanups": [],
+  "scope": "save refusal after live adapter readiness; no real create or delete",
+  "finishedAt": "2026-10-21T12:50:46.981Z"
+}

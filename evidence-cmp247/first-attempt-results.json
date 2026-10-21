@@ -1,0 +1,62 @@
+{
+  "startedAt": "2026-10-21T12:30:45.965Z",
+  "base": "http://127.0.0.1:8821",
+  "checks": [
+    {
+      "screen": "desktop",
+      "name": "registration validation and first welcome; no account or credential transfer",
+      "passed": false,
+      "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Passwords do not match.', { exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "all eight channels remain selectable, stationary and inside mobile viewport",
+      "passed": false,
+      "error": "locator.boundingBox: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'اختيار واتساب', exact: true })\u001b[22m\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "in-page channel form opens and closes with Escape without losing selection",
+      "passed": false,
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-emma-connect]')\u001b[22m\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "refused channel save remains an error, not a successful connection (injected HTTP503)",
+      "passed": false,
+      "error": "locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-emma-connect]')\u001b[22m\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "returning owner login reaches summary; unchecked remember lasts one day",
+      "passed": false,
+      "error": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/dashboard/reports/summary\" until \"load\"\n  navigated to \"http://127.0.0.1:8821/auth/v2/login?email=cmp247-preview%40example.test&password=PreviewOnly247\"\n============================================================"
+    },
+    {
+      "screen": "desktop",
+      "name": "remembered preview login lasts 30 days",
+      "passed": false,
+      "error": "locator.check: Clicking the checkbox did not change its state\nCall log:\n\u001b[2m  - waiting for locator('#login-remember')\u001b[22m\n\u001b[2m    - locator resolved to <button value=\"on\" type=\"button\" role=\"checkbox\" id=\"login-remember\" aria-checked=\"false\" data-slot=\"checkbox\" aria-invalid=\"false\" data-state=\"unchecked\" class=\"peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:bo…></button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - performing click action\u001b[22m\n\u001b[2m    - click action done\u001b[22m\n\u001b[2m    - waiting for scheduled navigations to finish\u001b[22m\n\u001b[2m    - navigations have finished\u001b[22m\n"
+    },
+    {
+      "screen": "desktop",
+      "name": "existing agent-view entry goes to Inbox",
+      "passed": false,
+      "error": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/dashboard/chat\" until \"load\"\n  navigated to \"http://127.0.0.1:8821/dashboard/start\"\n  navigated to \"http://127.0.0.1:8821/dashboard/reports/summary\"\n============================================================"
+    },
+    {
+      "screen": "phone",
+      "name": "registration validation and first welcome; no account or credential transfer",
+      "passed": false,
+      "error": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Passwords do not match.', { exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "screen": "phone",
+      "name": "all eight channels remain selectable, stationary and inside mobile viewport",
+      "passed": false,
+      "error": "locator.boundingBox: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'اختيار واتساب', exact: true })\u001b[22m\n"
+    }
+  ],
+  "pageErrors": [],
+  "faultInjections": []
+}
