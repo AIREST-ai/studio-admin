@@ -18,8 +18,10 @@ export function LogOutMenuItem() {
   return (
     <DropdownMenuItem
       data-log-out
-      onSelect={() => {
+      onSelect={async () => {
         leavePreview();
+        // حارس الدخول (2026-10-19): يمسح الخادم كعكة الجلسة الحقيقية.
+        await fetch("/api/studio-auth/logout", { method: "POST" }).catch(() => null);
         router.push("/auth/v2/login?signedOut=1");
       }}
     >

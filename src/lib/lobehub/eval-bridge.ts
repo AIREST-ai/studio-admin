@@ -10,7 +10,8 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export const STUDIO_DATA_DIR = "/Users/ali/server-work/ai-home/vendor/studio-admin/.studio-data";
+// 2026-10-19 (نسخة الإنتاج لـ app.airest.ai): مجلد بيانات النسخة نفسها لا مجلد studio-admin.
+export const STUDIO_DATA_DIR = path.join(process.cwd(), ".studio-data");
 export const CSAT_EVAL_STORE_PATH = path.join(STUDIO_DATA_DIR, "csat-eval-store.json");
 export const EVAL_DEDUP_WINDOW_MS = 60_000;
 

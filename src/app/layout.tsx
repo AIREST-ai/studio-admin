@@ -25,7 +25,7 @@ if (process.env.NODE_ENV === "development" && process.env.TURBOPACK) {
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://studio-admin.arhamkhnz.com"),
+  metadataBase: new URL("https://app.airest.ai"),
   title: APP_CONFIG.meta.title,
   description: APP_CONFIG.meta.description,
   twitter: {
@@ -38,7 +38,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     PREFERENCE_DEFAULTS;
   return (
     <html
-      lang="en"
+      lang="ar"
+      dir="rtl"
       className={theme_mode === "light" ? undefined : "dark"}
       style={{ colorScheme: theme_mode === "dark" ? "dark" : "light" }}
       data-theme-mode={theme_mode}

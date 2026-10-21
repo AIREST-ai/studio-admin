@@ -44,8 +44,8 @@ export interface LinkState {
   disabled: boolean;
 }
 
-export const READ_ONLY_TEXT = "Protected live engine link";
-export const LINK_BADGE_TEXT = "Linked: Live Engine";
+export const READ_ONLY_TEXT = "اتصال محمي بالمحرك الحي";
+export const LINK_BADGE_TEXT = "متصل: المحرك الحي";
 
 /** Why the server could not read the live engine. The message starts with the words the card shows. */
 export type LinkProblemKind = "no-token" | "refused" | "unreachable" | "identity" | "error";
@@ -155,7 +155,7 @@ export interface LinkedContactBody {
 }
 
 /* L-3: the conversation writes. The browser posts these to /api/chatwoot/conversations/<id>(/messages). */
-export const WRITE_PHASE_TEXT = "Writes go to the live engine";
+export const WRITE_PHASE_TEXT = "الكتابة مباشرة إلى المحرك الحي";
 
 /** POST /api/chatwoot/conversations/<id>/messages */
 export interface LinkedReplyRequest {

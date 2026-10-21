@@ -1,0 +1,66 @@
+[96m.next/types/app/api/calls/[action]/route.ts[0m:[93m14[0m:[93m13[0m - [91merror[0m[90m TS2344: [0mType 'OmitWithTag<typeof import("/Users/ali/server-work/ai-home/vendor/\u062C\u0648\u0644\u0629-245-\u0639\u0627\u0645\u0644-3/src/app/api/calls/[action]/route"), "PUT" | "config" | "POST" | "GET" | "PATCH" | "DELETE" | "HEAD" | "prefetch" | ... 10 more ... | "OPTIONS", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'ALLOWED_CALL_ACTIONS' is incompatible with index signature.
+    Type 'Set<string>' is not assignable to type 'never'.
+
+[7m 14[0m checkFields<Diff<{
+[7m   [0m [91m            ~~~~~~[0m
+[7m 15[0m   GET?: Function
+[7m   [0m [91m~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m 35[0m 
+[7m   [0m [91m[0m
+[7m 36[0m }, TEntry, ''>>()
+[7m   [0m [91m~~~~~~~~~~~~~~[0m
+
+[96m.next/types/app/api/captain-engine/route.ts[0m:[93m14[0m:[93m13[0m - [91merror[0m[90m TS2344: [0mType 'OmitWithTag<typeof import("/Users/ali/server-work/ai-home/vendor/\u062C\u0648\u0644\u0629-245-\u0639\u0627\u0645\u0644-3/src/app/api/captain-engine/route"), "PUT" | "config" | "POST" | "GET" | "PATCH" | "DELETE" | "HEAD" | "prefetch" | ... 10 more ... | "OPTIONS", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'analyzeEvaluation' is incompatible with index signature.
+    Type '(customerText: string, agentReply: string, agentName?: string) => EvalCaseResult' is not assignable to type 'never'.
+
+[7m 14[0m checkFields<Diff<{
+[7m   [0m [91m            ~~~~~~[0m
+[7m 15[0m   GET?: Function
+[7m   [0m [91m~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m 35[0m 
+[7m   [0m [91m[0m
+[7m 36[0m }, TEntry, ''>>()
+[7m   [0m [91m~~~~~~~~~~~~~~[0m
+
+[96m.next/types/app/api/comments/[action]/route.ts[0m:[93m14[0m:[93m13[0m - [91merror[0m[90m TS2344: [0mType 'OmitWithTag<typeof import("/Users/ali/server-work/ai-home/vendor/\u062C\u0648\u0644\u0629-245-\u0639\u0627\u0645\u0644-3/src/app/api/comments/[action]/route"), "PUT" | "config" | "POST" | "GET" | "PATCH" | "DELETE" | "HEAD" | ... 11 more ... | "OPTIONS", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'ALLOWED_COMMENT_ACTIONS' is incompatible with index signature.
+    Type 'Set<string>' is not assignable to type 'never'.
+
+[7m 14[0m checkFields<Diff<{
+[7m   [0m [91m            ~~~~~~[0m
+[7m 15[0m   GET?: Function
+[7m   [0m [91m~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m 35[0m 
+[7m   [0m [91m[0m
+[7m 36[0m }, TEntry, ''>>()
+[7m   [0m [91m~~~~~~~~~~~~~~[0m
+
+[96msrc/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[0m:[93m232[0m:[93m7[0m - [91merror[0m[90m TS2345: [0mArgument of type 'string' is not assignable to parameter of type '() => void'.
+
+[7m232[0m       `تم اعتماد وتفعيل خطة إيمه في كل شيء سمارت (${placed.length} عناصر مفعّلة)`,
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[0m:[93m234[0m:[93m10[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m234[0m     if (!ok) {
+[7m   [0m [91m         ~~[0m
+
+[96msrc/app/(main)/dashboard/chat/_components/reply-box.tsx[0m:[93m566[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'kind' does not exist on type 'Message'.
+
+[7m566[0m             kind: m.kind,
+[7m   [0m [91m                    ~~~~[0m
+
+
+Found 6 errors in 5 files.
+
+Errors  Files
+     1  .next/types/app/api/calls/[action]/route.ts[90m:14[0m
+     1  .next/types/app/api/captain-engine/route.ts[90m:14[0m
+     1  .next/types/app/api/comments/[action]/route.ts[90m:14[0m
+     2  src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[90m:232[0m
+     1  src/app/(main)/dashboard/chat/_components/reply-box.tsx[90m:566[0m

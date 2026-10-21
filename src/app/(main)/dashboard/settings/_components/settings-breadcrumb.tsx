@@ -19,14 +19,17 @@ export function SettingsBreadcrumb({ items }: { items: Crumb[] }) {
       className="flex flex-wrap items-center gap-1 text-muted-foreground text-sm"
     >
       {items.map((item, index) => (
-        <span key={item.href ?? item.label} className="flex items-center gap-1">
-          {index > 0 ? <ChevronRight className="size-3.5" /> : null}
+        <span key={item.href ?? item.label} className="flex min-w-0 max-w-full items-center gap-1">
+          {index > 0 ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 rtl:rotate-180" /> : null}
           {item.href ? (
-            <Link href={item.href} className="hover:text-foreground">
+            <Link
+              href={item.href}
+              className="min-w-0 [overflow-wrap:anywhere] hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            >
               {item.label}
             </Link>
           ) : (
-            <span className="text-foreground" aria-current="page">
+            <span className="min-w-0 text-foreground [overflow-wrap:anywhere]" aria-current="page">
               {item.label}
             </span>
           )}

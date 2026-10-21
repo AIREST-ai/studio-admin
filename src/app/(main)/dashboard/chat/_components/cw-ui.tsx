@@ -20,7 +20,15 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react";
-import { type SimpleIcon as SimpleIconData, siFacebook, siInstagram, siWhatsapp } from "simple-icons";
+import {
+  type SimpleIcon as SimpleIconData,
+  siInstagram,
+  siLine,
+  siMessenger,
+  siTelegram,
+  siTiktok,
+  siWhatsapp,
+} from "simple-icons";
 
 import { personToneClass } from "@/app/(main)/dashboard/contacts/_components/studio-ui";
 import { SimpleIcon } from "@/components/simple-icon";
@@ -31,6 +39,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/utils";
 
+import { channelIdentity } from "./channel-identity";
 import {
   type ConversationMeta,
   type CwStatus,
@@ -40,9 +49,18 @@ import {
   useLiveTeams,
 } from "./cw-data";
 
-const brandIcons = { whatsapp: siWhatsapp, instagram: siInstagram, facebook: siFacebook } as const;
+const brandIcons = {
+  whatsapp: siWhatsapp,
+  instagram: siInstagram,
+  facebook: siMessenger,
+  messenger: siMessenger,
+  telegram: siTelegram,
+  tiktok: siTiktok,
+  line: siLine,
+} as const;
 
 export function ChannelIcon({ channel, className }: { channel: string; className?: string }) {
+  channel = channelIdentity(channel);
   if (channel in brandIcons) {
     return (
       <span className={cn("inline-flex size-3.5 shrink-0 items-center justify-center [&_svg]:size-3.5", className)}>
@@ -69,13 +87,18 @@ function brandNavIcon(icon: SimpleIconData): LucideIcon {
 const brandNavIcons: Record<keyof typeof brandIcons, LucideIcon> = {
   whatsapp: brandNavIcon(siWhatsapp),
   instagram: brandNavIcon(siInstagram),
-  facebook: brandNavIcon(siFacebook),
+  facebook: brandNavIcon(siMessenger),
+  messenger: brandNavIcon(siMessenger),
+  telegram: brandNavIcon(siTelegram),
+  tiktok: brandNavIcon(siTiktok),
+  line: brandNavIcon(siLine),
 };
 
 export function channelNavIcon(channel: string): LucideIcon {
-  if (channel in brandNavIcons) return brandNavIcons[channel as keyof typeof brandNavIcons];
-  if (channel === "email") return Mail;
-  if (channel === "phone") return Phone;
+  const identity = channelIdentity(channel);
+  if (identity in brandNavIcons) return brandNavIcons[identity as keyof typeof brandNavIcons];
+  if (identity === "email") return Mail;
+  if (identity === "phone") return Phone;
   return MessageCircle;
 }
 

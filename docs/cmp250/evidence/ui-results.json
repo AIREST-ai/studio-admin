@@ -1,0 +1,85 @@
+{
+  "results": [
+    {
+      "width": 320,
+      "searchArabic": [
+        "/dashboard/users",
+        "/dashboard/settings/teams",
+        "/dashboard/settings/assignment-policy",
+        "/dashboard/users?tab=roles"
+      ],
+      "searchEnglish": true,
+      "linkNavigation": true,
+      "tabsKeyboardRTL": true,
+      "notificationsClick": true,
+      "geometry": {
+        "window": 320,
+        "document": 320,
+        "scrollClient": 288,
+        "scrollWidth": 409,
+        "overflow": "auto"
+      }
+    },
+    {
+      "width": 390,
+      "searchArabic": [
+        "/dashboard/users",
+        "/dashboard/settings/teams",
+        "/dashboard/settings/assignment-policy",
+        "/dashboard/users?tab=roles"
+      ],
+      "searchEnglish": true,
+      "linkNavigation": true,
+      "tabsKeyboardRTL": true,
+      "notificationsClick": true,
+      "geometry": {
+        "window": 390,
+        "document": 390,
+        "scrollClient": 358,
+        "scrollWidth": 409,
+        "overflow": "auto"
+      }
+    },
+    {
+      "width": 768,
+      "searchArabic": [
+        "/dashboard/users",
+        "/dashboard/settings/teams",
+        "/dashboard/settings/assignment-policy",
+        "/dashboard/users?tab=roles"
+      ],
+      "searchEnglish": true,
+      "linkNavigation": true,
+      "tabsKeyboardRTL": true,
+      "notificationsClick": true,
+      "geometry": {
+        "window": 768,
+        "document": 768,
+        "scrollClient": 448,
+        "scrollWidth": 448,
+        "overflow": "auto"
+      }
+    },
+    {
+      "width": 1440,
+      "searchArabic": [
+        "/dashboard/users",
+        "/dashboard/settings/teams",
+        "/dashboard/settings/assignment-policy",
+        "/dashboard/users?tab=roles"
+      ],
+      "searchEnglish": true,
+      "linkNavigation": true,
+      "tabsKeyboardRTL": true,
+      "notificationsClick": true,
+      "geometry": {
+        "window": 1440,
+        "document": 1440,
+        "scrollClient": 1120,
+        "scrollWidth": 1120,
+        "overflow": "auto"
+      }
+    }
+  ],
+  "pageErrors": []
+}

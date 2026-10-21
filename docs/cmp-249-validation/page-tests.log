@@ -1,0 +1,7 @@
+=== PAGE TESTS ===
+dashboard/captain → 200
+dashboard/captain/evaluator → 200
+dashboard/captain/smart → 200
+dashboard/captain/employee → 200
+dashboard/reports → 307
+dashboard/captain/build → 200

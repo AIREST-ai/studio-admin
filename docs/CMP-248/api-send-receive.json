@@ -1,0 +1,31 @@
+{
+  "checkedAt": "CMP-248 2026-10-21T12:16:08.629640+00:00",
+  "results": [
+    {
+      "direction": "incoming",
+      "httpStatus": 200,
+      "id": 94,
+      "message_type": 0,
+      "private": false,
+      "status": "sent",
+      "conversation_id": 2,
+      "inbox_id": 3
+    },
+    {
+      "direction": "outgoing",
+      "httpStatus": 200,
+      "id": 95,
+      "message_type": 1,
+      "private": false,
+      "status": "sent",
+      "conversation_id": 2,
+      "inbox_id": 3
+    },
+    {
+      "readBackIds": [
+        94,
+        95
+      ]
+    }
+  ]
+}
