@@ -5,6 +5,7 @@ import {
   BookOpen,
   Bot,
   Calendar,
+  CheckSquare,
   Contact,
   Ellipsis,
   Fingerprint,
@@ -397,12 +398,10 @@ export const sidebarItems: NavGroup[] = [
     label: "Pages",
     more: { id: "more", title: "More", icon: Ellipsis },
     items: [
-      // FAH-20 (Fahad FAH-12 axis 8): Calendar and Tasks are one entry, the Planner (Today, Calendar, Tasks); their own
-      // pages still open from old links.
       {
-        id: "planner",
-        title: "Planner",
-        url: "/dashboard/planner",
+        id: "calendar",
+        title: "Calendar",
+        url: "/dashboard/calendar",
         icon: Calendar,
       },
       {
@@ -410,6 +409,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Kanban",
         url: "/dashboard/kanban",
         icon: Kanban,
+      },
+      {
+        id: "tasks",
+        title: "Tasks",
+        url: "/dashboard/tasks",
+        icon: CheckSquare,
       },
       {
         id: "invoice",
