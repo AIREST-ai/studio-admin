@@ -361,29 +361,36 @@ function useFacebookAuth(fbAppId: string, fbApiVersion: string) {
         return;
       }
       const FB = (window as unknown as Record<string, unknown>).FB as {
-        login: (opts: Record<string, unknown>, cb: (res: Record<string, unknown>) => void) => void;
+        login: (cb: (res: Record<string, unknown>) => void, opts: Record<string, unknown>) => void;
       };
-      FB.login(
-        {
-          scope: "pages_manage_metadata,business_management,pages_messaging,pages_show_list,pages_read_engagement",
-        },
-        (response: Record<string, unknown>) => {
-          if (response.status === "connected") {
-            const authResponse = response.authResponse as Record<string, unknown> | undefined;
-            const token = authResponse?.code || authResponse?.accessToken;
-            if (typeof token === "string" && token) {
-              onToken(token);
+      // إصلاح 2026-10-19 (نسخة الإنتاج): توقيع الحزمة FB.login(دالة, خيارات). كان الترتيب معكوساً فترمي الحزمة
+      // «Expression is of type object, not function» ويبقى الزر يدور، فصار الترتيب صحيحاً، ومع أي خطأ يتوقف الدوران.
+      try {
+        FB.login(
+          (response: Record<string, unknown>) => {
+            if (response.status === "connected") {
+              const authResponse = response.authResponse as Record<string, unknown> | undefined;
+              const token = authResponse?.code || authResponse?.accessToken;
+              if (typeof token === "string" && token) {
+                onToken(token);
+              } else {
+                setError("Facebook authentication succeeded but no token was returned.");
+              }
+            } else if (response.status === "not_authorized" || response.status === "unknown") {
+              setError("Facebook authorization was cancelled or denied.");
             } else {
-              setError("Facebook authentication succeeded but no token was returned.");
+              setError("Facebook authentication failed.");
             }
-          } else if (response.status === "not_authorized" || response.status === "unknown") {
-            setError("Facebook authorization was cancelled or denied.");
-          } else {
-            setError("Facebook authentication failed.");
-          }
-          setBusy(false);
-        },
-      );
+            setBusy(false);
+          },
+          {
+            scope: "pages_manage_metadata,business_management,pages_messaging,pages_show_list,pages_read_engagement",
+          },
+        );
+      } catch (err) {
+        setError(`Facebook login could not start: ${err instanceof Error ? err.message : String(err)}`);
+        setBusy(false);
+      }
     },
     [ensureSdk],
   );
@@ -521,42 +528,51 @@ function useWhatsappEmbeddedSignup(configId: string, fbAppId: string, fbApiVersi
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const FB = (window as unknown as Record<string, any>).FB as any;
-      FB.login(
-        {
-          config_id: configId,
-          response_type: "code",
-          override_default_response_type: true,
-          extras: {
-            setup: {},
-            featureType: "whatsapp_business_app_onboarding",
-            sessionInfoVersion: "3",
-          },
-        },
-        (response: Record<string, unknown>) => {
-          const code = (response.authResponse as Record<string, unknown>)?.code as string | undefined;
-          const stored = (window as unknown as Record<string, unknown>).__v37WhatsappData as
-            | { wabaId: string; phoneNumberId: string; businessId: string }
-            | undefined;
-          delete (window as unknown as Record<string, unknown>).__v37WhatsappData;
+      // إصلاح 2026-10-19 (نسخة الإنتاج): توقيع الحزمة FB.login(دالة, خيارات). كان الترتيب معكوساً فترمي الحزمة
+      // «Expression is of type object, not function» ويبقى الزر يدور، فصار الترتيب صحيحاً، ومع أي خطأ يتوقف الدوران.
+      try {
+        FB.login(
+          (response: Record<string, unknown>) => {
+            const code = (response.authResponse as Record<string, unknown>)?.code as string | undefined;
+            const stored = (window as unknown as Record<string, unknown>).__v37WhatsappData as
+              | { wabaId: string; phoneNumberId: string; businessId: string }
+              | undefined;
+            delete (window as unknown as Record<string, unknown>).__v37WhatsappData;
 
-          if (code && stored?.wabaId) {
-            onComplete({
-              code,
-              wabaId: stored.wabaId,
-              phoneNumberId: stored.phoneNumberId || undefined,
-              businessId: stored.businessId || undefined,
-            });
-          } else if (!code) {
-            setError("WhatsApp signup was cancelled or the authorization code was not returned.");
-            setState("idle");
-          } else {
-            setError("WhatsApp Business Account ID was not received from Meta. Please try again.");
-            setState("idle");
-          }
-          setBusy(false);
-          window.removeEventListener("message", listener);
-        },
-      );
+            if (code && stored?.wabaId) {
+              onComplete({
+                code,
+                wabaId: stored.wabaId,
+                phoneNumberId: stored.phoneNumberId || undefined,
+                businessId: stored.businessId || undefined,
+              });
+            } else if (!code) {
+              setError("WhatsApp signup was cancelled or the authorization code was not returned.");
+              setState("idle");
+            } else {
+              setError("WhatsApp Business Account ID was not received from Meta. Please try again.");
+              setState("idle");
+            }
+            setBusy(false);
+            window.removeEventListener("message", listener);
+          },
+          {
+            config_id: configId,
+            response_type: "code",
+            override_default_response_type: true,
+            extras: {
+              setup: {},
+              featureType: "whatsapp_business_app_onboarding",
+              sessionInfoVersion: "3",
+            },
+          },
+        );
+      } catch (err) {
+        setError(`Facebook login could not start: ${err instanceof Error ? err.message : String(err)}`);
+        setBusy(false);
+        setState("idle");
+        window.removeEventListener("message", listener);
+      }
     },
     [configId, ensureSdk],
   );
@@ -862,7 +878,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
                       page_details?: Array<{ id: string; name: string; access_token?: string }>;
                       user_access_token?: string;
                     };
-                    const pageList = (body.page_details ?? []).map((p: { id: string; name: string }) => ({
+                    const pageList = (((body as { data?: { page_details?: typeof body.page_details } }).data?.page_details ?? body.page_details) ?? []).map((p: { id: string; name: string }) => ({
                       id: p.id,
                       name: p.name,
                       exists: true,
@@ -932,7 +948,7 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
                     page_details?: Array<{ id: string; name: string; access_token?: string }>;
                     user_access_token?: string;
                   };
-                  const pageList = (body.page_details ?? []).map((p: { id: string; name: string }) => ({
+                  const pageList = (((body as { data?: { page_details?: typeof body.page_details } }).data?.page_details ?? body.page_details) ?? []).map((p: { id: string; name: string }) => ({
                     id: p.id,
                     name: p.name,
                     exists: true,
@@ -1000,6 +1016,8 @@ function FacebookForm({ channel, onCreate }: { channel: Channel; onCreate: (crea
               channel: "facebook",
               name: name.trim(),
               identifier: pages.find((p) => p.id === page)?.name || name.trim(),
+              // 2026-10-19: Chatwoot already made this inbox; the save adopts its id instead of a second POST /inboxes.
+              channelParams: { existingInboxId: created.id },
             });
           })
           .catch((err) => {
@@ -1266,6 +1284,7 @@ function EmbeddedSignup({ onCreate }: { onCreate: (created: CreatedInbox) => voi
             name,
             provider: "embedded",
             phone: phone || undefined,
+            channelParams: { existingInboxId: Number(body.id) },
           });
         })
         .catch((err) => {
@@ -1835,6 +1854,7 @@ function InstagramChannelForm({ channel, onCreate }: { channel: Channel; onCreat
                   channel: "instagram",
                   name: newIg.name || "Instagram",
                   identifier: newIg.name || undefined,
+                  channelParams: { existingInboxId: newIg.id },
                 });
               }
             },

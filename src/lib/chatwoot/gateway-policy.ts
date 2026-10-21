@@ -328,7 +328,8 @@ export const TEST_INBOX_ID = 3;
 /** V-16: the only conversation allowed for mute/unmute/transcript/delete-message during Meta review. */
 export const TEST_CONVERSATION_ID = 2;
 
-const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript", "messages"]);
+// 2026-10-19 أمر فهد «جرب الرسائل والمحادثات بنفسك»: الرد في كل المحادثات مفتوح؛ الكتم والنص والحذف تبقى مقفلة.
+const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript"]);
 
 function bodyInboxId(body: unknown): number | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;

@@ -20,7 +20,8 @@ export const OIDC_CLIENT_ID = "lobehub-studio";
 export const ALLOWED_SSO_CLIENTS = ["client_test_a", "client_test_b"] as const;
 export type AllowedSsoClient = (typeof ALLOWED_SSO_CLIENTS)[number];
 
-const SSO_DATA_DIR = "/Users/ali/server-work/ai-home/vendor/studio-admin/.studio-data/sso";
+// 2026-10-19 (نسخة الإنتاج لـ app.airest.ai): مجلد بيانات النسخة نفسها لا مجلد studio-admin، حتى لا تكتب النسخة في ملفات الأصل.
+const SSO_DATA_DIR = path.join(process.cwd(), ".studio-data", "sso");
 const SSO_STATE_FILE = path.join(SSO_DATA_DIR, "oidc-state.json");
 const CODE_TTL_MS = 5 * 60 * 1000;
 const ACCESS_TTL_SEC = 3600;

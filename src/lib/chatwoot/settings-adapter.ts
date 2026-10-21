@@ -701,6 +701,19 @@ async function syncInboxesDiff(before: Inbox[], after: Inbox[]): Promise<Inbox[]
     const prev = beforeMap.get(item.id);
     if (!prev) {
       const params = (item.channelParams ?? {}) as Record<string, unknown>;
+      // 2026-10-19: Facebook, Instagram and WhatsApp Cloud inboxes are made by Chatwoot's own callbacks; a second
+      // POST /inboxes with that channel type failed with "Channel must exist". Adopt the id Chatwoot gave instead.
+      const existingId = Number(params.existingInboxId);
+      if (Number.isInteger(existingId) && existingId > 0) {
+        delete item.channelParams;
+        const idx = updatedList.findIndex((x) => x === item);
+        if (updatedList.some((x) => x !== item && x.id === existingId)) {
+          if (idx >= 0) updatedList.splice(idx, 1);
+        } else if (idx >= 0) {
+          updatedList[idx] = { ...item, id: existingId, slug: `inbox-${existingId}` };
+        }
+        continue;
+      }
       try {
         const body = buildCreateInboxPayload(item, params);
         const res = await unifiedCw.POST("/inboxes", { body });
