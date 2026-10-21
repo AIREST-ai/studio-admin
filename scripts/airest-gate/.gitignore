@@ -1,0 +1,6 @@
+builds/
+sources/
+results/
+private/
+__pycache__/
+.venv/
