@@ -1,0 +1,19 @@
+{
+  "schema": "cmp279.part-verification.v1",
+  "runId": "390d3f76-908b-4c3e-af3a-91428239f687",
+  "sourceCommit": "85a3063",
+  "commit": "d10ee256ee4ea84f440c22dd390f9a49d4fe106e",
+  "parent": "d478423cf73185d87b20d959d22fe7b269a91895",
+  "tree": "dbd50bcb064b62c1285ff05f5b9c319969e695ad",
+  "build": {"command": "npm run build", "sessionId": 31345, "initialOutputChunk": "b9b4e8", "completionOutputChunk": "5353d4", "exitCode": 0, "warnings": 16, "fullConsoleOutputPreservedInThisFile": false},
+  "diffCheck": {"command": "git diff --check d478423 HEAD", "exitCode": 0},
+  "trackedWorktreeCleanBeforeBuild": true,
+  "trackedWorktreeCleanAfterBuild": true,
+  "partChangedFiles": 5,
+  "insertions": 2,
+  "deletions": 8747,
+  "browserAcceptanceProven": false,
+  "siteAcceptanceProven": false,
+  "merged": false,
+  "deployed": false
+}
