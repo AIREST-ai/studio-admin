@@ -1,0 +1,12 @@
+{
+  "mode": "linked",
+  "sections": {
+    "conversations": true,
+    "contacts": true,
+    "lists": true,
+    "automation": true,
+    "reports": true,
+    "notifications": false
+  },
+  "changedAt": "2026-10-18T04:43:37.478Z"
+}

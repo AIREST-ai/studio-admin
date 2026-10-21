@@ -1,0 +1,38 @@
+{
+  "state": {
+    "conversationAttrs": {
+      "2": { "resolution_reason": null, "order_number": null },
+      "5": { "resolution_reason": null, "order_number": null },
+      "20": { "resolution_reason": null, "order_number": null }
+    },
+    "contactAttrs": {},
+    "contactEdits": {},
+    "notes": {},
+    "meta": {
+      "1": { "teamId": null },
+      "2": { "priority": "high", "assigneeId": 1, "teamId": null, "participants": [1, 3], "unattended": false },
+      "3": { "teamId": null },
+      "5": { "priority": "low", "teamId": null },
+      "6": { "teamId": null },
+      "7": { "teamId": null },
+      "9": { "teamId": null },
+      "10": { "teamId": null },
+      "11": { "teamId": null },
+      "12": { "teamId": null },
+      "13": { "teamId": null },
+      "14": { "teamId": null },
+      "15": { "teamId": null },
+      "16": { "teamId": null },
+      "17": { "teamId": null },
+      "18": { "teamId": null },
+      "19": { "teamId": null },
+      "20": { "teamId": null },
+      "21": { "teamId": null },
+      "22": { "teamId": null },
+      "23": { "teamId": null },
+      "24": { "teamId": null }
+    },
+    "labels": {}
+  },
+  "savedAt": "2026-10-17T04:33:20.605Z"
+}

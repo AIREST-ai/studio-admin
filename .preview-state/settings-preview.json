@@ -1,0 +1,280 @@
+{
+  "conversationWorkflow": {
+    "autoResolve": {
+      "enabled": true,
+      "amount": 7,
+      "unit": "days",
+      "message": "We have closed this chat after 7 days without a reply. Message us any time and we will be happy to help.",
+      "ignoreWaiting": true,
+      "label": ""
+    },
+    "savedAt": "2026-10-15T07:49:34.825Z",
+    "requiredAttributes": ["resolution_reason", "order_number"]
+  },
+  "saml": {
+    "ssoUrl": "https://login.microsoftonline.com/9c1f-weblabs/saml2",
+    "idpEntityId": "https://sts.windows.net/9c1f-weblabs/",
+    "certificate": "-----BEGIN CERTIFICATE-----\nMIIC8DCCAdigAwIBAgIQGq0xV2l4mUeTj7n0bE1d3TANBgkqhkiG9w0BAQsFADA0\n-----END CERTIFICATE-----",
+    "savedAt": "2026-10-15T07:49:41.390Z",
+    "enabled": true
+  },
+  "slack": {
+    "mode": "two_way",
+    "savedAt": "2026-10-15T07:52:18.635Z",
+    "connection": "disconnected",
+    "channelId": ""
+  },
+  "captain": {
+    "features": {
+      "Label Suggestion": false,
+      "Audio Transcription": true,
+      "Help Center Search Indexing": true
+    },
+    "savedAt": "2026-10-15T07:52:44.235Z"
+  },
+  "account": {
+    "transcribeAudio": true,
+    "savedAt": "2026-10-15T14:53:38.552Z",
+    "supportEmail": "support@weblabs.studio",
+    "incomingEmailDomain": "mail.weblabs.studio"
+  },
+  "profile": {
+    "name": "Arham Khan",
+    "displayName": "Arham",
+    "email": "arham.khan@weblabs.studio",
+    "savedAt": "2026-10-15T13:52:21.658Z",
+    "signature": "Best regards,\nArham Khan\nCustomer Support · Weblabs Studio\n+974 4400 1122",
+    "fontSize": "Default",
+    "hotkey": "enter",
+    "notifications": {
+      "conversation_creation": {
+        "email": false,
+        "push": true
+      }
+    },
+    "language": "default",
+    "accessToken": "YGaYTjohNmab93fXZPXLJUdk"
+  },
+  "billing": {
+    "savedAt": "2026-10-15T07:50:05.384Z",
+    "purchases": [],
+    "currency": "USD"
+  },
+  "integrations": {
+    "linear": {
+      "connected": false,
+      "at": "2026-10-15T07:26:51.647Z"
+    },
+    "savedAt": "2026-10-15T07:26:51.647Z"
+  },
+  "lists": {
+    "assignmentPolicies": {
+      "rev": 13,
+      "items": [
+        {
+          "id": 1,
+          "name": "Front desk",
+          "description": "Even split of website chat across the whole support team.",
+          "active": true,
+          "order": "round_robin",
+          "priority": "earliest_created",
+          "maxPerAgent": 100,
+          "window": 60,
+          "staleDays": 7,
+          "inboxes": [2]
+        },
+        {
+          "id": 2,
+          "name": "Billing queue",
+          "description": "WhatsApp billing and invoice questions, longest waiting first.",
+          "active": true,
+          "order": "balanced",
+          "priority": "longest_waiting",
+          "maxPerAgent": 40,
+          "window": 60,
+          "staleDays": 14,
+          "inboxes": [3]
+        },
+        {
+          "id": 3,
+          "name": "Social channels",
+          "description": "Instagram and Facebook messages, paused while the social team is hiring.",
+          "active": false,
+          "order": "round_robin",
+          "priority": "longest_waiting",
+          "maxPerAgent": 60,
+          "window": 120,
+          "staleDays": 7,
+          "inboxes": [4, 5]
+        }
+      ]
+    },
+    "bots": {
+      "rev": 12,
+      "items": [
+        {
+          "id": 1,
+          "name": "Captain",
+          "description": "System bot",
+          "url": "https://chat.weblabs.studio/captain/webhook",
+          "system": true,
+          "accessToken": "Fq7vN2kXc9RtLm4bWz8sHy3d",
+          "secret": "whsec_4f8c2b1e9a7d6c3b"
+        },
+        {
+          "id": 2,
+          "name": "Order Status Bot",
+          "description": "Looks up an order by its number and answers delivery questions before handing off to an agent.",
+          "url": "https://bots.weblabs.studio/order-status",
+          "accessToken": "Mp3sQw8eRt2yUi7oPa5sDf6g",
+          "secret": "whsec_9b2d7e4a1c8f3e6d"
+        },
+        {
+          "id": 3,
+          "name": "Arabic FAQ Bot",
+          "description": "Answers common questions in Arabic about pricing, opening hours and the API.",
+          "url": "https://bots.weblabs.studio/faq-ar",
+          "accessToken": "Zx4cVb6nMq1wEr9tYu2iOp8a",
+          "secret": "whsec_1a5e9c3f7b2d8a4e"
+        },
+        {
+          "id": 4,
+          "name": "Lead Qualifier",
+          "description": "Asks new website visitors about budget and timeline, then labels the conversation as a lead.",
+          "url": "https://bots.weblabs.studio/lead-qualifier",
+          "accessToken": "Hj5kLz7xCv3bNm1qWe6rTy9u",
+          "secret": "whsec_7c3a1f9e5d2b6c8a"
+        }
+      ]
+    },
+    "webhooks": {
+      "rev": 36,
+      "items": [
+        {
+          "id": 1,
+          "name": "Order desk sync",
+          "url": "https://hooks.weblabs.studio/helpdesk/orders",
+          "events": ["conversation_created", "message_created", "contact_created"],
+          "secret": "k3v9q2x8m1p7z4t6w0r5y8u2e1a9s3d7"
+        },
+        {
+          "id": 2,
+          "name": "CRM leads",
+          "url": "https://crm.alnoordental.ae/api/webhooks/leads",
+          "events": ["contact_created", "contact_updated"],
+          "secret": "h8j2k4l6m9n1b3v5c7x0z2q4w6e8r1t3"
+        },
+        {
+          "id": 3,
+          "name": "Delivery status bot",
+          "url": "https://api.riyadhexpress.sa/v2/inbound/chat",
+          "events": ["message_created", "message_updated", "conversation_status_changed", "conversation_updated"],
+          "secret": "p0o9i8u7y6t5r4e3w2q1a2s3d4f5g6h7"
+        },
+        {
+          "id": 4,
+          "name": "",
+          "url": "https://hooks.dohafit.qa/webhook/7c1e-support",
+          "events": ["conversation_created", "conversation_status_changed", "webwidget_triggered", "inbox_updated"],
+          "secret": "z9x8c7v6b5n4m3l2k1j0h9g8f7d6s5a4"
+        }
+      ]
+    },
+    "dashboardApps": null,
+    "integrationHooks": {
+      "rev": 10,
+      "items": []
+    },
+    "customAttributes": null,
+    "customRoles": {
+      "rev": 1,
+      "items": [
+        {
+          "key": "custom_1",
+          "customRoleId": 1,
+          "name": "Support Lead",
+          "description": "Oversees the support queue, reassigns conversations and reviews team reports.",
+          "group": "Custom roles",
+          "accessLevel": "Scoped",
+          "permissions": [
+            "conversation_manage",
+            "conversation_unassigned_manage",
+            "conversation_participating_manage",
+            "contact_manage",
+            "report_manage"
+          ],
+          "lastReview": "Sep 2, 2026",
+          "owner": "Arham Khan",
+          "status": "Needs review",
+          "id": 1
+        },
+        {
+          "key": "custom_2",
+          "customRoleId": 2,
+          "name": "Tier 1 Support",
+          "description": "Picks up new conversations from the unassigned queue and hands off escalations.",
+          "group": "Custom roles",
+          "accessLevel": "Scoped",
+          "permissions": ["conversation_unassigned_manage", "conversation_participating_manage"],
+          "lastReview": "Aug 18, 2026",
+          "owner": "Priya Nair",
+          "status": "Active",
+          "id": 2
+        },
+        {
+          "key": "custom_3",
+          "customRoleId": 3,
+          "name": "Sales Agent",
+          "description": "Works leads coming in from WhatsApp and the website widget.",
+          "group": "Custom roles",
+          "accessLevel": "Scoped",
+          "permissions": ["conversation_participating_manage", "contact_manage"],
+          "lastReview": "Jul 27, 2026",
+          "owner": "Arham Khan",
+          "status": "Needs review",
+          "id": 3
+        },
+        {
+          "key": "custom_4",
+          "customRoleId": 4,
+          "name": "Content Editor",
+          "description": "Writes, updates and publishes help center articles.",
+          "group": "Custom roles",
+          "accessLevel": "Scoped",
+          "permissions": ["knowledge_base_manage"],
+          "lastReview": "Sep 30, 2026",
+          "owner": "Dana Bakr",
+          "status": "Active",
+          "id": 4
+        },
+        {
+          "key": "custom_5",
+          "customRoleId": 5,
+          "name": "Reporting Analyst",
+          "description": "Prepares the weekly CSAT, SLA and agent performance reviews.",
+          "group": "Custom roles",
+          "accessLevel": "Scoped",
+          "permissions": ["report_manage"],
+          "lastReview": "Jun 9, 2026",
+          "owner": "Priya Nair",
+          "status": "Needs review",
+          "id": 5
+        },
+        {
+          "key": "custom_6",
+          "customRoleId": 6,
+          "name": "zzf_f26_role_1440",
+          "description": "zzf custom role description",
+          "group": "Custom roles",
+          "accessLevel": "Scoped",
+          "permissions": ["conversation_manage", "conversation_unassigned_manage", "conversation_participating_manage"],
+          "lastReview": "Oct 16, 2026",
+          "owner": "Arham Khan",
+          "status": "Active",
+          "id": 6
+        }
+      ]
+    },
+    "dataImports": null
+  }
+}
