@@ -1,0 +1,12 @@
+{
+  "schema": "airest.scope.v1",
+  "repository": "AIREST-ai/studio-admin",
+  "task": "CMP-315",
+  "source": "/CMP/issues/CMP-279#document-gate-placement-ee9b645e",
+  "revision": "d72100b1-cb6e-435d-bb45-14a6defb1c37",
+  "paths": [
+    ".github/workflows/airest-gate.yml",
+    "scripts/airest-gate/**",
+    "docs/airest-gate.md"
+  ]
+}

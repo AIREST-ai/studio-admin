@@ -1,0 +1,91 @@
+name: airest-gate
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    name: airest-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+    steps:
+      - name: نسخة التزام الدمج المرشح
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: نسخة أداة الرئيسي الموثوقة
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.BASE_SHA }}
+          path: trusted
+          persist-credentials: false
+      - name: تثبيت بايثون
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12.3'
+      - name: منع تعديل البوابة والاختبارات
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BASE_SHA"
+          if test -f trusted/scripts/airest-gate/check.py; then
+            suite="$GITHUB_WORKSPACE/trusted/scripts/airest-gate"
+          else
+            suite="$GITHUB_WORKSPACE/candidate/scripts/airest-gate"
+          fi
+          printf 'GATE_SUITE=%s\n' "$suite" >> "$GITHUB_ENV"
+          python "$suite/guard.py" --candidate candidate --base trusted --out "$RUNNER_TEMP/airest-integrity"
+      - name: تثبيت نود
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.11.0'
+      - name: تثبيت تبعيات الفاحص
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -r "$GATE_SUITE/requirements-ci.txt"
+          python -m playwright install --with-deps chromium
+      - name: فحص آلية النتائج القائمة
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GATE_SUITE"
+          python -m unittest -v test_gate.py test_scope.py
+      - name: بناء ومعاينة وقبول المرشح
+        env:
+          AIREST_TEST_EMAIL: ${{ secrets.AIREST_TEST_EMAIL }}
+          AIREST_TEST_PASSWORD: ${{ secrets.AIREST_TEST_PASSWORD }}
+          AIREST_GATE_HIDDEN_CASES_B64: ${{ secrets.AIREST_GATE_HIDDEN_CASES_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python "$GATE_SUITE/run.py" --candidate "$GITHUB_WORKSPACE/candidate" --work "$RUNNER_TEMP/airest-run"
+      - name: حفظ دليل الفحص العام
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: airest-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/airest-integrity/integrity.json
+            ${{ runner.temp }}/airest-run/evidence/summary.json
+            ${{ runner.temp }}/airest-run/evidence/*-inputs.json
+            ${{ runner.temp }}/airest-run/evidence/*-npm-ci.json
+            ${{ runner.temp }}/airest-run/evidence/preview-build.json
+            ${{ runner.temp }}/airest-run/evidence/preview-after-build.json
+            ${{ runner.temp }}/airest-run/evidence/preview-service.json
+            ${{ runner.temp }}/airest-run/evidence/acceptance/report.json
+            ${{ runner.temp }}/airest-run/evidence/acceptance/build-result.json

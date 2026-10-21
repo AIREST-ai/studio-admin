@@ -1,0 +1,3 @@
+-r requirements.txt
+pyee==14.0.0
+greenlet==3.5.6
