@@ -1,8 +1,4 @@
 "use client";
-// F159: Studio Roles columns carrying Chatwoot v4.18 Custom Roles fields (CustomRoleTableBody.vue):
-// Name, Description, Permissions, and Edit / Delete in the row "…" menu.
-// F161: Studio-before columns Last review / Owner / Status and its row menu items are back (Fahad: restore what was
-// removed without a decision). Review changes, View details, Duplicate, Review permissions are wired on the mock store.
 import type { ColumnDef } from "@tanstack/react-table";
 import { cn } from "cn";
 import { CheckCheck, Copy, Eye, ListChecks, MoreVertical, Pencil, Trash2, Users } from "lucide-react";
@@ -56,7 +52,7 @@ export function makeRolesColumns({
     {
       id: "role",
       accessorKey: "name",
-      header: "Name",
+      header: "الدور",
       size: 170,
       minSize: 150,
       cell: ({ row }) => <span className="font-medium text-sm">{row.original.name}</span>,
@@ -64,10 +60,10 @@ export function makeRolesColumns({
     {
       id: "description",
       accessorKey: "description",
-      header: "Description",
+      header: "الوصف",
       size: 300,
       cell: ({ row }) => (
-        <span className="block truncate text-left text-muted-foreground text-sm" title={row.original.description}>
+        <span className="block truncate text-start text-muted-foreground text-sm" title={row.original.description}>
           {row.original.description}
         </span>
       ),
@@ -75,32 +71,32 @@ export function makeRolesColumns({
     {
       id: "accessLevel",
       accessorKey: "accessLevel",
-      header: "Access level",
+      header: "نطاق الصلاحية",
       size: 110,
       cell: ({ row }) => (
         <Badge className="rounded-sm" variant="outline">
-          {row.original.accessLevel}
+          {row.original.accessLevel === "Full" ? "شامل" : "محدد"}
         </Badge>
       ),
     },
     {
       id: "agents",
       accessorFn: (row) => agentCount(row),
-      header: "Agents",
+      header: "الموظفون",
       size: 80,
       cell: ({ row }) => <span className="text-sm tabular-nums">{agentCount(row.original)}</span>,
     },
     {
       id: "permissions",
       accessorFn: (row) => row.permissions.join(" "),
-      header: "Permissions",
+      header: "الصلاحيات",
       size: 330,
       cell: ({ row }) => {
         const perms = row.original.permissions;
         return (
           <div
             className="flex flex-wrap items-center justify-start gap-1.5"
-            title={perms.map((p) => permissionLabels[p]).join(", ")}
+            title={perms.map((p) => permissionLabels[p]).join("، ")}
           >
             {perms.slice(0, 3).map((p) => (
               <Badge className="rounded-sm" variant="outline" key={p}>
@@ -115,14 +111,14 @@ export function makeRolesColumns({
     {
       id: "lastReview",
       accessorKey: "lastReview",
-      header: "Last review",
+      header: "آخر مراجعة",
       size: 120,
       cell: ({ row }) => <span className="text-sm">{row.original.lastReview}</span>,
     },
     {
       id: "owner",
       accessorKey: "owner",
-      header: "Owner",
+      header: "المسؤول",
       size: 120,
       filterFn: "equalsString",
       cell: ({ row }) => <span className="text-sm">{row.original.owner}</span>,
@@ -130,7 +126,7 @@ export function makeRolesColumns({
     {
       id: "status",
       accessorKey: "status",
-      header: "Status",
+      header: "الحالة",
       size: 130,
       filterFn: "equalsString",
       cell: ({ row }) => (
@@ -143,13 +139,13 @@ export function makeRolesColumns({
           )}
           variant="outline"
         >
-          {row.original.status}
+          {row.original.status === "Needs review" ? "بانتظار المراجعة" : "نشط"}
         </Badge>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "إجراءات",
       size: 80,
       cell: ({ row }) => {
         const isSystemRole = row.original.group === "System roles";
@@ -157,7 +153,7 @@ export function makeRolesColumns({
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={`Open actions for ${row.original.name}`}>
+              <Button variant="ghost" size="icon-sm" aria-label={`إجراءات ${row.original.name}`}>
                 <MoreVertical />
               </Button>
             </DropdownMenuTrigger>
@@ -165,31 +161,31 @@ export function makeRolesColumns({
               <DropdownMenuGroup>
                 {needsReview ? (
                   <DropdownMenuItem onSelect={() => onReview(row.original)}>
-                    <CheckCheck /> Review changes
+                    <CheckCheck /> اعتماد المراجعة
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem onSelect={() => onViewDetails(row.original)}>
-                  <Eye /> View details
+                  <Eye /> عرض التفاصيل
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={isSystemRole} onSelect={() => onEdit(row.original)}>
-                  <Pencil /> Edit
+                  <Pencil /> تعديل
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={isSystemRole} onSelect={() => onDuplicate(row.original)}>
-                  <Copy /> Duplicate role
+                  <Copy /> نسخ الدور
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem onSelect={() => onReviewPermissions(row.original)}>
-                  <ListChecks /> Review permissions
+                  <ListChecks /> جدول الصلاحيات
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onViewAgents(row.original)}>
-                  <Users /> View agents
+                  <Users /> عرض الموظفين
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem disabled={isSystemRole} variant="destructive" onSelect={() => onDelete(row.original)}>
-                <Trash2 /> Delete
+                <Trash2 /> حذف
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

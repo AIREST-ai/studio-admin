@@ -84,6 +84,8 @@ import { downloadSample } from "@/lib/cw/preview-sim-ui";
 import { useViewer } from "@/lib/cw/view-as";
 
 import { BotReplySim } from "./bot-reply-sim";
+import channelHistory from "./channel-history.module.css";
+import { channelIdentity } from "./channel-identity";
 import { CreateTaskDialog, openCreateTask } from "./create-task-dialog";
 import { CustomerPathOption } from "./customer-path";
 import {
@@ -1081,6 +1083,7 @@ function MessageRow({
                 <Bubble
                   variant={bubbleVariant}
                   align={outbound ? "end" : "start"}
+                  data-channel-outgoing={message.kind === "outgoing" && !failed ? "" : undefined}
                   className={cn(
                     "max-w-full",
                     // Chatwoot Base.vue ERROR variant: light ruby fill with dark ruby text (readable in dark mode too).
@@ -1458,7 +1461,7 @@ export function ConversationPane({
   );
 
   return (
-    <div ref={paneRef} className={cn("flex h-full min-h-0 flex-col", className)}>
+    <div ref={paneRef} data-conversation-id={conversation.id} className={cn("flex h-full min-h-0 flex-col", className)}>
       <ConversationHeader
         conversation={conversation}
         showBackButton={showBackButton}
@@ -1474,8 +1477,10 @@ export function ConversationPane({
             edge cuts under the header or the 24h banner fades out instead of showing half cut; the content padding
             keeps the first item clear of the fade when the thread is at its top (pt-14). */}
         <MessageScroller
+          data-channel={channelIdentity(conversation.channel)}
           className={cn(
             "min-h-0 flex-1",
+            channelHistory.history,
             !isEmail && "[mask-image:linear-gradient(to_bottom,transparent,transparent_1rem,#000_3.5rem)]",
           )}
         >

@@ -45,6 +45,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -69,6 +70,7 @@ import { getInitials } from "@/lib/utils";
 
 import { PageHeading, personToneClass } from "../../contacts/_components/studio-ui";
 import { agents, type Call, type CallKind, calls, voiceInboxes } from "./data";
+import { downloadRecording, recordingUrl } from "./recording-download";
 
 const PAGE_SIZE = 10;
 
@@ -107,6 +109,7 @@ export interface LiveCallRecord {
   ended_by: "agent" | "customer" | "system" | "meta_error" | string;
   error_code: string;
   error_message: string;
+  recording_url?: string | null;
 }
 
 interface UnifiedCallRow {
@@ -132,6 +135,7 @@ interface UnifiedCallRow {
   errorCode: string;
   errorMessage: string;
   recordingSeconds: number | null;
+  recordingUrl: string | null;
   simulated?: boolean;
 }
 
@@ -144,7 +148,53 @@ function formatDuration(seconds: number) {
 
 const SPEEDS = [1, 1.5, 2];
 
-function RecordingPlayer({ seconds, name }: { seconds: number; name: string }) {
+function RecordingDownload({ callId, url, menu = false }: { callId: string; url: string | null; menu?: boolean }) {
+  const [downloading, setDownloading] = React.useState(false);
+  const progress = downloading ? "جاري تنزيل التسجيل…" : null;
+  const reason = !url ? "تنزيل التسجيل — رابط التسجيل غير متوفر" : progress;
+  const label = reason ?? "تنزيل التسجيل";
+  const download = async () => {
+    if (!url || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadRecording(url, callId);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تنزيل التسجيل؛ تحقق من الرابط وصلاحية الوصول");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (menu) {
+    return (
+      <DropdownMenuItem disabled={Boolean(reason)} onSelect={() => void download()}>
+        <Download /> {label}
+      </DropdownMenuItem>
+    );
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="rounded-full"
+            aria-label={label}
+            disabled={Boolean(reason)}
+            onClick={() => void download()}
+          >
+            <Download />
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function RecordingPlayer({ seconds, callId, url }: { seconds: number; callId: string; url: string | null }) {
   const [playing, setPlaying] = React.useState(false);
   const [position, setPosition] = React.useState(0);
   const [speed, setSpeed] = React.useState(1);
@@ -196,15 +246,7 @@ function RecordingPlayer({ seconds, name }: { seconds: number; name: string }) {
       >
         {speed}x
       </button>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        className="rounded-full"
-        aria-label="Download recording"
-        onClick={() => toast.success(`Recording of the call with ${name} downloaded`)}
-      >
-        <Download />
-      </Button>
+      <RecordingDownload callId={callId} url={url} />
     </div>
   );
 }
@@ -433,6 +475,7 @@ function mapLiveRecord(rec: LiveCallRecord): UnifiedCallRow {
     errorCode: rec.error_code || "",
     errorMessage: rec.error_message || "",
     recordingSeconds: null,
+    recordingUrl: recordingUrl(rec.recording_url),
   };
 }
 
@@ -484,6 +527,7 @@ function mapPreviewCall(call: Call & { simulated?: boolean }): UnifiedCallRow {
     errorCode: "",
     errorMessage: "",
     recordingSeconds: call.recordingSeconds,
+    recordingUrl: recordingUrl(call.recordingUrl),
     simulated: call.simulated,
   };
 }
@@ -527,6 +571,7 @@ function matchesCallFilter(row: UnifiedCallRow, filter: CallFilterKey): boolean 
 }
 
 export function CallsTable({ setup = false }: { setup?: boolean }) {
+  const [hydrated, setHydrated] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState<CallFilterKey>("all");
   const [searchQuery, setSearchQuery] = React.useState<string>("");
   const [assignee, setAssignee] = React.useState<number | null>(null);
@@ -540,7 +585,13 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
 
   const simCalls = usePreviewSim((s) => s.calls);
   const linkedActive = useLinkedAdapterStatus((s) => s.active);
-  const isLinked = linkedActive || linkedSession();
+  // The adapter can connect before this subtree hydrates. Keep its first client
+  // render identical to the server, then read the browser's connected state.
+  const isLinked = hydrated && (linkedActive || linkedSession());
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const fetchLiveHistory = React.useCallback(async (signal?: AbortSignal) => {
     setLoadingLive(true);
@@ -577,11 +628,12 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
   }, [isLinked, fetchLiveHistory]);
 
   const allUnifiedRows: UnifiedCallRow[] = React.useMemo(() => {
+    if (!hydrated) return [];
     if (isLinked) {
       return liveRecords.map(mapLiveRecord);
     }
     return [...calls, ...simCalls.map(listedOfSim)].map(mapPreviewCall).sort((a, b) => b.timestampMs - a.timestampMs);
-  }, [isLinked, liveRecords, simCalls]);
+  }, [hydrated, isLinked, liveRecords, simCalls]);
 
   const filterCounts = React.useMemo(() => {
     return {
@@ -949,7 +1001,7 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
                       {/* 4. Ring Duration & Talk Duration (tabular-nums) */}
                       <TableCell className="align-middle">
                         {call.recordingSeconds && !isLinked ? (
-                          <RecordingPlayer seconds={call.recordingSeconds} name={call.contactName} />
+                          <RecordingPlayer seconds={call.recordingSeconds} callId={call.id} url={call.recordingUrl} />
                         ) : (
                           <div className="flex flex-col gap-0.5 font-mono text-[11px] xl:text-xs tabular-nums">
                             <span className="text-muted-foreground tabular-nums">
@@ -1024,23 +1076,16 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              {call.conversationId ? (
-                                <DropdownMenuItem asChild>
-                                  <Link href={convHref}>
-                                    <MessageCircle className="size-4" /> فتح المحادثة #{call.conversationId}
-                                  </Link>
-                                </DropdownMenuItem>
-                              ) : null}
-                              {!isLinked && (
-                                <DropdownMenuItem
-                                  disabled={!call.recordingSeconds}
-                                  onSelect={() =>
-                                    toast.success(`Recording of the call with ${call.contactName} downloaded`)
-                                  }
-                                >
-                                  <Download className="size-4" /> Download recording
-                                </DropdownMenuItem>
-                              )}
+                              <DropdownMenuGroup>
+                                {call.conversationId ? (
+                                  <DropdownMenuItem asChild>
+                                    <Link href={convHref}>
+                                      <MessageCircle className="size-4" /> فتح المحادثة #{call.conversationId}
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ) : null}
+                                <RecordingDownload callId={call.id} url={call.recordingUrl} menu />
+                              </DropdownMenuGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

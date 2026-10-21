@@ -26,7 +26,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CeUnavailableNotice } from "@/lib/chatwoot/settings-adapter";
+import { CeUnavailableNotice, useCeUnavailable } from "@/lib/chatwoot/settings-adapter";
 
 import { ConfirmDelete, NoResults, plural, SettingsShell } from "../../labels/_shared/settings-shell";
 import { ChipBar, ChipSelect, FieldError, RowMenu, ToneBadge, tableClass } from "../../labels/_shared/settings-ui";
@@ -241,6 +241,7 @@ async function save(change: Parameters<typeof saveSlaChange>[0], done: string) {
 }
 
 export function SlaList() {
+  const unavailable = useCeUnavailable("sla_policies");
   const slas = useSlaPolicies((state) => state.policies);
   const loadFailed = useSlaPolicies((state) => state.status === "error");
   const [query, setQuery] = React.useState("");
@@ -274,7 +275,7 @@ export function SlaList() {
         search={{ placeholder: "Search SLA...", value: query, onChange: setQuery }}
         cardTitle="SLA policies"
         actions={
-          <Button size="sm" onClick={() => setAdding(true)}>
+          <Button size="sm" disabled={Boolean(unavailable) || loadFailed} onClick={() => setAdding(true)}>
             <Plus /> Add SLA
           </Button>
         }

@@ -18,6 +18,7 @@ export interface Call {
   createdAt: string;
   createdAtFull: string;
   recordingSeconds: number | null;
+  recordingUrl?: string | null;
   ringing?: boolean;
 }
 

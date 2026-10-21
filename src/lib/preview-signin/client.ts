@@ -5,8 +5,8 @@ import { deleteClientCookie, setClientCookie } from "@/lib/cookie.client";
 
 import { PREVIEW_SIGNIN_COOKIE, type PreviewSignin } from "./shared";
 
-export function enterPreview(how: PreviewSignin) {
-  setClientCookie(PREVIEW_SIGNIN_COOKIE, how, 30);
+export function enterPreview(how: PreviewSignin, remember = true) {
+  setClientCookie(PREVIEW_SIGNIN_COOKIE, how, remember ? 30 : 1);
 }
 
 export function leavePreview() {

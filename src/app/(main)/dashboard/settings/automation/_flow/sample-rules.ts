@@ -1,15 +1,12 @@
-// T-139: the eight sample rules the Automation list has shown since F159, moved here unchanged so the list, the
-// visual editor and the round-trip tests read the same ones. They show only while nothing was saved yet; once the
-// "automation" section is saved, the saved rules are the list and the sample is never written over them.
 import type { Rule } from "./catalog";
 
 export const initialRules: Rule[] = [
   {
     id: 1,
-    name: "Route Arabic chats to Support",
-    description: "Assign conversations with browser language Arabic to the Support team",
+    name: "توجيه المحادثات العربية إلى فريق الدعم",
+    description: "إسناد المحادثات التي لغتها العربية تلقائياً إلى فريق الدعم الفني مع وسم الدعم",
     active: true,
-    createdOn: "Sep 14, 2026",
+    createdOn: "١٤ سبتمبر ٢٠٢٦",
     runType: "instant",
     event: "conversation_created",
     conditions: [
@@ -23,10 +20,10 @@ export const initialRules: Rule[] = [
   },
   {
     id: 2,
-    name: "Tag billing questions",
-    description: "Add label billing when message content contains invoice, refund or payment",
+    name: "تصنيف استفسارات الفوترة والمدفوعات",
+    description: "إضافة وسم الفوترة وتحويل المحادثة لفريق المحاسبة عند ذكر فاتورة أو استرداد أو دفع",
     active: true,
-    createdOn: "Sep 02, 2026",
+    createdOn: "٢ سبتمبر ٢٠٢٦",
     runType: "instant",
     event: "message_created",
     conditions: [
@@ -40,10 +37,10 @@ export const initialRules: Rule[] = [
   },
   {
     id: 3,
-    name: "VIP priority",
-    description: "Set priority to urgent for contacts with label vip",
+    name: "أولوية قصوى لكبار العملاء (VIP)",
+    description: "رفع الأولوية إلى عاجل وتطبيق اتفاقية خدمة خاصة لعملاء الفئة المميزة",
     active: true,
-    createdOn: "Aug 21, 2026",
+    createdOn: "٢١ أغسطس ٢٠٢٦",
     runType: "instant",
     event: "conversation_updated",
     conditions: [{ attribute: "labels", operator: "Equal to", values: ["vip"], join: "and" }],
@@ -54,10 +51,10 @@ export const initialRules: Rule[] = [
   },
   {
     id: 4,
-    name: "UAE leads to Sales",
-    description: "Assign the Sales team and add label lead when country is United Arab Emirates",
+    name: "توجيه عملاء الخليج الجدد إلى المبيعات",
+    description: "إسناد فريق المبيعات ووسم عميل محتمل عند ورود محادثة مبيعات جديدة",
     active: false,
-    createdOn: "Aug 10, 2026",
+    createdOn: "١٠ أغسطس ٢٠٢٦",
     runType: "instant",
     event: "conversation_created",
     conditions: [{ attribute: "country_code", operator: "Equal to", values: ["United Arab Emirates"], join: "and" }],
@@ -68,10 +65,10 @@ export const initialRules: Rule[] = [
   },
   {
     id: 5,
-    name: "Transcript on resolve",
-    description: "Email the conversation transcript to the customer when it is resolved",
+    name: "إرسال نسخة المحادثة عند الحل",
+    description: "إرسال ملخص المحادثة بالبريد الإلكتروني للعميل فور إغلاق التذكرة",
     active: true,
-    createdOn: "Jul 29, 2026",
+    createdOn: "٢٩ يوليو ٢٠٢٦",
     runType: "instant",
     event: "conversation_resolved",
     conditions: [{ attribute: "inbox_id", operator: "Equal to", values: ["Support Email"], join: "and" }],
@@ -79,17 +76,17 @@ export const initialRules: Rule[] = [
   },
   {
     id: 6,
-    name: "Follow up after silence",
-    description: "Send a reminder when the customer hasn't replied",
+    name: "متابعة ذكية بعد هدوء العميل",
+    description: "إرسال تذكير لطيف عبر واتساب إذا لم يرد العميل خلال ٢٤ ساعة",
     active: true,
-    createdOn: "Sep 20, 2026",
+    createdOn: "٢٠ سبتمبر ٢٠٢٦",
     runType: "delayed",
     event: "message_created",
     conditions: [],
     actions: [
       {
         action: "send_message",
-        values: ["Hi {{contact.first_name}}, just checking in. Is there anything else we can help you with?"],
+        values: ["مرحباً {{contact.first_name}}، نود الاطمئنان إن كان لديك أي استفسار إضافي يسعدنا خدمتك به."],
       },
     ],
     wait: {
@@ -102,10 +99,10 @@ export const initialRules: Rule[] = [
   },
   {
     id: 7,
-    name: "Escalate unanswered chats",
-    description: "Assign the shift lead when no teammate has replied",
+    name: "تصعيد المحادثات المتأخرة للمشرف",
+    description: "إسناد المحادثة لمشرف المناوبة ورفع أولويتها إذا تأخر الرد أكثر من ٣٠ دقيقة",
     active: true,
-    createdOn: "Sep 18, 2026",
+    createdOn: "١٨ سبتمبر ٢٠٢٦",
     runType: "delayed",
     event: "message_created",
     conditions: [],
@@ -117,10 +114,10 @@ export const initialRules: Rule[] = [
   },
   {
     id: 8,
-    name: "Close stale pending",
-    description: "Resolve conversations that stay pending",
+    name: "إغلاق المحادثات المعلقة القديمة",
+    description: "حل المحادثات التي بقيت في حالة انتظار لأكثر من ٣ أيام تلقائياً",
     active: false,
-    createdOn: "Aug 30, 2026",
+    createdOn: "٣٠ أغسطس ٢٠٢٦",
     runType: "delayed",
     event: "conversation_updated",
     conditions: [],

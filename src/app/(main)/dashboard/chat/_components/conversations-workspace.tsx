@@ -2,9 +2,9 @@
 
 // Chatwoot conversations area inside the Studio dashboard (F159): one card holding the conversation list, the open
 // conversation and the contact panel. Every sidebar view under "Conversations" renders this with its own view.
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "cn";
 import { Inbox, Mail, MessagesSquare } from "lucide-react";
@@ -13,10 +13,12 @@ import { ChatEmailView } from "@/app/(main)/chat/_components/chat-email-view";
 import { setTagFilter, useChatTags } from "@/app/(main)/chat/_components/chat-tags-store";
 import { brown } from "@/app/(main)/chat/_components/chat-thread-extras";
 import { useChat } from "@/app/(main)/chat/_components/use-chat";
+import { useChatwootLink } from "@/app/(main)/dashboard/_components/chatwoot-link/link-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Kbd } from "@/components/ui/kbd";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { enableLinkedStoreAdapter, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
 import { currentViewer } from "@/lib/cw/view-as";
@@ -69,6 +71,11 @@ function EmptyPane() {
 // linked modes. When linked mode is active and the Chatwoot gateway reports an error, show an honest error banner.
 export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
   const linkedStatus = useLinkedAdapterStatus();
+  const { state } = useChatwootLink();
+  const linked = !state.disabled && state.mode === "linked" && state.sections.conversations;
+  // Wait for live data before mounting the selection effects. Otherwise a real conversation ID can
+  // select a preview row with the same ID and disappear when the adapter replaces the preview store.
+  if (linked && (!linkedStatus.active || linkedStatus.loading)) return <ConversationLoading />;
   return (
     <div className="flex h-full flex-col gap-2">
       {linkedStatus.active && linkedStatus.error ? (
@@ -82,13 +89,28 @@ export function ConversationsWorkspace({ view }: { view: ViewSpec }) {
           </Button>
         </div>
       ) : null}
-      <PreviewConversationsWorkspace view={view} />
+      <Suspense fallback={<ConversationLoading />}>
+        <PreviewConversationsWorkspace view={view} />
+      </Suspense>
+    </div>
+  );
+}
+
+function ConversationLoading() {
+  return (
+    <div role="status" aria-label="Loading conversations" className="flex h-full flex-col gap-3 p-4">
+      <span className="text-muted-foreground text-sm">Loading conversations…</span>
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="min-h-40 flex-1" />
     </div>
   );
 }
 
 function PreviewConversationsWorkspace({ view }: { view: ViewSpec }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedConversationId = Number(searchParams.get("conversation"));
   const [chat, setChat] = useChat();
   const { filter, tags } = useChatTags();
   const folders = useCwStore((s) => s.folders);
@@ -130,9 +152,9 @@ function PreviewConversationsWorkspace({ view }: { view: ViewSpec }) {
   // "Open in new tab" from a card menu: /dashboard/chat?conversation=<id>. The conversation opens even when the
   // current filters hide it (like Chatwoot's conversation URL). F159: the list also moves to the status and the
   // Mine / Unassigned / All tab that hold it, so its row is listed and highlighted.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: read the query once on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open only when the requested URL changes, not on user selection
   useEffect(() => {
-    const id = Number(new URLSearchParams(window.location.search).get("conversation"));
+    const id = requestedConversationId;
     if (id && baseConversations.some((c) => c.id === id)) {
       const { meta, statusFilter } = useCwStore.getState();
       const m = meta[id];
@@ -144,9 +166,10 @@ function PreviewConversationsWorkspace({ view }: { view: ViewSpec }) {
       }
       cw.focus(id);
       setChat({ selected: id });
+      setShowThread(true);
       openedFromQuery.current = true;
     }
-  }, []);
+  }, [requestedConversationId, viewKey]);
 
   // F159: Participating opens on the All tab, because its Mine tab lists exactly the Mine conversations of All
   // Conversations (an assignee always takes part), and on the newest conversation you joined without being its

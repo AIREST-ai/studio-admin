@@ -1,0 +1,302 @@
+src/app/(main)/dashboard/_components/sidebar/rail-state.tsx:34:5 lint/suspicious/noDocumentCookie ━━━━━━━━━━
+
+  ! Direct assigning to document.cookie is not recommended.
+  
+    33 │   useEffect(() => {
+  > 34 │     document.cookie = `${RAIL_COOKIE}=${shown}; path=/; max-age=${RAIL_COOKIE_MAX_AGE}`;
+       │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    35 │   }, [shown]);
+    36 │ 
+  
+  i Consider using the Cookie Store API.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:120:7 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    118 │   const browser = /Edg\//.test(ua)
+    119 │     ? "Edge"
+  > 120 │     : /Firefox\//.test(ua)
+        │       ^^^^^^^^^^^^^^^^^^^^
+  > 121 │       ? "Firefox"
+         ...
+  > 125 │           ? "Safari"
+  > 126 │           : "Browser";
+        │           ^^^^^^^^^^^
+    127 │   const system = /Mac OS X/.test(ua)
+    128 │     ? "macOS"
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:122:9 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    120 │     : /Firefox\//.test(ua)
+    121 │       ? "Firefox"
+  > 122 │       : /Chrome\//.test(ua) || /HeadlessChrome/.test(ua)
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 123 │         ? "Chrome"
+  > 124 │         : /Safari\//.test(ua)
+  > 125 │           ? "Safari"
+  > 126 │           : "Browser";
+        │           ^^^^^^^^^^^
+    127 │   const system = /Mac OS X/.test(ua)
+    128 │     ? "macOS"
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:124:11 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    122 │       : /Chrome\//.test(ua) || /HeadlessChrome/.test(ua)
+    123 │         ? "Chrome"
+  > 124 │         : /Safari\//.test(ua)
+        │           ^^^^^^^^^^^^^^^^^^^
+  > 125 │           ? "Safari"
+  > 126 │           : "Browser";
+        │           ^^^^^^^^^^^
+    127 │   const system = /Mac OS X/.test(ua)
+    128 │     ? "macOS"
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:129:7 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    127 │   const system = /Mac OS X/.test(ua)
+    128 │     ? "macOS"
+  > 129 │     : /Windows/.test(ua)
+        │       ^^^^^^^^^^^^^^^^^^
+  > 130 │       ? "Windows"
+         ...
+  > 136 │             ? "Linux"
+  > 137 │             : "";
+        │             ^^^^
+    138 │   return system ? `${browser} on ${system}` : browser;
+    139 │ }
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:131:9 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    129 │     : /Windows/.test(ua)
+    130 │       ? "Windows"
+  > 131 │       : /Android/.test(ua)
+        │         ^^^^^^^^^^^^^^^^^^
+  > 132 │         ? "Android"
+         ...
+  > 136 │             ? "Linux"
+  > 137 │             : "";
+        │             ^^^^
+    138 │   return system ? `${browser} on ${system}` : browser;
+    139 │ }
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:133:11 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    131 │       : /Android/.test(ua)
+    132 │         ? "Android"
+  > 133 │         : /iPhone|iPad/.test(ua)
+        │           ^^^^^^^^^^^^^^^^^^^^^^
+  > 134 │           ? "iOS"
+  > 135 │           : /Linux/.test(ua)
+  > 136 │             ? "Linux"
+  > 137 │             : "";
+        │             ^^^^
+    138 │   return system ? `${browser} on ${system}` : browser;
+    139 │ }
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:135:13 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    133 │         : /iPhone|iPad/.test(ua)
+    134 │           ? "iOS"
+  > 135 │           : /Linux/.test(ua)
+        │             ^^^^^^^^^^^^^^^^
+  > 136 │             ? "Linux"
+  > 137 │             : "";
+        │             ^^^^
+    138 │   return system ? `${browser} on ${system}` : browser;
+    139 │ }
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:532:55 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    530 │                   )}
+    531 │                 >
+  > 532 │                   {mfaEnabled === null ? "Loading…" : mfaEnabled ? "Enabled" : "Disabled"}
+        │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    533 │                 </Badge>
+    534 │               </span>
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:629:19 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    627 │               {alerts.length === 0
+    628 │                 ? "You haven't selected any options, you won't receive any audio alerts."
+  > 629 │                 : alerts.length === 3
+        │                   ^^^^^^^^^^^^^^^^^^^
+  > 630 │                   ? "You'll receive alerts for all conversations."
+  > 631 │                   : "You'll receive alerts for your assigned conversations and any unattended ones."}
+        │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    632 │             </p>
+    633 │           </div>
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:736:17 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    734 │             {permission === "granted"
+    735 │               ? "Push notifications are enabled for this browser."
+  > 736 │               : permission === "denied"
+        │                 ^^^^^^^^^^^^^^^^^^^^^^^
+  > 737 │                 ? "Push notifications are blocked. Allow them in your browser settings."
+  > 738 │                 : "Enable push notifications for your browser so you’re able to receive them"}
+        │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    739 │           </span>
+    740 │           {permission === "default" ? (
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/profile/_components/profile-page.tsx:873:11 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    871 │           </Button>
+    872 │         </div>
+  > 873 │       ) : !settings ? (
+        │           ^^^^^^^^^^^^^
+  > 874 │         <p className="text-muted-foreground text-sm">Loading saved profile settings…</p>
+         ...
+  > 882 │         </div>
+  > 883 │       )}
+        │       ^
+    884 │     </div>
+    885 │   );
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/sla/_components/sla-list.tsx:109:7 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    107 │   const nameError = !name.trim()
+    108 │     ? "SLA name is required"
+  > 109 │     : name.trim().length < 2
+        │       ^^^^^^^^^^^^^^^^^^^^^^
+  > 110 │       ? "Minimum length 2 is required"
+  > 111 │       : takenNames.includes(name.trim().toLowerCase())
+  > 112 │         ? "SLA name already exists"
+  > 113 │         : "";
+        │         ^^^^
+    114 │   const timeError = (k: Key) => {
+    115 │     const v = times[k].threshold;
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/sla/_components/sla-list.tsx:111:9 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    109 │     : name.trim().length < 2
+    110 │       ? "Minimum length 2 is required"
+  > 111 │       : takenNames.includes(name.trim().toLowerCase())
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 112 │         ? "SLA name already exists"
+  > 113 │         : "";
+        │         ^^^^
+    114 │   const timeError = (k: Key) => {
+    115 │     const v = times[k].threshold;
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/(main)/dashboard/settings/sla/_components/sla-list.tsx:95:9 lint/correctness/useExhaustiveDependencies  FIXABLE  ━━━━━━━━━━
+
+  ! This hook does not specify its dependency on blankTimes.
+  
+    93 │   const [saving, setSaving] = React.useState(false);
+    94 │ 
+  > 95 │   React.useEffect(() => {
+       │         ^^^^^^^^^
+    96 │     if (!open) return;
+    97 │     setName(editing?.name ?? "");
+  
+  i This dependency is being used here, but is not specified in the hook dependency list.
+  
+     98 │     setDescription(editing?.description ?? "");
+     99 │     setTimes(
+  > 100 │       editing ? { frt: timeInput(editing.frt), nrt: timeInput(editing.nrt), rt: timeInput(editing.rt) } : blankTimes(),
+        │                                                                                                           ^^^^^^^^^^
+    101 │     );
+    102 │     setBusinessHours(editing?.businessHours ?? false);
+  
+  i React relies on hook dependencies to determine when to re-compute Effects.
+    Failing to specify dependencies can result in Effects not updating correctly when state changes.
+    These "stale closures" are a common source of surprising bugs.
+  
+  i Unsafe fix: Add the missing dependency blankTimes to the list.
+  
+    105 │ ··},·[open,·editing,·blankTimes]);
+        │                    ++++++++++++   
+
+Checked 9 files in 433ms. No fixes applied.
+Found 15 warnings.

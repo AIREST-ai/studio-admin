@@ -34,10 +34,30 @@ export function SettingsCard({
 }) {
   return (
     <Card className={cn(tone === "danger" && "border-destructive/30", className)}>
-      <CardHeader className={cn(children ? "border-b" : undefined)}>
-        <CardTitle className={cn("text-lg leading-none", tone === "danger" && "text-destructive")}>{title}</CardTitle>
-        {description ? <CardDescription className="max-w-2xl leading-relaxed">{description}</CardDescription> : null}
-        {action ? <CardAction className="self-center">{action}</CardAction> : null}
+      <CardHeader
+        className={cn(
+          "min-w-0 has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[minmax(0,1fr)_auto]",
+          children ? "border-b" : undefined,
+        )}
+      >
+        <CardTitle
+          className={cn(
+            "min-w-0 text-lg leading-snug [overflow-wrap:anywhere]",
+            tone === "danger" && "text-destructive",
+          )}
+        >
+          {title}
+        </CardTitle>
+        {description ? (
+          <CardDescription className="min-w-0 max-w-2xl leading-relaxed [overflow-wrap:anywhere]">
+            {description}
+          </CardDescription>
+        ) : null}
+        {action ? (
+          <CardAction className="col-start-1 row-start-auto max-w-full justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:self-center sm:justify-self-end">
+            {action}
+          </CardAction>
+        ) : null}
       </CardHeader>
       {children ? <CardContent>{children}</CardContent> : null}
       {footer ? <CardFooter className="border-t">{footer}</CardFooter> : null}

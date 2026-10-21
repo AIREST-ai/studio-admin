@@ -808,6 +808,11 @@ export async function syncStudioWebhook(
   mode: "linked" | "preview",
   options?: { removeOnPreview?: boolean; studioWebhookUrl?: string },
 ): Promise<StudioWebhookSyncResult> {
+  // 2026-10-19 (نسخة الإنتاج لـ app.airest.ai): النسخة لا تنشئ ويب هوك ولا تحذفه، لأن ويب هوك الاستوديو في شات ووت
+  // يخص نسخة التطوير على 8797 (isStudioWebhookUrl يعدّ كل رابط على 8797 ويب هوك الاستوديو)، وحذفه من هنا يمسّها.
+  if (process.env.STUDIO_WEBHOOK_SYNC_DISABLED === "1") {
+    return { action: "skipped", webhookId: null, url: null, otherWebhooksPreserved: 0 };
+  }
   const envCfg = readAdapterEnv();
   const targetUrl = (
     options?.studioWebhookUrl ||

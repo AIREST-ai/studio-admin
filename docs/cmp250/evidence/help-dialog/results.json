@@ -1,0 +1,58 @@
+{
+  "results": [
+    {
+      "width": 568,
+      "height": 320,
+      "geometry": {
+        "top": 16,
+        "bottom": 304,
+        "client": 288,
+        "scroll": 381,
+        "overflow": "auto"
+      },
+      "keyboardReachedCancel": true,
+      "cancelCloses": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "geometry": {
+        "top": 83.5,
+        "bottom": 484.5,
+        "client": 401,
+        "scroll": 401,
+        "overflow": "auto"
+      },
+      "keyboardReachedCancel": true,
+      "cancelCloses": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "geometry": {
+        "top": 231.5,
+        "bottom": 612.5,
+        "client": 381,
+        "scroll": 381,
+        "overflow": "auto"
+      },
+      "keyboardReachedCancel": true,
+      "cancelCloses": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "geometry": {
+        "top": 279.5,
+        "bottom": 620.5,
+        "client": 341,
+        "scroll": 341,
+        "overflow": "auto"
+      },
+      "keyboardReachedCancel": true,
+      "cancelCloses": true
+    }
+  ],
+  "pageErrors": [],
+  "blockedWrites": []
+}
