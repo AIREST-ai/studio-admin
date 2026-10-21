@@ -234,7 +234,7 @@ export const ROUTES: readonly RouteRow[] = [
   v1(`teams/${ID}`, "admin", ["PUT", "PATCH", "DELETE"]),
   v1(`teams/${ID}/team_members`, "admin", ["POST", "PATCH", "DELETE"]),
   v1("inboxes", "admin", ["POST"]),
-  v1(`inboxes/${ID}`, "admin", ["PUT", "PATCH"]),
+  v1(`inboxes/${ID}`, "admin", ["PUT", "PATCH", "DELETE"]),
   v1("inbox_members", "admin", ["POST", "PATCH", "DELETE"]),
   v1("macros", "agent", ["POST"]),
   v1(`macros/${ID}`, "agent", ["PUT", "PATCH", "DELETE"]),
