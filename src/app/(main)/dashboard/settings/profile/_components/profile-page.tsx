@@ -835,9 +835,6 @@ const tabs = [
 ];
 
 export function ProfilePage() {
-  // This page hydrates inside Suspense; keep DOM translation out until React owns its text nodes.
-  const [translationReady, setTranslationReady] = React.useState(false);
-  React.useEffect(() => setTranslationReady(true), []);
   // م137 round 2 item 8: ?tab= opens a tab (the Settings search links to Password, Notifications and Access Token).
   const asked = useSearchParams().get("tab");
   const [tab, setTab] = React.useState(tabs.some((t) => t.value === asked) ? (asked as string) : "profile");
@@ -857,7 +854,7 @@ export function ProfilePage() {
   const saved: SavedProfile = latest ?? settings?.profile ?? {};
 
   return (
-    <div data-translation-pending={translationReady ? undefined : ""} className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Profile Settings"
         description="Manage your profile, interface preferences, password, notifications and API access."

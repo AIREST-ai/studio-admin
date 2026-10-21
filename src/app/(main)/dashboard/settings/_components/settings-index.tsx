@@ -18,7 +18,6 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { canOpen, useViewer } from "@/lib/cw/view-as";
 import { isShown, sectionOfUrl } from "@/lib/owner/site-sections";
 import { useSiteSections } from "@/lib/owner/site-sections-context";
-import dictionary from "@/lingo/dom-ar.json";
 
 import { PageHeader } from "../labels/_shared/settings-shell";
 import { personalLinks, type SettingsLink, settingsGroups } from "./settings-nav";
@@ -26,12 +25,7 @@ import { personalLinks, type SettingsLink, settingsGroups } from "./settings-nav
 // Every word of the search starts a word of the page's name, line, content words or part name ("tag" finds Labels,
 // not the "stages" of Customer Path).
 function matches(item: SettingsLink, part: string, words: string[]) {
-  const translations = dictionary as Record<string, string>;
-  const fields = [item.title, item.description, item.keywords ?? "", part];
-  const text = fields
-    .flatMap((field) => [field, translations[field] ?? ""])
-    .join(" ")
-    .toLowerCase();
+  const text = [item.title, item.description, item.keywords ?? "", part].join(" ").toLowerCase();
   return words.every((word) =>
     new RegExp(`(^|[^\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "u").test(text),
   );
