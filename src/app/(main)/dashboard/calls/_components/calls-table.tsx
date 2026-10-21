@@ -571,6 +571,7 @@ function matchesCallFilter(row: UnifiedCallRow, filter: CallFilterKey): boolean 
 }
 
 export function CallsTable({ setup = false }: { setup?: boolean }) {
+  const [hydrated, setHydrated] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState<CallFilterKey>("all");
   const [searchQuery, setSearchQuery] = React.useState<string>("");
   const [assignee, setAssignee] = React.useState<number | null>(null);
@@ -584,7 +585,13 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
 
   const simCalls = usePreviewSim((s) => s.calls);
   const linkedActive = useLinkedAdapterStatus((s) => s.active);
-  const isLinked = linkedActive || linkedSession();
+  // The adapter can connect before this subtree hydrates. Keep its first client
+  // render identical to the server, then read the browser's connected state.
+  const isLinked = hydrated && (linkedActive || linkedSession());
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const fetchLiveHistory = React.useCallback(async (signal?: AbortSignal) => {
     setLoadingLive(true);
@@ -621,11 +628,12 @@ export function CallsTable({ setup = false }: { setup?: boolean }) {
   }, [isLinked, fetchLiveHistory]);
 
   const allUnifiedRows: UnifiedCallRow[] = React.useMemo(() => {
+    if (!hydrated) return [];
     if (isLinked) {
       return liveRecords.map(mapLiveRecord);
     }
     return [...calls, ...simCalls.map(listedOfSim)].map(mapPreviewCall).sort((a, b) => b.timestampMs - a.timestampMs);
-  }, [isLinked, liveRecords, simCalls]);
+  }, [hydrated, isLinked, liveRecords, simCalls]);
 
   const filterCounts = React.useMemo(() => {
     return {
