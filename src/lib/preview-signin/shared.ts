@@ -6,6 +6,7 @@
 // Log out forgets it and goes back to the login page. The dashboard itself still opens without it: the preview has
 // no sign-in, and the login page says so.
 export const PREVIEW_SIGNIN_COOKIE = "studio_preview_signin";
+export const PREVIEW_LANDING_PATH = "/dashboard/start";
 
 /** How the visitor entered: the demo account, the login form or the register form. No typed value is kept. */
 export type PreviewSignin = "demo" | "login" | "register";

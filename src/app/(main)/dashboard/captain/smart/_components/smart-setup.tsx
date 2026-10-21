@@ -8,6 +8,7 @@
 import * as React from "react";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import { cn } from "cn";
 import { Check, Link2, ListChecks, RotateCcw, SendHorizontal, Sparkles } from "lucide-react";
@@ -31,8 +32,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { CaptainShell } from "../../_components/shared";
 import emma from "./assets/emma-blazer.webp";
 import { MagicCanvas } from "./canvas";
-import { SmartHub } from "./smart-hub";
 import { allWords, normalize, noWords, T, type Topic, topics, yesWords } from "./data";
+import { SmartHub } from "./smart-hub";
 
 interface Msg {
   id: number;
@@ -54,6 +55,7 @@ export function SmartSetup() {
   const [draft, setDraft] = React.useState("");
   const [typing, setTyping] = React.useState(false);
   const [activated, setActivated] = React.useState(false);
+  const [activating, setActivating] = React.useState(false);
   const [connectModalTopic, setConnectModalTopic] = React.useState<Topic | null>(null);
   const [accountHandle, setAccountHandle] = React.useState("");
 
@@ -77,7 +79,7 @@ export function SmartSetup() {
           setActivated(Boolean(smart.activated));
         }
       })
-      .catch(() => {});
+      .catch(() => toast.error("تعذر استرجاع خطة سمارت المحفوظة"));
   }, []);
 
   const syncEngine = React.useCallback(async (nextPlaced: string[], nextActivated: boolean, onSuccess?: () => void) => {
@@ -92,14 +94,15 @@ export function SmartSetup() {
         }),
       });
       const data = await r.json().catch(() => null);
-      if (r.ok && data?.ok) {
+      if (r.ok && data?.ok === true) {
         onSuccess?.();
-      } else {
-        toast.error("تعذر حفظ الإعداد في المحرك الخلفي");
+        return true;
       }
+      toast.error("تعذر حفظ الإعداد في المحرك الخلفي");
     } catch {
       toast.error("تعذر الاتصال بالمحرك الخلفي");
     }
+    return false;
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll down whenever a message is added.
@@ -115,7 +118,7 @@ export function SmartSetup() {
     }
     setPlaced((prev) => {
       const next = prev.includes(topic.id) ? prev : [...prev, topic.id];
-      void syncEngine(next, activated, () => toast.success(T.connectedToast(topic.label)));
+      void syncEngine(next, activated, () => toast.success(`حُفظت ${topic.label} ضمن الخطة؛ هذا لا يربط حساب القناة.`));
       return next;
     });
     setFresh(topic.id);
@@ -130,7 +133,7 @@ export function SmartSetup() {
       {
         id: nextId.current++,
         role: "assistant",
-        text: `${topic.doneLine}${handleText ? ` (${handleText})` : ""} ${next ? next.ask : T.allDone}`,
+        text: `${topic.kind === "channel" ? `أضيفت ${topic.label} إلى الخطة؛ الربط الفعلي من معالج القناة.` : topic.doneLine}${handleText ? ` (${handleText})` : ""} ${next ? next.ask : T.allDone}`,
         channelId: next?.kind === "channel" ? next.id : undefined,
       },
     ]);
@@ -185,7 +188,7 @@ export function SmartSetup() {
       later(850 + i * 320, () => {
         setPlaced((p) => {
           const nextPlaced = p.includes(t.id) ? p : [...p, t.id];
-          syncEngine(nextPlaced, activated);
+          void syncEngine(nextPlaced, activated);
           return nextPlaced;
         });
         setFresh(t.id);
@@ -215,7 +218,7 @@ export function SmartSetup() {
     setDraft("");
     setTyping(false);
     setActivated(false);
-    syncEngine([], false);
+    void syncEngine([], false);
   }
 
   const open = topics.filter((t) => !committed.current.includes(t.id) && !placed.includes(t.id));
@@ -224,19 +227,19 @@ export function SmartSetup() {
   const complete = placed.length === topics.length;
   const channelTopics = topics.filter((t) => t.kind === "channel");
   const pendingTopic = topics.find((t) => t.id === pending);
+  const activationLabel = activated ? T.activated : T.activate;
 
   const handleActivatePlan = async () => {
-    const ok = await syncEngine(
-      placed,
-      true,
-      `تم اعتماد وتفعيل خطة إيمه في كل شيء سمارت (${placed.length} عناصر مفعّلة)`,
-    );
+    if (activating) return;
+    setActivating(true);
+    const ok = await syncEngine(placed, true);
+    setActivating(false);
     if (!ok) {
       toast.error("تعذر حفظ وتفعيل الخطة في الخادم");
       return;
     }
     setActivated(true);
-    toast.success("تم تفعيل خطة إيمه وحفظها في الخادم وبنك الذاكرة المعزول");
+    toast.success("تم تفعيل خطة إيمه وحفظها في الخادم");
   };
 
   const agreed = (
@@ -259,7 +262,7 @@ export function SmartSetup() {
       switcher={false}
       nav={false}
       actions={
-        <Button variant="outline" onClick={restart}>
+        <Button variant="outline" disabled={activating} onClick={restart}>
           <RotateCcw /> {T.restart}
         </Button>
       }
@@ -338,7 +341,7 @@ export function SmartSetup() {
                         setConnectModalTopic(ch);
                       }}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-medium text-xs transition-all duration-200 backdrop-blur-xl",
+                        "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-medium text-xs backdrop-blur-xl transition-all duration-200",
                         isConnected
                           ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 shadow-xs dark:text-emerald-300"
                           : "border-white/30 bg-white/15 text-foreground shadow-sm hover:border-primary/40 hover:bg-primary/10 dark:border-white/15 dark:bg-white/10",
@@ -446,13 +449,10 @@ export function SmartSetup() {
               {complete && (
                 <Button
                   className="xl:hidden"
-                  onClick={() => {
-                    setActivated(true);
-                    syncEngine(placed, true);
-                  }}
-                  disabled={activated}
+                  onClick={() => void handleActivatePlan()}
+                  disabled={activated || activating}
                 >
-                  <Check /> {activated ? T.activated : T.activate}
+                  <Check /> {activating ? "جارٍ الحفظ…" : activationLabel}
                 </Button>
               )}
               <InputGroup className="bg-background/80">
@@ -504,11 +504,13 @@ export function SmartSetup() {
                   )}
                   <span>{`${T.connectModalTitle} · ${connectModalTopic.label}`}</span>
                 </DialogTitle>
-                <DialogDescription>{T.connectModalDesc}</DialogDescription>
+                <DialogDescription>
+                  هذه الخطوة تضيف القناة للخطة فقط. استخدم معالج الربط لتوصيل حسابك فعليًا.
+                </DialogDescription>
               </DialogHeader>
               <div className="grid gap-3 py-2">
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-emerald-800 text-xs dark:text-emerald-300">
-                  {T.instantOAuth}
+                  لا يحدث تفويض أو ربط بمجرد كتابة اسم الحساب أو الرقم.
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="smart-channel-handle">{T.accountLabel}</Label>
@@ -522,6 +524,9 @@ export function SmartSetup() {
                 </div>
               </div>
               <DialogFooter className="gap-2">
+                <Button variant="outline" asChild>
+                  <Link href={`/dashboard/start?first=1&channel=${connectModalTopic.id}`}>فتح معالج الربط الحقيقي</Link>
+                </Button>
                 <DialogClose asChild>
                   <Button variant="outline">{T.cancel}</Button>
                 </DialogClose>
@@ -533,7 +538,7 @@ export function SmartSetup() {
                   }}
                 >
                   <Link2 className="size-4" />
-                  {`${T.confirmConnect} · ${connectModalTopic.label}`}
+                  {`إضافة إلى الخطة فقط · ${connectModalTopic.label}`}
                 </Button>
               </DialogFooter>
             </>
