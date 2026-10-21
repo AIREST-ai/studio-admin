@@ -1,0 +1,37 @@
+[96msrc/app/(external)/_components/showcase.tsx[0m:[93m4[0m:[93m30[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../media/default/default-dark.webp' or its corresponding type declarations.
+
+[7m4[0m import defaultDarkImage from "../../../../media/default/default-dark.webp";
+[7m [0m [91m                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/app/(external)/_components/showcase.tsx[0m:[93m5[0m:[93m31[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../media/default/default-light.webp' or its corresponding type declarations.
+
+[7m5[0m import defaultLightImage from "../../../../media/default/default-light.webp";
+[7m [0m [91m                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[0m:[93m32[0m:[93m18[0m - [91merror[0m[90m TS2307: [0mCannot find module './assets/emma-blazer.webp' or its corresponding type declarations.
+
+[7m32[0m import emma from "./assets/emma-blazer.webp";
+[7m  [0m [91m                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[0m:[93m232[0m:[93m7[0m - [91merror[0m[90m TS2345: [0mArgument of type 'string' is not assignable to parameter of type '() => void'.
+
+[7m232[0m       `تم اعتماد وتفعيل خطة إيمه في كل شيء سمارت (${placed.length} عناصر مفعّلة)`,
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[0m:[93m234[0m:[93m10[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m234[0m     if (!ok) {
+[7m   [0m [91m         ~~[0m
+
+[96msrc/app/(main)/dashboard/chat/_components/reply-box.tsx[0m:[93m566[0m:[93m21[0m - [91merror[0m[90m TS2339: [0mProperty 'kind' does not exist on type 'Message'.
+
+[7m566[0m             kind: m.kind,
+[7m   [0m [91m                    ~~~~[0m
+
+
+Found 6 errors in 3 files.
+
+Errors  Files
+     2  src/app/(external)/_components/showcase.tsx[90m:4[0m
+     3  src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx[90m:32[0m
+     1  src/app/(main)/dashboard/chat/_components/reply-box.tsx[90m:566[0m

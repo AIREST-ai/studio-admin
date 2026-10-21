@@ -1,0 +1,16 @@
+[
+  {
+    "themeChangeAndReload": true
+  },
+  {
+    "slaUnavailableActionDisabled": true
+  },
+  {
+    "mockedRoleSave": "success acknowledged",
+    "writesReachedServer": false
+  },
+  {
+    "mockedRoleSave": "failure shown, no success, controls disabled",
+    "writesReachedServer": false
+  }
+]

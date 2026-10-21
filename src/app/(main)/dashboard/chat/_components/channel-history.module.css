@@ -1,0 +1,76 @@
+/* Message-area identity only: no sizing, typography or composer rules. */
+.history[data-channel="whatsapp"] {
+  background-color: color-mix(in srgb, var(--color-stone-100) 65%, var(--card));
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-emerald-100) 35%, transparent), transparent);
+}
+.history[data-channel="whatsapp"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: var(--color-emerald-800);
+  opacity: 0.09;
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22220%22%20height%3D%22180%22%20viewBox%3D%220%200%20220%20180%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M25%2035c-12-11-21%204%200%2017%2021-13%2012-28%200-17Z%20M105%2020l3%208%209%201-7%206%202%209-7-5-8%205%202-9-7-6%209-1Z%20M167%2054c15-17%2031-7%2015%208-5%205-13%203-15-8Z%20M166%2064l18-14%20M54%20118c-12-12-21%203%200%2017%2021-14%2012-29%200-17Z%20M135%20130c-5-17%2020-25%2024-9s-20%2024-24%209Z%20M142%20117l10%2014%20M193%20143l3%208%208%201-6%206%201%208-6-4-7%204%202-8-7-6%209-1Z%20M75%2071q7-10%2014%200t14%200%20M18%20160q7-10%2014%200%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%2225%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%22114%22%20cy%3D%2290%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%22205%22%20cy%3D%22100%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E");
+  mask-size: 220px 180px;
+}
+.history[data-channel="instagram"] {
+  background-color: color-mix(in srgb, var(--color-violet-500) 5%, var(--card));
+  background-image: none;
+}
+.history:is([data-channel="facebook"], [data-channel="messenger"]) {
+  background-color: color-mix(in srgb, var(--color-blue-500) 5%, var(--card));
+  background-image: none;
+}
+:where([class~="dark"]) .history[data-channel="whatsapp"] {
+  background-color: color-mix(in srgb, var(--color-emerald-950) 22%, var(--card));
+  background-image: none;
+}
+:where([class~="dark"]) .history[data-channel="whatsapp"]::before {
+  background-color: var(--color-emerald-200);
+  opacity: 0.05;
+}
+:where([class~="dark"]) .history[data-channel="instagram"] {
+  background-color: color-mix(in srgb, var(--color-violet-500) 5%, var(--card));
+  background-image: none;
+}
+:where([class~="dark"]) .history:is([data-channel="facebook"], [data-channel="messenger"]) {
+  background-color: color-mix(in srgb, var(--color-blue-500) 5%, var(--card));
+  background-image: none;
+}
+
+/* Successful outgoing messages only; notes, incoming and error bubbles keep their semantics. */
+.history[data-channel="instagram"] [data-channel-outgoing] > [data-slot="bubble-content"] {
+  background-color: var(--color-violet-600);
+  background-image: linear-gradient(120deg, var(--color-blue-600), var(--color-violet-600));
+  color: var(--color-white);
+}
+.history:is([data-channel="facebook"], [data-channel="messenger"])
+  [data-channel-outgoing]
+  > [data-slot="bubble-content"] {
+  background-color: var(--color-blue-600);
+  color: var(--color-white);
+}
+:where([class~="dark"]) .history[data-channel="instagram"] [data-channel-outgoing] > [data-slot="bubble-content"] {
+  background-image: linear-gradient(120deg, var(--color-blue-700), var(--color-violet-700));
+}
+:where([class~="dark"])
+  .history:is([data-channel="facebook"], [data-channel="messenger"])
+  [data-channel-outgoing]
+  > [data-slot="bubble-content"] {
+  background-color: var(--color-blue-700);
+}
+
+/* Other sources share the same quiet message area; a tint never asserts a channel connection. */
+.history[data-channel="email"] {
+  background-color: color-mix(in srgb, var(--color-amber-500) 5%, var(--card));
+}
+.history[data-channel="telegram"] {
+  background-color: color-mix(in srgb, var(--color-sky-500) 5%, var(--card));
+}
+.history[data-channel="tiktok"] {
+  background-color: color-mix(in srgb, var(--color-cyan-500) 5%, var(--card));
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-rose-500) 5%, transparent), transparent);
+}
+.history[data-channel="line"] {
+  background-color: color-mix(in srgb, var(--color-green-500) 5%, var(--card));
+}

@@ -194,9 +194,10 @@ async function handle(method: GatewayMethod, request: Request, context: { params
       // We intercept the response below to cache tokens and strip them.
       const sessionId = sessionKeyFromRequest(request);
       const result = await gatewayCall(method, route.base, route.path, query, payload);
-      const body = result.body as
-        | { page_details?: Array<{ id: string; name: string; access_token?: string }>; user_access_token?: string }
-        | undefined;
+      // إصلاح 2026-10-19: شات ووت 4.18 يلفّ الرد في data ({ data: { page_details, user_access_token } })، فكانت الصفحات تُقرأ فارغة.
+      type FbPagesBody = { page_details?: Array<{ id: string; name: string; access_token?: string }>; user_access_token?: string };
+      const rawBody = result.body as (FbPagesBody & { data?: FbPagesBody }) | undefined;
+      const body: FbPagesBody | undefined = rawBody?.data ?? rawBody;
       if (body?.user_access_token && body?.page_details) {
         const pages = body.page_details
           .filter((p) => p.id && p.access_token)

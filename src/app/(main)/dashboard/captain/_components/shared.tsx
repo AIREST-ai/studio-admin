@@ -108,22 +108,13 @@ export function AssistantSwitcher() {
 // T-284 (item 125.6, Fahad): the same order as the Captain bar (sidebar-items.ts): Inboxes second, then Documents and
 // the FAQs Captain makes from them (the assistant's knowledge), then the rest in their order.
 function useCaptainNav() {
-  const faqs = useCaptainList("faqs");
-  const suggestions = useCaptainList("suggestions");
-  const documents = useCaptainList("documents");
-  const scenarios = useCaptainList("scenarios");
-  const connectedInboxes = useCaptainList("connectedInboxes");
-  const tools = useCaptainList("tools");
   return [
-    { href: "/dashboard/captain", label: "Overview" },
-    { href: "/dashboard/captain/inboxes", label: "Inboxes", count: connectedInboxes.length },
-    { href: "/dashboard/captain/documents", label: "Documents", count: documents.length },
-    { href: "/dashboard/captain/faqs", label: "FAQs", count: faqs.length + suggestions.length },
-    { href: "/dashboard/captain/scenarios", label: "Scenarios", count: scenarios.length },
-    { href: "/dashboard/captain/playground", label: "Playground" },
-    { href: "/dashboard/captain/tools", label: "Tools", count: tools.length },
-    { href: "/dashboard/captain/settings", label: "Settings" },
-  ] as { href: string; label: string; count?: number }[];
+    { href: "/dashboard/captain", label: "نظرة عامة" },
+    { href: "/dashboard/captain/smart", label: "كل شيء سمارت · إيمه", badge: "سحري" },
+    { href: "/dashboard/captain/employee", label: "موظف الذكاء البشري", badge: "بشري" },
+    { href: "/dashboard/captain/evaluator", label: "مقيّم الذكاء", badge: "كاشف التهرب" },
+    { href: "/dashboard/captain/build", label: "اربط ذكاءك" },
+  ] as { href: string; label: string; count?: number; badge?: string }[];
 }
 
 export function CaptainNav() {
@@ -140,8 +131,13 @@ export function CaptainNav() {
       >
         {captainNav.map((n) => (
           <TabsTrigger key={n.href} value={n.href} asChild>
-            <Link href={n.href}>
-              {n.label}
+            <Link href={n.href} className="inline-flex items-center gap-1.5">
+              <span>{n.label}</span>
+              {n.badge && (
+                <Badge variant="secondary" className="ms-1 bg-primary/10 text-primary text-[11px]">
+                  {n.badge}
+                </Badge>
+              )}
               {n.count !== undefined && (
                 <Badge variant="secondary" className="ms-1 tabular-nums">
                   {n.count}

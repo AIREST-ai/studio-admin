@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { enterPreview } from "@/lib/preview-signin/client";
-import { DEMO_ACCOUNT, NO_REAL_ACCOUNT } from "@/lib/preview-signin/shared";
+import { DEMO_ACCOUNT, NO_REAL_ACCOUNT, PREVIEW_LANDING_PATH } from "@/lib/preview-signin/shared";
 
 const DEMO_LINE = `Demo account: ${DEMO_ACCOUNT.name} (${DEMO_ACCOUNT.role}) of the sample workspace ${DEMO_ACCOUNT.workspace}. Sample data only.`;
 
@@ -27,7 +27,7 @@ export function LiveDemoButton() {
           toast.success("Live demo: you are using the demo account", {
             description: `${DEMO_LINE} ${NO_REAL_ACCOUNT}.`,
           });
-          router.push("/dashboard/default");
+          router.push(PREVIEW_LANDING_PATH);
         }}
       >
         <FlaskConical /> Open the live demo (demo account)

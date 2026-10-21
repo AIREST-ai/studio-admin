@@ -1,0 +1,350 @@
+src/app/(main)/dashboard/chat/_components/conversation-pane.tsx:192:27 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+
+    190 │         >
+    191 │           <primary.icon />
+  > 192 │           <span className="hidden @sm:inline">{primary.label}</span>
+        │                           ^^^^^^^^^^^^^^^^^^^
+    193 │         </Button>
+    194 │       </Hint>
+
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+
+  i Unsafe fix: Sort the classes.
+
+     190  190 │           >
+     191  191 │             <primary.icon />
+     192      │ - ··········<span·className="hidden·@sm:inline">{primary.label}</span>
+          192 │ + ··········<span·className="@sm:inline·hidden">{primary.label}</span>
+     193  193 │           </Button>
+     194  194 │         </Hint>
+
+
+src/app/(main)/dashboard/chat/_components/conversation-pane.tsx:1492:15 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+
+    1490 │             aria-hidden="true"
+    1491 │             className={cn(
+  > 1492 │               "pointer-events-none absolute inset-x-0 top-0 z-10 bg-linear-to-b from-card from-25% to-transparent opacity-0 transition-opacity group-data-[scrollable~=start]/message-scroller:opacity-100",
+         │               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    1493 │               isEmail ? "h-4" : "h-12",
+    1494 │             )}
+
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+
+  i Unsafe fix: Sort the classes.
+
+    1490 1490 │               aria-hidden="true"
+    1491 1491 │               className={cn(
+    1492      │ - ··············"pointer-events-none·absolute·inset-x-0·top-0·z-10·bg-linear-to-b·from-card·from-25%·to-transparent·opacity-0·transition-opacity·group-data-[scrollable~=start]/message-scroller:opacity-100",
+         1492 │ + ··············"pointer-events-none·absolute·inset-x-0·top-0·z-10·bg-linear-to-b·from-25%·from-card·to-transparent·opacity-0·transition-opacity·group-data-[scrollable~=start]/message-scroller:opacity-100",
+    1493 1493 │                 isEmail ? "h-4" : "h-12",
+    1494 1494 │               )}
+
+
+src/app/(main)/dashboard/chat/_components/conversation-pane.tsx:1098:23 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    1096 │                       <CsatContent csat={message.csat} />
+    1097 │                     </BubbleContent>
+  > 1098 │                   ) : message.form ? (
+         │                       ^^^^^^^^^^^^^^^^
+  > 1099 │                     <BubbleContent data-bubble-name="form" className="px-4 py-3">
+          ...
+  > 1123 │                     </BubbleContent>
+  > 1124 │                   )}
+         │                   ^
+    1125 │                   {message.reaction ? (
+    1126 │                     <BubbleReactions aria-label={`Reaction: ${message.reaction}`} align={outbound ? "start" : "end"}>
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/conversation-pane.tsx:406:19 lint/nursery/noFloatingPromises ━━━━━━━━━━
+
+  ! A "floating" Promise was found, meaning it is not properly handled and could lead to ignored errors or unexpected behavior.
+
+    404 │                 onSelect={() => {
+    405 │                   // F-5A (sim1 8.13e): kept as the contact's block in the preview; the toast comes once it is saved.
+  > 406 │                   toggleBlock(id);
+        │                   ^^^^^^^^^^^^^^^^
+    407 │                 }}
+    408 │               >
+
+  i This happens when a Promise is not awaited, lacks a `.catch` or `.then` rejection handler, or is not explicitly ignored using the `void` operator.
+
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+
+
+src/app/(main)/dashboard/chat/_components/conversation-pane.tsx:1423:3 lint/correctness/useExhaustiveDependencies  FIXABLE  ━━━━━━━━━━
+
+  ! This hook specifies more dependencies than necessary: conversation.id, botOwned.
+
+    1421 │   const notMine = !botOwned && meta.assigneeId !== me && meta.status !== "resolved";
+    1422 │   const history = contactHistory(conversation);
+  > 1423 │   useEffect(() => {
+         │   ^^^^^^^^^
+    1424 │     const pane = paneRef.current;
+    1425 │     if (!isEmail || !pane) return;
+
+  i This dependency can be removed from the list.
+
+    1443 │     measure();
+    1444 │     return () => observer.disconnect();
+  > 1445 │   }, [isEmail, conversation.id, botOwned]);
+         │                ^^^^^^^^^^^^^^^
+    1446 │   const selfAssignBanner = (
+    1447 │     <div className="mb-2 flex items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+
+  i This dependency can be removed from the list.
+
+    1443 │     measure();
+    1444 │     return () => observer.disconnect();
+  > 1445 │   }, [isEmail, conversation.id, botOwned]);
+         │                                 ^^^^^^^^
+    1446 │   const selfAssignBanner = (
+    1447 │     <div className="mb-2 flex items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+
+  i React relies on hook dependencies to determine when to re-compute Effects.
+    Specifying more dependencies than required can lead to unnecessary re-rendering
+    and degraded performance.
+
+  i Unsafe fix: Remove the extra dependencies from the list.
+
+    1445 │ ··},·[isEmail,·conversation.id,·botOwned]);
+         │              ---------------------------
+
+src/app/(main)/dashboard/chat/_components/conversations-workspace.tsx:165:56 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    163 │         if (statusFilter !== "all" && statusFilter !== status) cw.setStatusFilter(status);
+    164 │         const me = currentViewer().id;
+  > 165 │         cw.setAssigneeTab(m.assigneeId === me ? "me" : m.assigneeId === null ? "unassigned" : "all");
+        │                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    166 │       }
+    167 │       cw.focus(id);
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/conversations-workspace.tsx:181:11 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━
+
+  ! This condition is always falsy.
+
+    179 │   useEffect(() => {
+    180 │     if (view.kind === "participating") {
+  > 181 │       if (openedFromQuery.current) return;
+        │           ^^^^^^^^^^^^^^^^^^^^^^^
+    182 │       const current = useCwStore.getState().assigneeTab;
+    183 │       if (current !== "all") {
+
+  i The value's type can never be truthy, so this check is redundant.
+
+
+src/app/(main)/dashboard/chat/_components/conversations-workspace.tsx:216:9 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━
+
+  ! This condition is always falsy.
+
+    214 │   useEffect(() => {
+    215 │     // Participating on opening: its own first conversation (see above), even over one opened outside the list.
+  > 216 │     if (pickJoined.current && view.kind === "participating") {
+        │         ^^^^^^^^^^^^^^^^^^
+    217 │       // Wait for the list of the All tab (the first pass still has the earlier tab's rows).
+    218 │       if (assigneeTab !== "all") return;
+
+  i The value's type can never be truthy, so this check is redundant.
+
+
+src/app/(main)/dashboard/chat/_components/conversations-workspace.tsx:229:9 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━
+
+  ! This condition is always falsy.
+
+    227 │     if (focused) return;
+    228 │     // Same pass as the ?conversation= effect above: its values here are from before it, so leave its pick alone.
+  > 229 │     if (openedFromQuery.current) {
+        │         ^^^^^^^^^^^^^^^^^^^^^^^
+    230 │       openedFromQuery.current = false;
+    231 │       return;
+
+  i The value's type can never be truthy, so this check is redundant.
+
+
+src/app/(main)/dashboard/chat/_components/cw-ui.tsx:50:8 lint/suspicious/noImportCycles ━━━━━━━━━━━━
+
+  ! This import is part of a cycle.
+
+    48 │   useLiveAgents,
+    49 │   useLiveTeams,
+  > 50 │ } from "./cw-data";
+       │        ^^^^^^^^^^^
+    51 │
+    52 │ const brandIcons = {
+
+  i This import resolves to src/app/(main)/dashboard/chat/_components/cw-data.ts
+        ... which imports src/lib/cw/store.ts
+        ... which imports src/lib/chatwoot/settings-adapter.ts
+        ... which imports src/app/(main)/dashboard/reports/_components/report-ui.tsx
+        ... which imports src/app/(main)/dashboard/reports/_components/drilldown-sheet.tsx
+        ... which imports src/app/(main)/dashboard/chat/_components/cw-ui.tsx
+        ... which is the file we're importing from.
+
+
+src/app/(main)/dashboard/chat/_components/cw-ui.tsx:71:45 lint/style/noNestedTernary ━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    69 │     );
+    70 │   }
+  > 71 │   const Icon = channel === "email" ? Mail : channel === "phone" ? Phone : MessageCircle;
+       │                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    72 │   return <Icon className={cn("size-3.5 shrink-0", className)} />;
+    73 │ }
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:393:40 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    391 │       const defaultHeight = Math.min(120, max);
+    392 │       const expandedHeight = Math.max(80, Math.min(Math.floor(emailAvailableHeight * 0.5 - surrounding / 2), max));
+  > 393 │       const editorHeight = expanded ? (expandedHeight - defaultHeight < 100 ? max : expandedHeight) : defaultHeight;
+        │                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    394 │       const next = {
+    395 │         editor: editorHeight,
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:734:108 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    732 │       const name = error instanceof DOMException ? error.name : "";
+    733 │       toast.error("Not recorded", {
+  > 734 │         description: `${name === "NotAllowedError" ? "The browser was not allowed to use the microphone" : name === "NotFoundError" ? "No microphone was found" : error instanceof Error ? error.message : String(error)}. Nothing was recorded.`,
+        │                                                                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    735 │         duration: 12000,
+    736 │       });
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:734:163 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    732 │       const name = error instanceof DOMException ? error.name : "";
+    733 │       toast.error("Not recorded", {
+  > 734 │         description: `${name === "NotAllowedError" ? "The browser was not allowed to use the microphone" : name === "NotFoundError" ? "No microphone was found" : error instanceof Error ? error.message : String(error)}. Nothing was recorded.`,
+        │                                                                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    735 │         duration: 12000,
+    736 │       });
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:1145:55 lint/style/noNestedTernary ━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+
+    1143 │           className={cn(
+    1144 │             "px-3 py-2 text-sm ring-0 focus-visible:ring-0",
+  > 1145 │             isEmail ? "field-sizing-fixed min-h-20" : expanded ? "min-h-48" : "min-h-16",
+         │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    1146 │             templateOnly && "cursor-not-allowed",
+    1147 │           )}
+
+  i Nesting ternary expressions can make code more difficult to understand.
+
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:261:10 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+
+  ! This function transform is unused.
+
+    259 │ }
+    260 │
+  > 261 │ function transform(key: string, text: string, firstName: string, subject: string): string {
+        │          ^^^^^^^^^
+    262 │   const base = text.trim();
+    263 │   switch (key) {
+
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+
+  i Unsafe fix: If this is intentional, prepend transform with an underscore.
+
+     259  259 │   }
+     260  260 │
+     261      │ - function·transform(key:·string,·text:·string,·firstName:·string,·subject:·string):·string·{
+          261 │ + function·_transform(key:·string,·text:·string,·firstName:·string,·subject:·string):·string·{
+     262  262 │     const base = text.trim();
+     263  263 │     switch (key) {
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:619:5 lint/nursery/noFloatingPromises ━━━━━━━━━━
+
+  ! A "floating" Promise was found, meaning it is not properly handled and could lead to ignored errors or unexpected behavior.
+
+    617 │   const pickMacro = (id: number) => {
+    618 │     replaceToken(MACRO_RE, "");
+  > 619 │     runMacro(id, conversation.id);
+        │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    620 │   };
+    621 │
+
+  i This happens when a Promise is not awaited, lacks a `.catch` or `.then` rejection handler, or is not explicitly ignored using the `void` operator.
+
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+
+
+src/app/(main)/dashboard/chat/_components/reply-box.tsx:988:44 lint/suspicious/noArrayIndexKey ━━━━━━━━━━
+
+  ! Avoid using the index of an array as key property in an element.
+
+    986 │               {m.actions.map((action, index) => (
+    987 │                 <div
+  > 988 │                   key={`${action.action}-${index}`}
+        │                                            ^^^^^
+    989 │                   className="group relative flex flex-col gap-0.5 ps-4 pb-2 last:pb-0"
+    990 │                 >
+
+  i This is the source of the key value.
+
+    984 │           renderPreview={(m) => (
+    985 │             <div className="px-3 py-2.5">
+  > 986 │               {m.actions.map((action, index) => (
+        │                                       ^^^^^
+    987 │                 <div
+    988 │                   key={`${action.action}-${index}`}
+
+  i The order of the items may change, and this also affects performances and component state.
+
+  i Check the React documentation.
+
+
+Checked 6 files in 423ms. No fixes applied.
+Found 16 warnings.
+Found 2 infos.

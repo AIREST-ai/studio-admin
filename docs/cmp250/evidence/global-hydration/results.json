@@ -1,0 +1,111 @@
+{
+  "origin": "http://127.0.0.1:8824",
+  "results": [
+    {
+      "route": "/auth/v2/login",
+      "width": 1440,
+      "slow": false,
+      "delayedScripts": 0,
+      "translatedHeading": "سجّل الدخول إلى حسابك",
+      "interaction": "empty form validation translated; checkbox toggled twice",
+      "geometry": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/dashboard/contacts",
+      "width": 1440,
+      "slow": false,
+      "delayedScripts": 0,
+      "translatedHeading": "جهات الاتصال",
+      "interaction": "search accepts input",
+      "geometry": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/auth/v2/login",
+      "width": 390,
+      "slow": false,
+      "delayedScripts": 0,
+      "translatedHeading": "سجّل الدخول إلى حسابك",
+      "interaction": "empty form validation translated; checkbox toggled twice",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/dashboard/contacts",
+      "width": 390,
+      "slow": false,
+      "delayedScripts": 0,
+      "translatedHeading": "جهات الاتصال",
+      "interaction": "search accepts input",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/auth/v2/login",
+      "width": 1440,
+      "slow": true,
+      "delayedScripts": 2,
+      "translatedHeading": "سجّل الدخول إلى حسابك",
+      "interaction": "empty form validation translated; checkbox toggled twice",
+      "geometry": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/dashboard/contacts",
+      "width": 1440,
+      "slow": true,
+      "delayedScripts": 15,
+      "translatedHeading": "جهات الاتصال",
+      "interaction": "search accepts input",
+      "geometry": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/auth/v2/login",
+      "width": 390,
+      "slow": true,
+      "delayedScripts": 2,
+      "translatedHeading": "سجّل الدخول إلى حسابك",
+      "interaction": "empty form validation translated; checkbox toggled twice",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390
+      },
+      "pageErrors": []
+    },
+    {
+      "route": "/dashboard/contacts",
+      "width": 390,
+      "slow": true,
+      "delayedScripts": 15,
+      "translatedHeading": "جهات الاتصال",
+      "interaction": "search accepts input",
+      "geometry": {
+        "width": 390,
+        "scrollWidth": 390
+      },
+      "pageErrors": []
+    }
+  ],
+  "pageErrors": [],
+  "blockedWrites": []
+}

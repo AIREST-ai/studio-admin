@@ -112,6 +112,11 @@ export function BillingSettings() {
   async function confirmPurchase() {
     setBuying(true);
     try {
+      void fetch("/api/captain-engine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "balance.topup", points: picked.value }),
+      }).catch(() => {});
       setSaved(await saveBilling({ addPurchase: picked.value }));
       setBuyOpen(false);
       toast.success(`${picked.credits} credits added to the sample balance`, {

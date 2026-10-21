@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export const STUDIO_DATA_DIR = "/Users/ali/server-work/ai-home/vendor/studio-admin/.studio-data";
+// 2026-10-19 (نسخة الإنتاج لـ app.airest.ai): مجلد بيانات النسخة نفسها لا مجلد studio-admin.
+export const STUDIO_DATA_DIR = path.join(process.cwd(), ".studio-data");
 export const SECRETS_DIR = path.join(STUDIO_DATA_DIR, "secrets");
 export const BUDGETS_FILE_PATH = path.join(STUDIO_DATA_DIR, "captain-budgets.json");
 export const LITELLM_BASE_URL = "http://127.0.0.1:4001";
