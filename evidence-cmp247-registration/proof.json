@@ -1,0 +1,56 @@
+{
+  "task": "CMP-247",
+  "branch": "جولة-245-عامل-1-تسجيل",
+  "baseCommit": "d478423cf73185d87b20d959d22fe7b269a91895",
+  "appCommit": "2bb6ffdeb11df9d80654ca1309036de6bdde0b0c",
+  "closedGateRealHandler": { "status": 403, "error": "signup_disabled", "browserTest": false },
+  "liveReadback": {
+    "targetPort": "3200",
+    "status": 200,
+    "id": 4,
+    "name": "CMP247-signup-agent-1792588943212",
+    "role": "agent",
+    "signInCountProvided": false,
+    "createdNewUser": false
+  },
+  "priorLiveCreation": { "appCommit": "185b81901f5a7cf7a2a093742dbb8fa9d3b045b2", "status": 201, "repeated": false },
+  "isolatedLogin": {
+    "mockedChatwootAndSession": true,
+    "passed": true,
+    "signInCountCases": [
+      { "value": 0, "firstLogin": false },
+      { "value": 1, "firstLogin": true },
+      { "value": 2, "firstLogin": false },
+      { "value": "missing", "firstLogin": false },
+      { "value": "1", "firstLogin": false }
+    ],
+    "linkedAccountRoleSelected": true,
+    "foreignAccountStatus": 401,
+    "invalidInputStatus": 400,
+    "tenFailuresThenStatus": 429,
+    "blockedRequestMadeUpstreamCall": false
+  },
+  "isolatedInvitation": {
+    "mockedGateway": true,
+    "passed": true,
+    "status": 201,
+    "readbackChecked": true,
+    "requiresActivation": true,
+    "message": "أُرسلت دعوة إلى بريدك لتعيين كلمة المرور",
+    "inputAdminRoleIgnored": true,
+    "passwordFieldSent": false,
+    "sessionCookieCreated": false,
+    "wrongReadbackRoleStatus": 502
+  },
+  "biome": { "exitCode": 0, "files": 2, "errors": 0, "warnings": 1 },
+  "typecheck": { "exitCode": 2, "ownedRouteErrors": 0, "missingAssetErrors": 4 },
+  "protectedSourceChanged": false,
+  "frontendChanged": false,
+  "browserViewportsVerified": [],
+  "realFirstLoginVerified": false,
+  "invitationAcceptanceLoginVerified": false,
+  "productionBuildVerified": false,
+  "productionPublished": false,
+  "dockerPermissionDenied": { "retried": false, "escalated": false },
+  "humanReview": { "id": "ca8297ad-60ae-41df-aa16-37dab2ebdeb8", "status": "pending", "resolverPolicy": "human_only", "withdrawn": false }
+}
