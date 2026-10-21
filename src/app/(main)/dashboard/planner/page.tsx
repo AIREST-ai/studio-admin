@@ -5,8 +5,8 @@ import { APP_CONFIG } from "@/config/app-config";
 import { Planner } from "./_components/planner";
 
 export const metadata: Metadata = {
-  title: `Planner · ${APP_CONFIG.name}`,
-  description: "Your tasks and appointments in one place.",
+  title: `المخطط · ${APP_CONFIG.name}`,
+  description: "مهامك ومواعيدك في مكان واحد.",
   alternates: {
     canonical: "/dashboard/planner",
   },

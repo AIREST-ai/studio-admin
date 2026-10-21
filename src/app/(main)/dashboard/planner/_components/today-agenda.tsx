@@ -1,14 +1,18 @@
 "use client";
 import * as React from "react";
 
+import { cn } from "cn";
 import { addDays, format, isSameDay, parseISO, startOfDay } from "date-fns";
+import { ar } from "date-fns/locale";
 import { CalendarDays, CheckSquare } from "lucide-react";
 
 import { useDavisCalendar } from "@/app/(main)/dashboard/calendar/_components/use-davis-calendar";
 import { useTwentyBoard } from "@/app/(main)/dashboard/tasks/_twenty/use-twenty-board";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BoardTask } from "@/lib/twenty/server";
 
@@ -28,9 +32,9 @@ const dayOf = (start: string, allDay: boolean) => (allDay ? start.slice(0, 10) :
 
 function dayLabel(day: string, today: Date) {
   const date = parseISO(day);
-  if (isSameDay(date, today)) return "Today";
-  if (isSameDay(date, addDays(today, 1))) return "Tomorrow";
-  return format(date, "EEEE, d MMMM");
+  if (isSameDay(date, today)) return "اليوم";
+  if (isSameDay(date, addDays(today, 1))) return "غدًا";
+  return format(date, "EEEE، d MMMM", { locale: ar });
 }
 
 export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void }) {
@@ -54,7 +58,7 @@ export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void })
       id: task.id,
       // the Tasks page's day contract: the first ten characters of dueAt (calendar-tasks.ts)
       day: task.dueAt?.slice(0, 10) ?? "",
-      title: task.title || "Untitled task",
+      title: task.title || "مهمة بلا عنوان",
       status: statusOf(task)?.label ?? "",
     });
     const calendars = new Map(calendar.data?.calendars.map((c) => [c.id, c]) ?? []);
@@ -63,7 +67,7 @@ export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void })
       id: event.id,
       day: dayOf(event.start, event.allDay),
       time: event.allDay ? null : format(parseISO(event.start), "HH:mm"),
-      title: event.busyOnly ? "Busy" : event.title || "Untitled event",
+      title: event.busyOnly ? "مشغول" : event.title || "موعد بلا عنوان",
       color: calendars.get(event.calendarId)?.color ?? "var(--primary)",
       where: [calendars.get(event.calendarId)?.name, event.location].filter(Boolean).join(" · "),
     }));
@@ -87,27 +91,28 @@ export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void })
     };
   }, [calendar.data, twenty.board, today, todayKey]);
 
-  const loading = (!calendar.data && !calendar.loadError) || (!twenty.board && !twenty.loadError);
+  const calendarPending = !calendar.data && !calendar.loadError;
+  const tasksPending = !twenty.board && !twenty.loadError;
+  const loading = !calendar.data && !twenty.board && (calendarPending || tasksPending);
+  const complete = !!calendar.data && !!twenty.board && !calendar.loadError && !twenty.loadError;
   const todayItems = days.find(([day]) => day === todayKey)?.[1] ?? [];
   const todayEvents = todayItems.filter((item) => item.kind === "event").length;
   const todayTasks = todayItems.length - todayEvents;
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[1fr_360px]">
-      <Card>
+    <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <Card className="min-w-0">
         <CardHeader className="border-b">
-          <CardTitle className="text-xl leading-none">{format(today, "EEEE, d MMMM")}</CardTitle>
-          <CardDescription className="leading-snug">
-            {loading
-              ? "Loading your day…"
-              : `${todayEvents} ${todayEvents === 1 ? "appointment" : "appointments"} and ${todayTasks} ${
-                  todayTasks === 1 ? "task" : "tasks"
-                } due today.`}
+          <CardTitle>{format(today, "EEEE، d MMMM", { locale: ar })}</CardTitle>
+          <CardDescription aria-live="polite">
+            المواعيد اليوم: {sourceCount(calendarPending, calendar.loadError, todayEvents)}
+            {" · "}
+            المهام المستحقة اليوم: {sourceCount(tasksPending, twenty.loadError, todayTasks)}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6">
-          {calendar.loadError && <LoadError what="appointments" message={calendar.loadError} />}
-          {twenty.loadError && <LoadError what="tasks" message={twenty.loadError} />}
+          {calendar.loadError && <LoadError what="المواعيد" message={calendar.loadError} onRetry={calendar.reload} />}
+          {twenty.loadError && <LoadError what="المهام" message={twenty.loadError} onRetry={twenty.reload} />}
           {loading ? (
             <div className="grid gap-2">
               <Skeleton className="h-12" />
@@ -117,27 +122,34 @@ export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void })
           ) : (
             <>
               {overdue.length > 0 && (
-                <AgendaDay label="Overdue" tone="text-destructive" items={overdue} onOpen={onOpen} />
+                <AgendaDay label="متأخرة" tone="text-destructive" items={overdue} onOpen={onOpen} />
               )}
               {days.map(([day, items]) => (
-                <AgendaDay key={day} label={dayLabel(day, today)} items={items} onOpen={onOpen} />
+                <AgendaDay key={day} label={dayLabel(day, today)} items={items} complete={complete} onOpen={onOpen} />
               ))}
             </>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader className="border-b">
-          <CardTitle className="text-xl leading-none">No due date</CardTitle>
-          <CardDescription className="leading-snug">Open tasks waiting for a day.</CardDescription>
+          <CardTitle>بلا تاريخ استحقاق</CardTitle>
+          <CardDescription>مهام مفتوحة تحتاج إلى تحديد موعد.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {loading ? (
-            <Skeleton className="h-12" />
-          ) : noDate.length === 0 ? (
-            <p className="py-4 text-center text-muted-foreground text-sm">Every open task has a day.</p>
-          ) : (
+          {tasksPending && <Skeleton className="h-12" />}
+          {!tasksPending && !twenty.board && (
+            <p className="text-muted-foreground text-sm">تعذر عرض المهام. أعد محاولة تحميلها.</p>
+          )}
+          {twenty.board && noDate.length === 0 && (
+            <Empty className="py-4">
+              <EmptyHeader>
+                <EmptyDescription>لا توجد مهام مفتوحة بلا تاريخ استحقاق.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+          {twenty.board && noDate.length > 0 && (
             <div className="divide-y rounded-lg border">
               {noDate.slice(0, NO_DATE_SHOWN).map((item) => (
                 <AgendaRow key={item.id} item={item} onOpen={onOpen} />
@@ -146,10 +158,11 @@ export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void })
           )}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpen("tasks")}>
-              <CheckSquare /> {noDate.length > NO_DATE_SHOWN ? `All ${noDate.length} in Tasks` : "Open Tasks"}
+              <CheckSquare data-icon="inline-start" />
+              {noDate.length > NO_DATE_SHOWN ? `عرض المهام كلها (${noDate.length})` : "فتح المهام"}
             </Button>
             <Button variant="outline" size="sm" onClick={() => onOpen("calendar")}>
-              <CalendarDays /> Open Calendar
+              <CalendarDays data-icon="inline-start" /> فتح التقويم
             </Button>
           </div>
         </CardContent>
@@ -158,11 +171,32 @@ export function TodayAgenda({ onOpen }: { onOpen: (view: PlannerView) => void })
   );
 }
 
-function LoadError({ what, message }: { what: string; message: string }) {
+function sourceCount(pending: boolean, error: string | null, count: number) {
+  if (error) return "تعذر التحميل";
+  if (pending) return "جارٍ التحميل…";
+  return count.toLocaleString("ar");
+}
+
+function LoadError({ what, message, onRetry }: { what: string; message: string; onRetry: () => Promise<unknown> }) {
+  const [retrying, setRetrying] = React.useState(false);
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  };
   return (
-    <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-destructive text-sm">
-      The {what} could not be read: {message}
-    </p>
+    <Alert variant="destructive" className="min-w-0 text-start">
+      <AlertTitle>تعذر تحميل {what}</AlertTitle>
+      <AlertDescription className="min-w-0 break-words">
+        <p>{message}</p>
+        <Button variant="outline" size="sm" disabled={retrying} onClick={() => void retry()}>
+          {retrying ? "جارٍ إعادة المحاولة…" : `إعادة تحميل ${what}`}
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -170,20 +204,26 @@ function AgendaDay({
   label,
   items,
   tone,
+  complete = true,
   onOpen,
 }: {
   label: string;
   items: AgendaItem[];
   tone?: string;
+  complete?: boolean;
   onOpen: (view: PlannerView) => void;
 }) {
   return (
     <section className="grid gap-2">
-      <h2 className={`font-medium text-sm ${tone ?? "text-muted-foreground"}`}>{label}</h2>
+      <h2 className={cn("font-medium text-sm", tone ?? "text-muted-foreground")}>{label}</h2>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground text-sm">
-          Nothing planned. A calm day.
-        </p>
+        <Empty className="border px-3 py-4">
+          <EmptyHeader>
+            <EmptyDescription>
+              {complete ? "لا توجد مواعيد أو مهام مستحقة لهذا اليوم." : "الجدول غير مكتمل؛ بعض البيانات غير متاحة."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="divide-y rounded-lg border">
           {items.map((item) => (
@@ -204,7 +244,7 @@ function AgendaRow({ item, onOpen }: { item: AgendaItem; onOpen: (view: PlannerV
       className="flex w-full items-center gap-3 px-3 py-2.5 text-start text-sm transition-colors hover:bg-muted/50"
     >
       <span className="w-14 shrink-0 text-muted-foreground text-xs tabular-nums">
-        {isEvent ? (item.time ?? "All day") : "Task"}
+        {isEvent ? (item.time ?? "طوال اليوم") : "مهمة"}
       </span>
       {isEvent ? (
         <span className="size-2 shrink-0 rounded-full" style={{ background: item.color }} />
