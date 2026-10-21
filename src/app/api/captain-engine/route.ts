@@ -662,7 +662,7 @@ async function writeCompanyState(companyId: string, state: CompanyEngineState): 
   await fs.writeFile(file, JSON.stringify(state, null, 2), "utf8");
 }
 
-export function analyzeEvaluation(
+function analyzeEvaluation(
   customerText: string,
   agentReply: string,
   agentName = "موظف الاختبار",

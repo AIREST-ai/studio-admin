@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-
 import Link from "next/link";
 
 import { BatteryCharging, EyeOff, MessageSquareText, Sparkles } from "lucide-react";
@@ -22,9 +20,7 @@ const T = {
 };
 
 export function SmartBatteryPill() {
-  // MOCK PREVIEW — static values only, no live fetch
   const aiAvailable = 12480;
-  const aiDays = 63;
   const aiPct = 92;
   const waCredit = "1,450";
   const waConvs = 3850;
@@ -44,7 +40,7 @@ export function SmartBatteryPill() {
           <BatteryCharging className="size-3.5" />
           <span>{T.pillLabel}</span>
           <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 font-semibold text-[11px] tabular-nums">
-            {`${aiDays} يوماً`}
+            {T.mock}
           </span>
         </button>
       </PopoverTrigger>

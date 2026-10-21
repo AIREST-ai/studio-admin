@@ -12,8 +12,8 @@ import {
   BatteryCharging,
   Bot,
   CalendarClock,
-  EyeOff,
   ClipboardCheck,
+  EyeOff,
   Gauge,
   History,
   MessageSquareText,
@@ -55,8 +55,8 @@ const T = {
   topup: "شحن الرصيد",
   log: "سجل الصرف",
   details: "تفصيل الصرف",
-  detailsDesc: "أين صُرف رصيدك هذا الشهر، وكم يكفي بالمعدل الحالي",
-  logDesc: "آخر عمليات الصرف والشحن على رصيدك",
+  detailsDesc: "تفصيل تجريبي ثابت، وليس قياساً للرصيد أو الصرف الحقيقي",
+  logDesc: "عمليات نموذجية للعرض فقط، وليست سجل صرف أو شحن فعلي",
   close: "إغلاق",
   dot: (a: string, b: string) => `${a} · ${b}`,
   pct: (n: number) => `${n}٪`,
@@ -75,23 +75,7 @@ const kindMeta: Record<SpendRow["kind"], { icon: typeof Bot; label: string }> = 
 type View = "log" | "details";
 
 function useBalanceMath() {
-  const [liveBal, setLiveBal] = React.useState(balance);
-  React.useEffect(() => {
-    fetch("/api/captain-engine")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((res) => {
-        const ai = res?.state?.balance?.ai;
-        if (ai && typeof ai.available === "number") {
-          setLiveBal({
-            available: ai.available,
-            spentEvaluation: Number(ai.spentEvaluation ?? balance.spentEvaluation),
-            spentEmployee: Number(ai.spentEmployee ?? balance.spentEmployee),
-            dayOfMonth: Number(ai.dayOfMonth ?? balance.dayOfMonth),
-          });
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const liveBal = balance;
   const spent = liveBal.spentEvaluation + liveBal.spentEmployee;
   const total = Math.max(1, spent + liveBal.available);
   const perDay = Math.max(1, spent / Math.max(1, liveBal.dayOfMonth));
@@ -115,13 +99,7 @@ function Meter({ value, label, className }: { value: number; label?: string; cla
 }
 
 // بطارية ذكية مقسّمة إلى 10 خلايا تقيس الرصيد بأيام التغطية (حتى لو شحن مليون ريال تبقى منطقية ومريحة للعين)
-function SmartBatteryGraphic({
-  days,
-  tone = "emerald",
-}: {
-  days: number;
-  tone?: "emerald" | "sky";
-}) {
+function SmartBatteryGraphic({ days, tone = "emerald" }: { days: number; tone?: "emerald" | "sky" }) {
   const pct = Math.min(100, Math.max(12, Math.round((days / 60) * 100)));
   const activeCells = Math.max(1, Math.round(pct / 10));
   const fillClass =
@@ -129,7 +107,7 @@ function SmartBatteryGraphic({
       ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.45)]"
       : "bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.45)]";
   return (
-    <div className="flex items-center gap-1.5" aria-label={`${pct}%`}>
+    <div role="img" className="flex items-center gap-1.5" aria-label={`${pct}%`}>
       <div className="flex items-center gap-1 rounded-lg border-2 border-foreground/20 bg-background/80 p-1">
         {Array.from({ length: 10 }, (_, idx) => (
           <span
@@ -142,9 +120,7 @@ function SmartBatteryGraphic({
         ))}
       </div>
       <span className="h-2.5 w-1 rounded-e-sm bg-foreground/25" />
-      <span className="font-semibold text-xs tabular-nums text-emerald-600 dark:text-emerald-400">
-        {T.pct(pct)}
-      </span>
+      <span className="font-semibold text-xs tabular-nums text-emerald-600 dark:text-emerald-400">{T.pct(pct)}</span>
     </div>
   );
 }
@@ -190,14 +166,14 @@ function DetailsSection() {
             <Gauge className="size-3.5" />
             {T.rate}
           </span>
-          <span className="font-medium text-sm tabular-nums">{T.perDay(fmt(perDay))}</span>
+          <span className="font-medium text-sm">غير مقاس</span>
         </div>
         <div className="grid gap-1 rounded-lg border p-3">
           <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
             <CalendarClock className="size-3.5" />
             {T.daysLeft}
           </span>
-          <span className="font-medium text-sm tabular-nums">{T.days(daysLeft)}</span>
+          <span className="font-medium text-sm">غير متاحة</span>
         </div>
       </div>
     </section>
@@ -279,7 +255,10 @@ export function BalanceHeader() {
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+            <Badge
+              variant="outline"
+              className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            >
               <BatteryCharging className="size-3.5" />
               {T.batteryBadge}
             </Badge>
@@ -308,7 +287,7 @@ export function BalanceHeader() {
                 </span>
                 {T.available}
               </div>
-              <SmartBatteryGraphic days={daysLeft} tone="emerald" />
+              <Badge variant="outline">{T.mock}</Badge>
             </div>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="flex items-baseline gap-1.5">
@@ -317,13 +296,14 @@ export function BalanceHeader() {
                 </span>
                 <span className="text-muted-foreground text-xs">{T.points}</span>
               </div>
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {T.ofTotal(fmt(spent), fmt(total))}
-              </span>
+              <span className="text-muted-foreground text-xs tabular-nums">{T.ofTotal(fmt(spent), fmt(total))}</span>
             </div>
             <p className="flex items-center gap-1.5 text-emerald-700 text-xs dark:text-emerald-300">
               <CalendarClock className="size-3.5" />
-              {T.enough(daysLeft)} · <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">{T.mock}</span>
+              مدة التغطية غير مقاسة ·{" "}
+              <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
+                {T.mock}
+              </span>
             </p>
           </div>
 
@@ -336,7 +316,7 @@ export function BalanceHeader() {
                 </span>
                 {T.waAvailable}
               </div>
-              <SmartBatteryGraphic days={48} tone="sky" />
+              <Badge variant="outline">{T.mock}</Badge>
             </div>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="flex items-baseline gap-1.5">
@@ -344,8 +324,12 @@ export function BalanceHeader() {
                 <span className="text-muted-foreground text-xs">{T.waCurrency}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs">
-                <Badge variant="secondary" className="text-[11px]">{T.waConvs}</Badge>
-                <Badge variant="outline" className="text-[11px]">{T.waTemplates}</Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {T.waConvs}
+                </Badge>
+                <Badge variant="outline" className="text-[11px]">
+                  {T.waTemplates}
+                </Badge>
               </div>
             </div>
             <p className="flex items-center gap-1.5 text-sky-700 text-xs dark:text-sky-300">
