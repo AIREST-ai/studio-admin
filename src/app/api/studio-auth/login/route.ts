@@ -35,7 +35,10 @@ function noteFail(ip: string) {
 }
 
 /** حساب شات ووت: يُقبل فقط إن نجح دخوله وكان عضواً في الحساب المربوط بالاستوديو. */
-async function checkChatwoot(email: string, password: string): Promise<{ email: string; name: string } | null> {
+async function checkChatwoot(
+  email: string,
+  password: string,
+): Promise<{ email: string; name: string; role: "agent" | "administrator" | null; firstLogin: boolean } | null> {
   const accountId = Number(process.env.CHATWOOT_EXPECTED_ACCOUNT_ID || EXPECTED_ACCOUNT_ID);
   const res = await fetch(`${chatwootTarget().url.replace(/\/$/, "")}/auth/sign_in`, {
     method: "POST",
@@ -46,16 +49,23 @@ async function checkChatwoot(email: string, password: string): Promise<{ email: 
   });
   if (!res.ok) return null;
   const body = (await res.json().catch(() => null)) as {
-    data?: { email?: string; name?: string; accounts?: { id?: number }[] };
+    data?: { email?: string; name?: string; sign_in_count?: number; accounts?: { id?: number; role?: string }[] };
   } | null;
   const d = body?.data;
   if (!d?.email || !d.accounts?.some((a) => Number(a.id) === accountId)) return null;
-  return { email: d.email, name: d.name || d.email };
+  const accountRole = d.accounts.find((account) => Number(account.id) === accountId)?.role;
+  return {
+    email: d.email,
+    name: d.name || d.email,
+    role: accountRole === "agent" || accountRole === "administrator" ? accountRole : null,
+    firstLogin: d.sign_in_count === 1,
+  };
 }
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
-  if (tooMany(ip)) return NextResponse.json({ error: "too_many", message: "محاولات كثيرة، حاول بعد دقائق" }, { status: 429 });
+  if (tooMany(ip))
+    return NextResponse.json({ error: "too_many", message: "محاولات كثيرة، حاول بعد دقائق" }, { status: 429 });
 
   const input = (await req.json().catch(() => null)) as { email?: unknown; password?: unknown } | null;
   const email = typeof input?.email === "string" ? input.email.trim() : "";
@@ -64,7 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid", message: "البريد وكلمة المرور مطلوبان" }, { status: 400 });
   }
 
-  let who: { email: string; name: string } | null = null;
+  let who: { email: string; name: string; role?: "agent" | "administrator" | null; firstLogin?: boolean } | null = null;
   let source: "local" | "chatwoot" = "local";
   who = checkLocalAccount(email, password);
   if (!who) {
@@ -81,7 +91,12 @@ export async function POST(req: NextRequest) {
   }
 
   fails.delete(ip);
-  const res = NextResponse.json({ ok: true, name: who.name });
+  const res = NextResponse.json({
+    ok: true,
+    name: who.name,
+    role: who.role ?? null,
+    firstLogin: who.firstLogin ?? false,
+  });
   res.cookies.set(SESSION_COOKIE, createSessionToken(who.email, who.name, source), sessionCookieOptions(isHttps(req)));
   return res;
 }
