@@ -1,0 +1,312 @@
+{
+  "companyId": "airest-main",
+  "companyName": "شركة فهد الرئيسية",
+  "sector": "معرض سيارات",
+  "employeeName": "إيمه",
+  "smartPlan": {
+    "placed": [
+      "whatsapp",
+      "instagram",
+      "tone"
+    ],
+    "activated": true,
+    "history": [
+      {
+        "id": "h-1792417526446",
+        "text": "اختبار تفعيل خطة كل شيء سمارت",
+        "time": "الآن"
+      },
+      {
+        "id": "h-1",
+        "text": "تم تهيئة العزل الكامل لذاكرة الشركة في بنك Hindsight (tenant_airest-main)",
+        "time": "قبل قليل"
+      }
+    ]
+  },
+  "channels": {
+    "whatsapp": {
+      "id": "whatsapp",
+      "label": "واتساب للأعمال",
+      "connected": true,
+      "accountName": "+974 5500 1234 · واتساب الرسمي",
+      "connectedAt": "متصل"
+    },
+    "instagram": {
+      "id": "instagram",
+      "label": "إنستغرام",
+      "connected": true,
+      "accountName": "@airest_official",
+      "connectedAt": "متصل"
+    },
+    "messenger": {
+      "id": "messenger",
+      "label": "فيسبوك ماسنجر",
+      "connected": false,
+      "accountName": "",
+      "connectedAt": ""
+    },
+    "facebook": {
+      "id": "facebook",
+      "label": "صفحة فيسبوك",
+      "connected": false,
+      "accountName": "",
+      "connectedAt": ""
+    },
+    "tiktok": {
+      "id": "tiktok",
+      "label": "تيك توك للأعمال",
+      "connected": false,
+      "accountName": "",
+      "connectedAt": ""
+    },
+    "email": {
+      "id": "email",
+      "label": "البريد الإلكتروني",
+      "connected": true,
+      "accountName": "support@company.com",
+      "connectedAt": "متصل"
+    },
+    "webchat": {
+      "id": "webchat",
+      "label": "محادثة الموقع المباشرة",
+      "connected": true,
+      "accountName": "https://your-store.com",
+      "connectedAt": "متصل"
+    }
+  },
+  "memoryBank": {
+    "isolatedBankId": "tenant_airest-main",
+    "hindsightBankUrl": "http://127.0.0.1:8888/v1/default/banks/tenant_airest-main/memories",
+    "hindsightConnected": true,
+    "sampleSize": "50",
+    "source": "inboxes",
+    "lastLearnedAt": "الآن (محفوظ في بنك Hindsight المعزول)",
+    "learnedCount": 1,
+    "learnedStyle": [
+      "اعتماد أسلوب إيمه في المحادثة (c1): \"وعليكم السلام سارة، طلبك خرج اليوم ويوصلك قبل الخامسة.\"",
+      "الترحيب المختصر الدافئ بلهجة بشرية طبيعية دون تملق آلي أو تكرار جمل معلبة",
+      "التريث الطبيعي (٢ إلى ٤ ثوانٍ) ومراجعة حالة الطلب قبل كتابة الجواب",
+      "ذكر الحل العملي مباشرة وتجنب سؤال العميل عن معلومات أرسلها للتو"
+    ],
+    "ownerRules": [
+      "لا تذكر أبداً أنك روبوت، وتعامل بوعي ومهنية كموظف حقيقي في الشركة",
+      "عند وجود خلل عام في منتج اليوم، اعتذر بوضوح وطبّق الحل المعتمد من صندوق الموظفين فوراً"
+    ],
+    "todayIssues": [
+      {
+        "id": "iss-1",
+        "title": "تأخر تحديث بوليصة الشحن السريع لبعض طلبات الصباح",
+        "sourceInbox": "صندوق المبيعات وواتساب",
+        "discoveredBy": "سارة العتيبي (تكرر في 6 محادثات اليوم)",
+        "approvedFix": "إرسال رابط التتبع المباشر للعميل وتأكيد وصول المندوب الليلة دون الحاجة لإعادة الطلب.",
+        "updatedAt": "تم التحديث قبل 15 دقيقة",
+        "status": "active"
+      },
+      {
+        "id": "iss-2",
+        "title": "استفسارات تقسيط الدفعة الأولى على البطاقات الائتمانية",
+        "sourceInbox": "صندوق الفوترة",
+        "discoveredBy": "خالد المنصوري (تكرر في 4 محادثات اليوم)",
+        "approvedFix": "توضيح أن التقسيط متاح على 4 دفعات بلا فوائد وإرسال رابط التفعيل الفوري.",
+        "updatedAt": "تم التحديث اليوم",
+        "status": "active"
+      }
+    ]
+  },
+  "balance": {
+    "ai": {
+      "available": 12979,
+      "spentEvaluation": 2140,
+      "spentEmployee": 1381,
+      "dayOfMonth": 18,
+      "daysLeft": 66,
+      "batteryPct": 100
+    },
+    "whatsapp": {
+      "availableCredit": "1,450",
+      "currency": "ر.س",
+      "remainingConversations": 3850,
+      "approvedTemplates": 16,
+      "pendingTemplates": 2,
+      "daysLeft": 48,
+      "batteryPct": 82
+    }
+  },
+  "standardRoles": [
+    {
+      "roleId": "owner",
+      "title": "المالك (Owner)",
+      "subtitle": "صلاحية كاملة على الشركة، القنوات، إيمه، التقارير، وشحن الرصيد",
+      "viewConversations": true,
+      "editEmma": true,
+      "viewReports": true,
+      "topUpBalance": true
+    },
+    {
+      "roleId": "manager",
+      "title": "المدير (Manager)",
+      "subtitle": "إدارة الفريق، تعديل إيمه، ومراجعة التقارير وتنبيهات التهرب",
+      "viewConversations": true,
+      "editEmma": true,
+      "viewReports": true,
+      "topUpBalance": false
+    },
+    {
+      "roleId": "supervisor",
+      "title": "المشرف (Supervisor)",
+      "subtitle": "متابعة المحادثات اليومية وتقارير جودة الموظفين دون تعديل الفوترة",
+      "viewConversations": true,
+      "editEmma": false,
+      "viewReports": true,
+      "topUpBalance": false
+    },
+    {
+      "roleId": "agent",
+      "title": "الموظف (Agent)",
+      "subtitle": "الرد على محادثات العملاء في الصناديق المخصصة له فقط",
+      "viewConversations": true,
+      "editEmma": false,
+      "viewReports": false,
+      "topUpBalance": false
+    }
+  ],
+  "evaluations": [
+    {
+      "id": "ev-dodge-1",
+      "customerText": "مرحبا كيف الحال لدي مشكلة في هاتفي، وهذه الخدمة لا تعمل منذ الصباح.",
+      "agentReply": "أهلاً وسهلاً بك يا مرحبا أنت تؤمر وتدلل، جرب تطفي التلفون وتشغله مرة ثانية وإن شاء الله يضبط.",
+      "agentName": "حمد المري",
+      "politeDodge": true,
+      "angerEscalation": false,
+      "politenessScore": 94,
+      "resolutionScore": 12,
+      "overallScore": 34,
+      "verdictLabel": "تهرب لطيف مرفوض (طرد خفي للعميل)",
+      "verdictTone": "danger",
+      "explanation": "الموظف استخدم عبارات ترحيب معسولة («تؤمر وتدلل»)، لكنه صرف العميل بحل سطحي («أطفئ الهاتف») دون فحص الخدمة أو نقل المشكلة للقسم المختص، مما سيجبر العميل على التواصل مجدداً وهو غاضب.",
+      "coachingTip": "وجّه الموظف لفحص حالة الخدمة فعلياً في النظام وتنفيذ الحل قبل إغلاق المحادثة.",
+      "axes": {
+        "understanding": 25,
+        "action": 10,
+        "resolution": 12,
+        "effort": 20,
+        "tone": 94
+      },
+      "createdAt": "قبل 20 دقيقة"
+    },
+    {
+      "id": "ev-anger-1",
+      "customerText": "لقد تأخرتم جداً! أين أنتم؟ هذه ثالث مرة أتواصل معكم اليوم ولا أحد يحل المشكلة!",
+      "agentReply": "سأحولك لقسم آخر الآن.",
+      "agentName": "عمر الشحي",
+      "politeDodge": true,
+      "angerEscalation": true,
+      "politenessScore": 40,
+      "resolutionScore": 15,
+      "overallScore": 22,
+      "verdictLabel": "تصعيد غضب حاد + تحويل بلا حل",
+      "verdictTone": "danger",
+      "explanation": "رصد المقيّم نبرة غضب متصاعدة من العميل («تأخرتم، أين أنتم، ثالث مرة»)، ومع ذلك قام الموظف بتحويله آلياً دون تهدئته أو تسليم ملخص المشكلة للمشرف.",
+      "coachingTip": "عند رصد تكرار الشكوى أو الغضب، يجب التدخل الفوري بحل موثق وإشعار المشرف المناوب.",
+      "axes": {
+        "understanding": 30,
+        "action": 15,
+        "resolution": 15,
+        "effort": 10,
+        "tone": 40
+      },
+      "createdAt": "قبل ساعة"
+    },
+    {
+      "id": "ev-good-1",
+      "customerText": "مرحبا، الخدمة متوقفة في خطي منذ ساعة وأحتاجها للعمل ضروري.",
+      "agentReply": "أهلاً بك، فحصت خطك الآن ووجدت تعليقاً في باقة البيانات وأعدت تنشيطها فوراً من النظام. جرب الآن وأنا معك على الخط للتأكد.",
+      "agentName": "مريم الكواري",
+      "politeDodge": false,
+      "angerEscalation": false,
+      "politenessScore": 92,
+      "resolutionScore": 96,
+      "overallScore": 95,
+      "verdictLabel": "حل حقيقي كامل بأسلوب بشري",
+      "verdictTone": "success",
+      "explanation": "فهمت المشكلة من أول رسالة، وفحصت النظام فعلياً، وأنجزت الحل دون مماطلة أو تملق فارغ.",
+      "coachingTip": "أداء نموذجي يجمع بين اللباقة والحل الجذري الفوري من أول رد.",
+      "axes": {
+        "understanding": 96,
+        "action": 95,
+        "resolution": 96,
+        "effort": 94,
+        "tone": 92
+      },
+      "createdAt": "قبل ساعتين"
+    }
+  ],
+  "employee": {
+    "name": "إيمه",
+    "sector": "cars",
+    "terms": [
+      "الرد بأسلوب بشري طبيعي قريب من فريق المبيعات والدعم",
+      "قراءة صناديق الموظفين واكتشاف المشاكل المتكررة يومياً"
+    ],
+    "agreed": false,
+    "does": {
+      "add": true,
+      "suggest": true,
+      "learn": true
+    },
+    "auto": false,
+    "work": {
+      "human": true,
+      "learn": true,
+      "review": true
+    },
+    "size": "50",
+    "source": "inboxes",
+    "pick": "",
+    "handoff": "إضافة تلقائية للموظفين",
+    "active": true,
+    "launched": false
+  },
+  "evaluator": {
+    "enabled": true
+  },
+  "build": {
+    "brainMode": "emma",
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "prompt": "",
+    "context": "",
+    "memory": "10",
+    "temperature": 0.7,
+    "maxLength": "512",
+    "connected": true
+  },
+  "notes": [],
+  "smart": {
+    "placed": [
+      "whatsapp",
+      "instagram",
+      "tone"
+    ],
+    "activated": true,
+    "history": [
+      {
+        "id": "h-1792417526446",
+        "text": "اختبار تفعيل خطة كل شيء سمارت",
+        "time": "الآن"
+      },
+      {
+        "id": "h-1",
+        "text": "تم تهيئة العزل الكامل لذاكرة الشركة في بنك Hindsight (tenant_airest-main)",
+        "time": "قبل قليل"
+      }
+    ]
+  },
+  "humanInbox": {
+    "c1:c1-2": {
+      "text": "وعليكم السلام سارة، طلبك خرج اليوم ويوصلك قبل الخامسة.",
+      "learned": "approved",
+      "updatedAt": "2026-10-19T13:45:26.465Z"
+    }
+  }
+}

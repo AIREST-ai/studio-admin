@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+
 import Link from "next/link";
 
 import { BatteryCharging, EyeOff, MessageSquareText, Sparkles } from "lucide-react";
@@ -52,7 +53,10 @@ export function SmartBatteryPill() {
           <div className="grid gap-0.5">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm">{T.title}</span>
-              <Badge variant="outline" className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-700 text-[10px] dark:text-amber-300">
+              <Badge
+                variant="outline"
+                className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-700 text-[10px] dark:text-amber-300"
+              >
                 <EyeOff className="size-2.5" />
                 {T.mock}
               </Badge>
@@ -66,7 +70,9 @@ export function SmartBatteryPill() {
                 <Sparkles className="size-3.5 text-emerald-600" />
                 {T.aiTitle}
               </span>
-              <Badge variant="secondary" className="text-[9px]">{T.mock}</Badge>
+              <Badge variant="secondary" className="text-[9px]">
+                {T.mock}
+              </Badge>
             </div>
             <div className="flex gap-1">
               {Array.from({ length: 10 }, (_, i) => (
@@ -87,7 +93,9 @@ export function SmartBatteryPill() {
                 <MessageSquareText className="size-3.5 text-sky-600" />
                 {T.waTitle}
               </span>
-              <Badge variant="secondary" className="text-[9px]">{T.mock}</Badge>
+              <Badge variant="secondary" className="text-[9px]">
+                {T.mock}
+              </Badge>
             </div>
             <div className="flex gap-1">
               {Array.from({ length: 10 }, (_, i) => (

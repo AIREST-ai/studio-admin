@@ -1,0 +1,1189 @@
+{
+  "version": 1,
+  "savedAt": "2026-10-16T22:18:36.871Z",
+  "lists": {
+    "agents": [
+      {
+        "id": 1,
+        "name": "Arham Khan",
+        "email": "arham.khan@weblabs.studio",
+        "role": "administrator",
+        "customRoleId": null,
+        "availability": "online",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "02 Feb 2024, 9:10 AM"
+      },
+      {
+        "id": 2,
+        "name": "Priya Nair",
+        "email": "priya.nair@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "online",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "14 Mar 2024, 11:25 AM"
+      },
+      {
+        "id": 3,
+        "name": "Yousef Al-Harbi",
+        "email": "yousef.harbi@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 1,
+        "availability": "busy",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "21 Apr 2024, 8:40 AM"
+      },
+      {
+        "id": 4,
+        "name": "Lina Haddad",
+        "email": "lina.haddad@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "online",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "05 May 2024, 2:15 PM"
+      },
+      {
+        "id": 5,
+        "name": "Ravi Menon",
+        "email": "ravi.menon@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 2,
+        "availability": "offline",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "19 May 2024, 10:05 AM"
+      },
+      {
+        "id": 6,
+        "name": "Karim Mansour",
+        "email": "karim.mansour@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 3,
+        "availability": "online",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "03 Jun 2024, 4:30 PM"
+      },
+      {
+        "id": 7,
+        "name": "Noor Saleh",
+        "email": "noor.saleh@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "offline",
+        "confirmed": false,
+        "provider": "email",
+        "joinedDate": "08 Oct 2026, 9:45 AM"
+      },
+      {
+        "id": 8,
+        "name": "Ahmed Rashid",
+        "email": "ahmed.rashid@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "offline",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "17 Jul 2024, 1:20 PM"
+      },
+      {
+        "id": 9,
+        "name": "Hana Youssef",
+        "email": "hana.youssef@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 4,
+        "availability": "offline",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "29 Aug 2024, 3:55 PM"
+      },
+      {
+        "id": 10,
+        "name": "Marco Bianchi",
+        "email": "marco.bianchi@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 5,
+        "availability": "busy",
+        "confirmed": true,
+        "provider": "saml",
+        "joinedDate": "11 Sep 2024, 12:00 PM"
+      },
+      {
+        "id": 11,
+        "name": "Sofia Martins",
+        "email": "sofia.martins@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "online",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "02 Oct 2024, 7:35 AM"
+      },
+      {
+        "id": 12,
+        "name": "Tariq Aziz",
+        "email": "tariq.aziz@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "offline",
+        "confirmed": false,
+        "provider": "email",
+        "joinedDate": "10 Oct 2026, 5:10 PM"
+      },
+      {
+        "id": 13,
+        "name": "Huda Saleem",
+        "email": "huda.saleem@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 2,
+        "availability": "online",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "26 Nov 2024, 9:00 AM"
+      },
+      {
+        "id": 14,
+        "name": "Ali Hassan",
+        "email": "ali.hassan@weblabs.studio",
+        "role": "agent",
+        "customRoleId": 3,
+        "availability": "offline",
+        "confirmed": false,
+        "provider": "email",
+        "joinedDate": "11 Oct 2026, 11:40 AM"
+      },
+      {
+        "id": 15,
+        "name": "Rania Khalil",
+        "email": "rania.khalil@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "busy",
+        "confirmed": true,
+        "provider": "email",
+        "joinedDate": "14 Jan 2025, 2:50 PM"
+      },
+      {
+        "id": 16,
+        "name": "Tom Becker",
+        "email": "tom.becker@weblabs.studio",
+        "role": "agent",
+        "customRoleId": null,
+        "availability": "offline",
+        "confirmed": true,
+        "provider": "saml",
+        "joinedDate": "03 Mar 2025, 10:30 AM"
+      },
+      {
+        "id": 17,
+        "name": "Dana Bakr",
+        "email": "dana.bakr@weblabs.studio",
+        "role": "administrator",
+        "customRoleId": null,
+        "availability": "offline",
+        "confirmed": false,
+        "provider": "email",
+        "joinedDate": "12 Oct 2026, 8:15 AM"
+      }
+    ],
+    "inboxes": [
+      {
+        "id": 1,
+        "slug": "email",
+        "name": "Support Email",
+        "channel": "email",
+        "channelType": "Email",
+        "identifier": "support@weblabs.studio",
+        "agents": [1, 2, 3, 4, 8, 9, 12, 15, 16],
+        "autoAssign": false
+      },
+      {
+        "id": 2,
+        "slug": "chat",
+        "name": "Website Chat",
+        "channel": "website",
+        "channelType": "Website",
+        "identifier": "weblabs.studio",
+        "agents": [1, 2, 3, 4, 5, 7, 10, 11, 17],
+        "autoAssign": true,
+        "config": {
+          "extras": { "allowedDomains": "weblabs.studio, www.weblabs.studio", "widgetInMobileApps": false },
+          "profile": {
+            "avatar": null,
+            "color": "#1F93FF",
+            "websiteDomain": "weblabs.studio",
+            "welcomeHeading": "Marhaba! 👋",
+            "welcomeTagline": "Ask about your project, billing or our API, or share your feedback.",
+            "replyTime": "minutes",
+            "helpCenter": "docs",
+            "greetingEnabled": true,
+            "greetingMessage": "Thanks for writing to Weblabs Studio. We typically reply in a few minutes.",
+            "emailCollect": true,
+            "allowMessagesAfterResolved": true,
+            "continuityViaEmail": false,
+            "lockToSingleConversation": true,
+            "widgetFeatures": [
+              "Display file picker on the widget",
+              "Display emoji picker on the widget",
+              "Allow users to end conversation from the widget"
+            ],
+            "bubblePosition": "right",
+            "bubbleType": "standard",
+            "launcherTitle": "Chat with us",
+            "senderNameType": "friendly",
+            "senderBusinessName": "Website Chat"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "slug": "whatsapp",
+        "name": "WhatsApp Business",
+        "channel": "whatsapp",
+        "channelType": "WhatsApp",
+        "identifier": "+974 4400 1122",
+        "agents": [1, 2, 3, 4, 5, 6, 13],
+        "autoAssign": true,
+        "provider": "whatsapp_cloud"
+      },
+      {
+        "id": 4,
+        "slug": "instagram",
+        "name": "Instagram",
+        "channel": "instagram",
+        "channelType": "Instagram",
+        "identifier": "@weblabs.studio",
+        "agents": [2, 3, 5, 6, 14],
+        "autoAssign": true
+      },
+      {
+        "id": 5,
+        "slug": "facebook",
+        "name": "Facebook Page",
+        "channel": "facebook",
+        "channelType": "Messenger",
+        "identifier": "Weblabs Studio",
+        "agents": [2, 3, 4],
+        "autoAssign": true
+      },
+      {
+        "id": 6,
+        "slug": "phone",
+        "name": "Phone",
+        "channel": "voice",
+        "channelType": "Voice",
+        "identifier": "+974 4400 1100",
+        "agents": [1, 2, 3, 4, 5],
+        "autoAssign": false,
+        "provider": "twilio"
+      },
+      {
+        "id": 7,
+        "slug": "sms",
+        "name": "SMS Alerts",
+        "channel": "sms",
+        "channelType": "SMS",
+        "identifier": "+974 4400 1144",
+        "agents": [2, 3, 11, 13],
+        "autoAssign": true,
+        "provider": "twilio"
+      },
+      {
+        "id": 8,
+        "slug": "api",
+        "name": "Mobile App API",
+        "channel": "api",
+        "channelType": "API",
+        "identifier": "api.weblabs.studio",
+        "agents": [1, 4, 5, 10],
+        "autoAssign": true
+      }
+    ],
+    "teams": [],
+    "labels": [
+      {
+        "id": "billing",
+        "title": "billing",
+        "description": "Invoices, refunds and payment questions",
+        "color": "#0ea5e9",
+        "showOnSidebar": true
+      },
+      {
+        "id": "lead",
+        "title": "lead",
+        "description": "New sales leads and demo requests",
+        "color": "#f59e0b",
+        "showOnSidebar": true
+      },
+      {
+        "id": "partner",
+        "title": "partner",
+        "description": "Resellers and integration partners",
+        "color": "#14b8a6",
+        "showOnSidebar": true
+      },
+      {
+        "id": "support",
+        "title": "support",
+        "description": "General product questions and how-tos",
+        "color": "#ec4899",
+        "showOnSidebar": true
+      },
+      { "id": "buyer", "title": "مشتري", "description": "", "color": "#10b981", "showOnSidebar": true },
+      { "id": "interested", "title": "مهتم", "description": "", "color": "#0284c7", "showOnSidebar": true },
+      { "id": "seller", "title": "بائع", "description": "", "color": "#a855f7", "showOnSidebar": true },
+      { "id": "follow-up", "title": "متابعة", "description": "", "color": "#d97706", "showOnSidebar": true },
+      { "id": "maintenance", "title": "صيانة", "description": "", "color": "#e11d48", "showOnSidebar": true }
+    ],
+    "cannedResponses": [
+      {
+        "id": 1,
+        "shortCode": "greeting",
+        "content": "Hello {{contact.name}}, thank you for reaching out to us. How can I help you today?"
+      },
+      { "id": 2, "shortCode": "salam", "content": "وعليكم السلام ورحمة الله، أهلاً بك. كيف يمكننا مساعدتك اليوم؟" },
+      {
+        "id": 3,
+        "shortCode": "delivery-time",
+        "content": "Orders inside Doha are delivered within 24 hours. Al Khor, Dukhan and Mesaieed take 2 to 3 working days."
+      },
+      {
+        "id": 4,
+        "shortCode": "refund-policy",
+        "content": "You can return any unused item within 14 days. The refund reaches your card in 5 to 7 working days after we receive it."
+      },
+      {
+        "id": 5,
+        "shortCode": "working-hours",
+        "content": "Our team is available Saturday to Thursday, 8:00 AM to 10:00 PM (Doha time). Friday from 2:00 PM."
+      },
+      {
+        "id": 6,
+        "shortCode": "payment-link",
+        "content": "Here is your secure payment link for order {{conversation.custom_attribute.order_number}}. It is valid for 24 hours."
+      },
+      {
+        "id": 7,
+        "shortCode": "escalate",
+        "content": "I have passed this to our technical team. You will hear back from us within 2 hours."
+      },
+      {
+        "id": 8,
+        "shortCode": "invoice-copy",
+        "content": "I have attached a copy of your invoice. Let me know if anything looks off."
+      },
+      { "id": 9, "shortCode": "closing", "content": "Is there anything else I can help you with? Have a lovely day!" }
+    ],
+    "macros": [
+      {
+        "id": 1,
+        "name": "Refund approved",
+        "createdBy": "Arham Khan",
+        "updatedBy": "Yousef Al-Harbi",
+        "visibility": "Public",
+        "actions": [
+          { "action": "Add a Label", "value": "billing" },
+          {
+            "action": "Send a Message",
+            "value": "Your refund has been approved. It will reach your card in 5 to 7 working days."
+          },
+          { "action": "Resolve Conversation", "value": "" }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Escalate to Technical",
+        "createdBy": "Lina Haddad",
+        "updatedBy": "Arham Khan",
+        "visibility": "Public",
+        "actions": [
+          { "action": "Assign a Team", "value": "Technical" },
+          {
+            "action": "Add a Private Note",
+            "value": "Customer needs an engineer on a call. Please call within 2 hours."
+          },
+          { "action": "Change Priority", "value": "High" }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Late delivery apology",
+        "createdBy": "Priya Nair",
+        "updatedBy": "Yousef Al-Harbi",
+        "visibility": "Public",
+        "actions": [
+          { "action": "Add a Label", "value": "support" },
+          {
+            "action": "Send a Message",
+            "value": "We are sorry for the delay. Your order is now with the driver and arrives today."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Send transcript and close",
+        "createdBy": "Arham Khan",
+        "updatedBy": "Arham Khan",
+        "visibility": "Private",
+        "actions": [
+          { "action": "Send an Email Transcript", "value": "Customer email" },
+          { "action": "Resolve Conversation", "value": "" }
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Snooze until Sunday",
+        "createdBy": "Arham Khan",
+        "updatedBy": "Arham Khan",
+        "visibility": "Private",
+        "actions": [{ "action": "Snooze Conversation", "value": "Next week" }]
+      },
+      {
+        "id": 6,
+        "name": "Hand over to Sales",
+        "createdBy": "Priya Nair",
+        "updatedBy": "Arham Khan",
+        "visibility": "Public",
+        "actions": [
+          { "action": "Remove Assigned Agent", "value": "" },
+          { "action": "Assign a Team", "value": "Sales" },
+          { "action": "Add a Label", "value": "lead" }
+        ]
+      }
+    ],
+    "whatsappTemplates": [
+      {
+        "name": "order_update",
+        "status": "APPROVED",
+        "type": "Text",
+        "category": "UTILITY",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "Hi {{1}}, your order {{2}} is on its way and should arrive by {{3}}.",
+        "examples": ["ORD-8824", "Thursday, Oct 15"]
+      },
+      {
+        "name": "payment_reminder",
+        "status": "APPROVED",
+        "type": "Text",
+        "category": "UTILITY",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "Hello {{1}}, a friendly reminder that invoice {{2}} is due on {{3}}.",
+        "examples": ["INV-4821", "Oct 15, 2026"]
+      },
+      {
+        "name": "hello_world",
+        "status": "APPROVED",
+        "type": "Text",
+        "category": "MARKETING",
+        "language": "English",
+        "code": "en_US",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification."
+      },
+      {
+        "name": "order_confirmation",
+        "status": "APPROVED",
+        "type": "Call to action",
+        "category": "UTILITY",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "header": "Order confirmed",
+        "body": "Hi {{1}}, thank you for your order {{2}}. We will deliver it to {{3}} within 24 hours.",
+        "footer": "Reply STOP to unsubscribe",
+        "buttons": ["Track order"],
+        "examples": ["ORD-8824", "West Bay, Doha"]
+      },
+      {
+        "name": "order_confirmation_ar",
+        "status": "APPROVED",
+        "type": "Call to action",
+        "category": "UTILITY",
+        "language": "Arabic",
+        "code": "ar",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "header": "تم تأكيد طلبك",
+        "body": "مرحباً {{1}}، شكراً لطلبك رقم {{2}}. سنوصله إلى {{3}} خلال ٢٤ ساعة.",
+        "buttons": ["تتبع الطلب"],
+        "examples": ["ORD-8824", "الدفنة، الدوحة"]
+      },
+      {
+        "name": "delivery_out_today",
+        "status": "APPROVED",
+        "type": "Quick reply",
+        "category": "UTILITY",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "Good news {{1}}! Your order is out for delivery today between {{2}}. Will someone be home?",
+        "buttons": ["Yes", "Reschedule"],
+        "examples": ["2 PM and 5 PM"]
+      },
+      {
+        "name": "ramadan_offer_2026",
+        "status": "PENDING",
+        "type": "Image",
+        "category": "MARKETING",
+        "language": "Arabic",
+        "code": "ar",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "media": "image",
+        "body": "رمضان كريم 🌙 خصم ٢٠٪ على جميع الأجهزة المنزلية حتى نهاية الشهر. استخدم الرمز {{1}}."
+      },
+      {
+        "name": "product_demo_video",
+        "status": "APPROVED",
+        "type": "Video",
+        "category": "MARKETING",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "media": "video",
+        "body": "See the new Smart Air Fryer in 30 seconds, {{1}}. Reply YES to book a home demo."
+      },
+      {
+        "name": "invoice_ready",
+        "status": "APPROVED",
+        "type": "Document",
+        "category": "UTILITY",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "media": "document",
+        "body": "Hello {{1}}, your invoice {{2}} for QAR {{3}} is attached.",
+        "examples": ["INV-4821", "1,250"]
+      },
+      {
+        "name": "login_code",
+        "status": "APPROVED",
+        "type": "Copy code",
+        "category": "AUTHENTICATION",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "{{1}} is your verification code. For your security, do not share this code.",
+        "buttons": ["Copy code"]
+      },
+      {
+        "name": "new_arrivals_catalog",
+        "status": "APPROVED",
+        "type": "Catalog",
+        "category": "MARKETING",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "New arrivals are here, {{1}}! Browse the autumn collection right inside WhatsApp.",
+        "buttons": ["View catalog"]
+      },
+      {
+        "name": "feedback_request",
+        "status": "REJECTED",
+        "type": "Quick reply",
+        "category": "MARKETING",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["WhatsApp Business"],
+        "provider": "Meta",
+        "body": "How was your visit to our showroom today, {{1}}?",
+        "buttons": ["Great", "Okay", "Not good"]
+      },
+      {
+        "name": "appointment_reminder",
+        "status": "UNSUBMITTED",
+        "type": "Text",
+        "category": "UTILITY",
+        "language": "English",
+        "code": "en",
+        "inboxes": ["SMS Alerts"],
+        "provider": "Twilio",
+        "body": "Reminder: your service visit is booked for {{1}} at {{2}}. Reply 1 to confirm or 2 to change."
+      },
+      {
+        "name": "branch_photos",
+        "status": "APPROVED",
+        "type": "Media",
+        "category": "MARKETING",
+        "language": "Arabic",
+        "code": "ar",
+        "inboxes": ["SMS Alerts"],
+        "provider": "Twilio",
+        "media": "image",
+        "body": "افتتحنا فرعنا الجديد في لوسيل 🎉 تفضل بزيارتنا واحصل على هدية ترحيبية."
+      }
+    ]
+  },
+  "listsRev": 590,
+  "listRevs": {
+    "agents": 60,
+    "inboxes": 79,
+    "teams": 108,
+    "labels": 61,
+    "cannedResponses": 18,
+    "macros": 65,
+    "whatsappTemplates": 65
+  },
+  "sections": {
+    "folders": {
+      "rev": 43,
+      "savedAt": "2026-10-15T06:23:14.368Z",
+      "items": [
+        {
+          "id": "f-mv74pj49",
+          "name": "مجلد تجربة",
+          "filters": [{ "attribute": "status", "operator": "equal_to", "value": "open", "join": "and" }]
+        }
+      ]
+    },
+    "customerPath": {
+      "rev": 82,
+      "savedAt": "2026-10-15T12:02:47.591Z",
+      "items": [{ "kind": "assignment", "key": "contact-1", "stageId": "our-customer" }]
+    },
+    "automation": {
+      "rev": 275,
+      "savedAt": "2026-10-15T13:05:26.448Z",
+      "items": [
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 1,
+            "name": "Route Arabic chats to Support",
+            "description": "Assign conversations with browser language Arabic to the Support team",
+            "active": true,
+            "createdOn": "Sep 14, 2026",
+            "runType": "instant",
+            "event": "conversation_created",
+            "conditions": [
+              { "attribute": "browser_language", "operator": "Equal to", "values": ["Arabic (ar)"], "join": "and" },
+              { "attribute": "inbox_id", "operator": "Equal to", "values": ["Website Chat"], "join": "and" }
+            ],
+            "actions": [
+              { "action": "assign_team", "values": ["Support"] },
+              { "action": "add_label", "values": ["support"] }
+            ]
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 2,
+            "name": "Tag billing questions",
+            "description": "Add label billing when message content contains invoice, refund or payment",
+            "active": true,
+            "createdOn": "Sep 02, 2026",
+            "runType": "instant",
+            "event": "message_created",
+            "conditions": [
+              { "attribute": "message_type", "operator": "Equal to", "values": ["Incoming Message"], "join": "and" },
+              {
+                "attribute": "content",
+                "operator": "Contains",
+                "values": ["invoice", "refund", "payment"],
+                "join": "and"
+              }
+            ],
+            "actions": [
+              { "action": "add_label", "values": ["billing"] },
+              { "action": "assign_team", "values": ["Billing"] }
+            ]
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 3,
+            "name": "VIP priority",
+            "description": "Set priority to urgent for contacts with label vip",
+            "active": true,
+            "createdOn": "Aug 21, 2026",
+            "runType": "instant",
+            "event": "conversation_updated",
+            "conditions": [{ "attribute": "labels", "operator": "Equal to", "values": ["vip"], "join": "and" }],
+            "actions": [
+              { "action": "change_priority", "values": ["Urgent"] },
+              { "action": "add_sla", "values": ["VIP Doha"] }
+            ]
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 4,
+            "name": "UAE leads to Sales",
+            "description": "Assign the Sales team and add label lead when country is United Arab Emirates",
+            "active": false,
+            "createdOn": "Aug 10, 2026",
+            "runType": "instant",
+            "event": "conversation_created",
+            "conditions": [
+              { "attribute": "country_code", "operator": "Equal to", "values": ["United Arab Emirates"], "join": "and" }
+            ],
+            "actions": [{ "action": "assign_team", "values": ["Sales"] }, { "action": "add_label", "values": ["lead"] }]
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 5,
+            "name": "Transcript on resolve",
+            "description": "Email the conversation transcript to the customer when it is resolved",
+            "active": true,
+            "createdOn": "Jul 29, 2026",
+            "runType": "instant",
+            "event": "conversation_resolved",
+            "conditions": [
+              { "attribute": "inbox_id", "operator": "Equal to", "values": ["Support Email"], "join": "and" }
+            ],
+            "actions": [{ "action": "send_email_transcript", "values": ["{{contact.email}}"] }]
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 6,
+            "name": "Follow up after silence",
+            "description": "Send a reminder when the customer hasn't replied",
+            "active": true,
+            "createdOn": "Sep 20, 2026",
+            "runType": "delayed",
+            "event": "message_created",
+            "conditions": [],
+            "actions": [
+              {
+                "action": "send_message",
+                "values": ["Hi {{contact.first_name}}, just checking in. Is there anything else we can help you with?"]
+              }
+            ],
+            "wait": {
+              "trigger": "customer_unresponsive",
+              "status": "Open",
+              "amount": 24,
+              "unit": "hours",
+              "inboxes": ["WhatsApp Business"]
+            }
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 7,
+            "name": "Escalate unanswered chats",
+            "description": "Assign the shift lead when no teammate has replied",
+            "active": true,
+            "createdOn": "Sep 18, 2026",
+            "runType": "delayed",
+            "event": "message_created",
+            "conditions": [],
+            "actions": [
+              { "action": "assign_agent", "values": ["Arham Khan"] },
+              { "action": "change_priority", "values": ["High"] }
+            ],
+            "wait": {
+              "trigger": "agent_unresponsive",
+              "status": "Open",
+              "amount": 30,
+              "unit": "minutes",
+              "inboxes": []
+            }
+          }
+        },
+        {
+          "kind": "rule",
+          "rule": {
+            "id": 8,
+            "name": "Close stale pending",
+            "description": "Resolve conversations that stay pending",
+            "active": false,
+            "createdOn": "Aug 30, 2026",
+            "runType": "delayed",
+            "event": "conversation_updated",
+            "conditions": [],
+            "actions": [{ "action": "resolve_conversation", "values": [] }],
+            "wait": {
+              "trigger": "conversation_status",
+              "status": "Pending",
+              "amount": 3,
+              "unit": "days",
+              "inboxes": []
+            }
+          }
+        }
+      ]
+    },
+    "notifications": {
+      "rev": 23,
+      "savedAt": "2026-10-16T15:17:09.041Z",
+      "items": [
+        { "id": 1, "unread": true },
+        { "id": 2, "unread": true },
+        { "id": 3, "unread": true },
+        { "id": 4, "unread": true },
+        { "id": 5, "unread": true },
+        { "id": 6, "unread": false },
+        { "id": 7, "unread": false },
+        { "id": 8, "unread": false },
+        { "id": 9, "unread": true, "returnedAt": 1792130400000 },
+        { "id": 10, "unread": false },
+        { "id": 11, "unread": true, "returnedAt": 1792052063598 },
+        { "id": 12, "unread": false },
+        { "id": 13, "unread": false },
+        { "id": 14, "unread": false, "snoozedUntil": 1792389600000 },
+        { "id": 92961903138057, "unread": false },
+        { "id": 99829012615451, "unread": false },
+        { "id": 233252929279577, "unread": false }
+      ]
+    },
+    "campaigns": {
+      "rev": 51,
+      "savedAt": "2026-10-15T06:23:03.359Z",
+      "items": [
+        {
+          "id": 1,
+          "title": "Ramadan delivery slots",
+          "message": "Planning your Iftar order? Book a delivery slot now and get free delivery across Doha until Eid.",
+          "enabled": true,
+          "sender": "Priya Nair",
+          "inbox": "Website Chat",
+          "url": "https://shop.example.qa/ramadan",
+          "timeOnPage": 10,
+          "businessHoursOnly": false,
+          "list": "live"
+        },
+        {
+          "id": 2,
+          "title": "Pricing page help",
+          "message": "Comparing plans? Our team in Dubai can help you pick the right one in two minutes.",
+          "enabled": true,
+          "sender": null,
+          "inbox": "Website Chat",
+          "url": "https://example.ae/pricing",
+          "timeOnPage": 25,
+          "businessHoursOnly": true,
+          "list": "live"
+        },
+        {
+          "id": 3,
+          "title": "Abandoned checkout nudge",
+          "message": "Still thinking it over? Ask us anything about payment in instalments with Tabby or Tamara.",
+          "enabled": false,
+          "sender": "Yousef Al-Harbi",
+          "inbox": "Website Chat",
+          "url": "https://example.sa/checkout",
+          "timeOnPage": 40,
+          "businessHoursOnly": false,
+          "list": "live"
+        },
+        {
+          "id": 4,
+          "title": "School registration week",
+          "message": "Registering for the new term? Send us the grade and we will share the fee schedule.",
+          "enabled": true,
+          "sender": "Lina Haddad",
+          "inbox": "Website Chat",
+          "url": "https://example.qa/admissions",
+          "timeOnPage": 15,
+          "businessHoursOnly": true,
+          "list": "live"
+        },
+        {
+          "id": 5,
+          "title": "National Day offer",
+          "message": "Celebrate Qatar National Day with 18% off all annual plans. Offer ends 18 December.",
+          "enabled": false,
+          "sender": null,
+          "inbox": "Website Chat",
+          "url": "https://example.qa/national-day",
+          "timeOnPage": 5,
+          "businessHoursOnly": false,
+          "list": "live"
+        },
+        {
+          "id": 11,
+          "title": "Eid Al-Adha greetings",
+          "message": "Eid Mubarak from all of us! Our branches in Doha open 4pm-11pm during Eid holidays.",
+          "status": "scheduled",
+          "inbox": "SMS Alerts",
+          "scheduledAt": "Oct 20, 2026, 9:00 AM",
+          "audience": ["vip", "مشتري"],
+          "list": "sms"
+        },
+        {
+          "id": 12,
+          "title": "Demo reminders — Weblabs Studio",
+          "message": "Reminder: your Weblabs Studio product demo is tomorrow. Reply 1 to confirm or 2 to reschedule.",
+          "status": "running",
+          "inbox": "SMS Alerts",
+          "scheduledAt": "Oct 12, 2026, 8:30 AM",
+          "audience": ["lead"],
+          "list": "sms"
+        },
+        {
+          "id": 13,
+          "title": "Dubai Mall pop-up store",
+          "message": "Our pop-up at Dubai Mall is open this weekend. Show this SMS for a free gift with any order.",
+          "status": "completed",
+          "inbox": "SMS Alerts",
+          "scheduledAt": "Oct 3, 2026, 6:00 PM",
+          "audience": ["lead", "مهتم"],
+          "list": "sms"
+        },
+        {
+          "id": 14,
+          "title": "Service outage notice",
+          "message": "Planned maintenance tonight 1am-3am. Online orders will resume at 3am. Thank you for your patience.",
+          "status": "completed",
+          "inbox": "SMS Alerts",
+          "scheduledAt": "Sep 28, 2026, 7:15 PM",
+          "audience": ["support"],
+          "list": "sms"
+        },
+        {
+          "id": 21,
+          "title": "Autumn collection early access",
+          "message": "New arrivals are here, {{1}}! Browse the autumn collection right inside WhatsApp.",
+          "status": "running",
+          "inbox": "WhatsApp Business",
+          "scheduledAt": "Oct 12, 2026, 10:00 AM",
+          "audience": ["vip", "مشتري"],
+          "template": "new_arrivals_catalog (en)",
+          "list": "whatsapp"
+        },
+        {
+          "id": 22,
+          "title": "Out for delivery notice",
+          "message": "Good news {{1}}! Your order is out for delivery today between 2 PM and 5 PM. Will someone be home?",
+          "status": "completed",
+          "inbox": "WhatsApp Business",
+          "scheduledAt": "Oct 6, 2026, 4:00 PM",
+          "audience": ["مشتري"],
+          "template": "delivery_out_today (en)",
+          "list": "whatsapp"
+        },
+        {
+          "id": 23,
+          "title": "Smart Air Fryer demo",
+          "message": "See the new Smart Air Fryer in 30 seconds, {{1}}. Reply YES to book a home demo.",
+          "status": "scheduled",
+          "inbox": "WhatsApp Business",
+          "scheduledAt": "Oct 25, 2026, 7:00 PM",
+          "audience": ["lead", "مهتم"],
+          "template": "product_demo_video (en)",
+          "list": "whatsapp"
+        },
+        {
+          "id": 24,
+          "title": "WhatsApp channel welcome",
+          "message": "Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification.",
+          "status": "completed",
+          "inbox": "WhatsApp Business",
+          "scheduledAt": "Aug 24, 2026, 11:00 AM",
+          "audience": ["متابعة"],
+          "template": "hello_world (en)",
+          "list": "whatsapp"
+        }
+      ]
+    },
+    "templateDeletions": {
+      "rev": 3,
+      "savedAt": "2026-10-15T11:51:29.762Z",
+      "items": [
+        { "name": "zzj_promo_r2", "code": "en", "deletedAt": "2026-10-15T03:16:23.802Z" },
+        { "name": "zzj_tpl_j", "code": "en", "deletedAt": "2026-10-15T05:32:44.593Z" },
+        { "name": "zzj_judge_template", "code": "en", "deletedAt": "2026-10-15T11:51:29.746Z" }
+      ]
+    },
+    "dodgeBoard": {
+      "rev": 12,
+      "savedAt": "2026-10-15T11:40:37.753Z",
+      "items": [
+        {
+          "kind": "card",
+          "id": "dodge-10-1004",
+          "column": "detected",
+          "conversationId": 10,
+          "problem": "Mostly invoice-sync and customer-import, between 9 and 11 AM Doha time.",
+          "dodge": "I can raise the limit for those keys for seven days while we review your long-term quota.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 1
+        },
+        {
+          "kind": "card",
+          "id": "dodge-13-1304",
+          "column": "detected",
+          "conversationId": 13,
+          "problem": "The UI looks correct. Only the CSV output is shifted.",
+          "dodge": "I'll attach your CSV export to the bug ticket.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 1
+        },
+        {
+          "kind": "card",
+          "id": "dodge-20-2004",
+          "column": "detected",
+          "conversationId": 20,
+          "problem": "Can we enforce security keys for admins and allow SMS only for contractors?",
+          "dodge": "I'll send the policy setup steps.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 4
+        },
+        {
+          "kind": "card",
+          "id": "dodge-6-604",
+          "column": "in-progress",
+          "conversationId": 6,
+          "problem": "Full history. We need it for a warehouse migration, so the file is pretty large.",
+          "dodge": "I'll queue it as an async export and email the download link once it finishes.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 1
+        },
+        {
+          "kind": "card",
+          "id": "dodge-9-904",
+          "column": "in-progress",
+          "conversationId": 9,
+          "problem": "Main question is whether there is an early termination fee or if we can switch at renewal.",
+          "dodge": "I'll send the date and feature impact summary.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 2
+        },
+        {
+          "kind": "card",
+          "id": "dodge-14-1404",
+          "column": "in-progress",
+          "conversationId": 14,
+          "problem": "Delivery ID wh_72a9. Endpoint is /hooks/zapier/customer-created.",
+          "dodge": "We're increasing worker capacity and replaying the failed deliveries.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 5
+        },
+        {
+          "kind": "card",
+          "id": "dodge-24-2404",
+          "column": "in-progress",
+          "conversationId": 24,
+          "problem": "Absolutely. I'm the Operations Director. I've attached his signed notice and HR confirmation.",
+          "dodge": "It takes about 2 hours to propagate.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 3
+        },
+        {
+          "kind": "card",
+          "id": "dodge-11-1104",
+          "column": "waiting",
+          "conversationId": 11,
+          "problem": "DNS has not changed on our side. The warning says the certificate expired at midnight.",
+          "dodge": "I've reissued the certificate manually and it's propagating.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 4
+        },
+        {
+          "kind": "card",
+          "id": "dodge-19-1904",
+          "column": "waiting",
+          "conversationId": 19,
+          "problem": "All three, ideally. They want their own domain and branded reports for clients.",
+          "dodge": "I'll send the partner tier doc and a sample branded report template.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 1
+        },
+        {
+          "kind": "card",
+          "id": "dodge-1-102",
+          "column": "solved",
+          "conversationId": 1,
+          "problem": "We're seeing 502s on staging right after the latest build. We rolled back, but the health checks are still red.",
+          "dodge": "I'm checking the deploy logs and upstream gateway config now.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 1
+        },
+        {
+          "kind": "card",
+          "id": "dodge-5-504",
+          "column": "solved",
+          "conversationId": 5,
+          "problem": "Yes, raw Scope 3 data would help. Our board packet needs supply-chain numbers, not just the summary.",
+          "dodge": "I'll send the executive summary, Scope 3 CSV, and the methodology note in one bundle.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 2
+        },
+        {
+          "kind": "card",
+          "id": "dodge-7-702",
+          "column": "solved",
+          "conversationId": 7,
+          "problem": "Invoice INV-4821 still shows unpaid even though our bank transfer cleared last Friday.",
+          "dodge": "Can you send the transfer reference so I can match it against our payment processor records?",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 3
+        },
+        {
+          "kind": "card",
+          "id": "dodge-17-1704",
+          "column": "solved",
+          "conversationId": 17,
+          "problem": "Mostly mid-market logistics and retail teams. We can bring initial pipeline if the reseller terms work.",
+          "dodge": "I'll introduce you to our partnerships lead and share the reseller tier overview before Friday.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 2
+        },
+        {
+          "kind": "card",
+          "id": "dodge-18-1804",
+          "column": "solved",
+          "conversationId": 18,
+          "problem": "CSV is fine, but it needs user IDs and timestamps in UTC.",
+          "dodge": "I'll prepare the May export with UTC timestamps and send it through the secure file link.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 3
+        },
+        {
+          "kind": "card",
+          "id": "dodge-23-2304",
+          "column": "solved",
+          "conversationId": 23,
+          "problem": "We can share metadata today. Will there be downtime during the switch?",
+          "dodge": "I'll send the Azure AD checklist and rollout plan.",
+          "betterReply": "",
+          "dueDate": "",
+          "ownerId": 1
+        },
+        { "kind": "columns", "ids": ["detected", "in-progress", "waiting", "solved"] }
+      ]
+    },
+    "siteSections": { "rev": 52, "savedAt": "2026-10-16T19:13:50.931Z", "items": [] }
+  }
+}

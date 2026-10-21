@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "space": "t232-contract-mv872wzj",
+  "rev": 1,
+  "savedAt": "2026-10-14T14:18:05.353Z",
+  "policies": [
+    {
+      "id": 1,
+      "name": "Full-time agents",
+      "description": "Standard workload for full-time support agents.",
+      "limits": [
+        {
+          "inbox": 1,
+          "max": 8
+        },
+        {
+          "inbox": 2,
+          "max": 10
+        },
+        {
+          "inbox": 3,
+          "max": 6
+        }
+      ],
+      "labels": ["vip", "partner"],
+      "excludeOlderThan": 48,
+      "agents": [1, 2, 3]
+    },
+    {
+      "id": 2,
+      "name": "Part-time & weekend",
+      "description": "Lower caps for the weekend shift and part-time agents.",
+      "limits": [
+        {
+          "inbox": 1,
+          "max": 4
+        },
+        {
+          "inbox": 5,
+          "max": 5
+        }
+      ],
+      "labels": ["lead"],
+      "excludeOlderThan": 24,
+      "agents": [4]
+    },
+    {
+      "id": 90,
+      "name": "T232 contract",
+      "description": "",
+      "limits": [
+        {
+          "inbox": 1,
+          "max": 10
+        }
+      ],
+      "labels": [],
+      "excludeOlderThan": 0,
+      "agents": []
+    }
+  ]
+}

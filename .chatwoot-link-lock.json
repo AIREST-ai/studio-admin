@@ -1,0 +1,68 @@
+{
+  "allowedHosts": ["127.0.0.1"],
+  "allowedPorts": ["3200", "8810", "8812"],
+  "allowedTargets": [
+    "127.0.0.1:3200",
+    "127.0.0.1:8810",
+    "127.0.0.1:8812"
+  ],
+  "forbiddenSubstrings": ["inbox.airest.ai", ":8799"],
+  "expectedVersion": "4.x",
+  "expectedVersionPattern": "^4\\.\\d+\\.\\d+",
+  "expectedIdentityByOrigin": {
+    "http://127.0.0.1:3200": {
+      "accountId": 1,
+      "email": "admin-test@airest.ai",
+      "account": "AIREST Test",
+      "allowedAccounts": ["AIREST Test", "AIREST"],
+      "allowedEmails": ["admin-test@airest.ai", "fahad@airest.ai"]
+    },
+    "127.0.0.1:3200": {
+      "accountId": 1,
+      "email": "admin-test@airest.ai",
+      "account": "AIREST Test",
+      "allowedAccounts": ["AIREST Test", "AIREST"],
+      "allowedEmails": ["admin-test@airest.ai", "fahad@airest.ai"]
+    },
+    "http://127.0.0.1:8810": {
+      "accountId": 1,
+      "email": "admin@chatwoot-copy.local",
+      "account": "AIREST Copy"
+    },
+    "127.0.0.1:8810": {
+      "accountId": 1,
+      "email": "admin@chatwoot-copy.local",
+      "account": "AIREST Copy"
+    },
+    "http://127.0.0.1:8812": {
+      "accountId": 1,
+      "email": "admin@chatwoot-copy.local",
+      "account": "AIREST Copy"
+    },
+    "127.0.0.1:8812": {
+      "accountId": 1,
+      "email": "admin@chatwoot-copy.local",
+      "account": "AIREST Copy"
+    }
+  },
+  "allowedIdentities": [
+    {
+      "target": "127.0.0.1:3200",
+      "accountId": 1,
+      "email": "admin-test@airest.ai",
+      "account": "AIREST Test"
+    },
+    {
+      "target": "127.0.0.1:8810",
+      "accountId": 1,
+      "email": "admin@chatwoot-copy.local",
+      "account": "AIREST Copy"
+    },
+    {
+      "target": "127.0.0.1:8812",
+      "accountId": 1,
+      "email": "admin@chatwoot-copy.local",
+      "account": "AIREST Copy"
+    }
+  ]
+}

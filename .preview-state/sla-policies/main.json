@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "space": "main",
+  "rev": 25,
+  "savedAt": "2026-10-15T10:12:23.826Z",
+  "policies": [
+    {
+      "id": 1,
+      "name": "Enterprise P0",
+      "description": "Issues raised by enterprise customers, that require immediate attention.",
+      "frt": 900,
+      "nrt": 1800,
+      "rt": 14400,
+      "businessHours": false
+    },
+    {
+      "id": 2,
+      "name": "Enterprise P1",
+      "description": "Issues raised by enterprise customers, that needs to be acknowledged quickly.",
+      "frt": 3600,
+      "nrt": 7200,
+      "rt": 86400,
+      "businessHours": true
+    },
+    {
+      "id": 3,
+      "name": "VIP Doha",
+      "description": "Repeat buyers and corporate accounts in Qatar",
+      "frt": 600,
+      "nrt": 1200,
+      "rt": 28800,
+      "businessHours": false
+    },
+    {
+      "id": 4,
+      "name": "Refund 24h",
+      "description": "Refund and billing requests must close within one day",
+      "frt": 7200,
+      "nrt": null,
+      "rt": 86400,
+      "businessHours": true
+    },
+    {
+      "id": 5,
+      "name": "Standard",
+      "description": "Default promise for all website and WhatsApp chats",
+      "frt": 14400,
+      "nrt": 28800,
+      "rt": 259200,
+      "businessHours": true
+    }
+  ]
+}
