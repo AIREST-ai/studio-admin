@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 import re
 import subprocess
+from scope import full_diff, load_scope, outside_scope
+
+SCOPE_SHA256 = '926f75119bb4fa7963b7d1f00ed88af1911993d1ed396f4b09bc2327ca9018f3'
 
 ACCEPTED = {
     'check.py': 'fa467281b7c0d085e8901d541a07f5eaeb8d78c99b8f202eac5ef477acf7f65f',
@@ -33,19 +36,14 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     base_sha = git(args.base, 'rev-parse', 'HEAD').decode().strip()
     candidate_sha = git(args.candidate, 'rev-parse', 'HEAD').decode().strip()
-    names = git(args.candidate, 'diff', '--name-only', '--no-renames', '-z',
-                base_sha, candidate_sha).decode().split('\0')
-    names = [name for name in names if name]
+    changes = full_diff(args.candidate, base_sha, candidate_sha)
+    names = sorted({name for change in changes for name in change['paths']})
     bootstrap = not (args.base / 'scripts/airest-gate/check.py').is_file()
-    errors = []
-    if bootstrap:
-        for name in names:
-            if not (name == '.github/workflows/airest-gate.yml'
-                    or name.startswith('scripts/airest-gate/') or name == 'docs/airest-gate.md'):
-                errors.append(name)
-    else:
-        errors.extend(name for name in names if protected(name))
     suite = (args.candidate if bootstrap else args.base) / 'scripts/airest-gate'
+    policy = load_scope(suite / 'approved-scope.json', SCOPE_SHA256)
+    errors = outside_scope(changes, policy)
+    if not bootstrap:
+        errors.extend(name for name in names if protected(name))
     hashes = {}
     for name, expected in ACCEPTED.items():
         path = suite / name
@@ -53,7 +51,8 @@ def main():
         if hashes[name] != expected:
             errors.append('بصمة الأداة: ' + name)
     result = {'base_sha': base_sha, 'candidate_sha': candidate_sha, 'bootstrap': bootstrap,
-              'changed_files': names, 'tool_sha256': hashes, 'rejected': errors,
+              'changed_files': names, 'changes': changes, 'scope': policy,
+              'tool_sha256': hashes, 'rejected': sorted(set(errors)),
               'exit_code': 1 if errors else 0}
     (args.out / 'integrity.json').write_text(json.dumps(result, ensure_ascii=False, indent=2))
     print(json.dumps(result, ensure_ascii=False))

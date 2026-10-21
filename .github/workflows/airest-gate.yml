@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           cd "$GATE_SUITE"
-          python -m unittest -v test_gate.py
+          python -m unittest -v test_gate.py test_scope.py
       - name: بناء ومعاينة وقبول المرشح
         env:
           AIREST_TEST_EMAIL: ${{ secrets.AIREST_TEST_EMAIL }}
