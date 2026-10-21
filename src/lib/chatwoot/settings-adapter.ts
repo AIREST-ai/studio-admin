@@ -689,8 +689,20 @@ function buildCreateInboxPayload(item: InboxWithConfig, params: Record<string, u
 }
 
 async function syncInboxesDiff(before: Inbox[], after: Inbox[]): Promise<Inbox[]> {
-  if (after.length < before.length) {
-    throw new Error("Deleting inboxes is not enabled on the Studio gateway (DELETE /inboxes/{id})");
+  const afterIds = new Set(after.map((i) => i.id));
+  for (const prev of before) {
+    if (!afterIds.has(prev.id)) {
+      // The bundled Chatwoot spec omits DELETE /inboxes/{id}; the gateway allows it for admins.
+      const res = await unifiedCw.DELETE(
+        "/inboxes/{id}" as never,
+        {
+          params: { path: { id: prev.id } },
+        } as never,
+      );
+      if (res.error || !res.response.ok) {
+        throw new Error(extractGatewayError(res.error, res.response.status));
+      }
+    }
   }
 
   const beforeMap = new Map(before.map((i) => [i.id, i as InboxWithConfig]));
