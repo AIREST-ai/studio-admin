@@ -12,6 +12,7 @@ import {
   BatteryCharging,
   Bot,
   CalendarClock,
+  EyeOff,
   ClipboardCheck,
   Gauge,
   History,
@@ -37,6 +38,8 @@ const T = {
   waConvs: "3,850 محادثة متاحة",
   waTemplates: "16 قالباً معتمداً",
   waDays: "يكفي نحو 48 يوماً بالمعدل الحالي",
+  mock: "معاينة",
+  waMockHint: "1,450 ر.س قيمة معاينة ثابتة — لا تمثل رصيداً حقيقياً",
   points: "نقطة",
   pointsN: (n: string) => `${n} نقطة`,
   perDay: (n: string) => `${n} نقطة يومياً`,
@@ -48,7 +51,7 @@ const T = {
   daysLeft: "الأيام المتبقية",
   days: (n: number) => `${n} يوماً بالمعدل الحالي`,
   enough: (n: number) => `يكفي نحو ${n} يوماً بالمعدل الحالي`,
-  unlimitedHint: "تشحن أي مبلغ تشاء بلا سقف، وتمتلئ البطارية تلقائياً حسب أيام التغطية",
+  unlimitedHint: "قيم معاينة ثابتة — لا تمثل رصيداً حقيقياً",
   topup: "شحن الرصيد",
   log: "سجل الصرف",
   details: "تفصيل الصرف",
@@ -289,10 +292,8 @@ export function BalanceHeader() {
             <Button size="sm" variant="outline" onClick={() => setView("log")}>
               <History className="size-4" /> {T.log}
             </Button>
-            <Button size="sm" asChild>
-              <Link href="/dashboard/settings/billing">
-                <Plus className="size-4" /> {T.topup}
-              </Link>
+            <Button size="sm" disabled>
+              <EyeOff className="size-4" /> الشحن معاينة
             </Button>
           </div>
         </div>
@@ -322,7 +323,7 @@ export function BalanceHeader() {
             </div>
             <p className="flex items-center gap-1.5 text-emerald-700 text-xs dark:text-emerald-300">
               <CalendarClock className="size-3.5" />
-              {T.enough(daysLeft)}
+              {T.enough(daysLeft)} · <span className="rounded bg-amber-500/10 px-1 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">{T.mock}</span>
             </p>
           </div>
 
@@ -349,7 +350,7 @@ export function BalanceHeader() {
             </div>
             <p className="flex items-center gap-1.5 text-sky-700 text-xs dark:text-sky-300">
               <Wallet className="size-3.5" />
-              {T.waDays}
+              {T.waMockHint}
             </p>
           </div>
         </div>
