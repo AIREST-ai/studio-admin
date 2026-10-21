@@ -17,7 +17,7 @@ import {
 import { inboxesStore, whenSaved } from "@/app/(main)/dashboard/settings/inboxes/_components/inboxes-store";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { linkedSession } from "@/lib/chatwoot/store-adapter";
+import { linkedSession, useLinkedAdapterStatus } from "@/lib/chatwoot/store-adapter";
 import { CHANGED_ELSEWHERE } from "@/lib/cw/store";
 
 import emma from "./assets/emma-relaxed.png";
@@ -41,7 +41,17 @@ const resultLabels: Record<ConnectionResult["kind"], string> = {
   preview: "حُفظ الصندوق في المعاينة فقط؛ لا يوجد اتصال خارجي",
 };
 
+async function verifiedLiveInbox(name: string) {
+  const response = await fetch("/api/cw/inboxes", { cache: "no-store" });
+  if (!response.ok) throw new Error(`تعذر التحقق من صندوق القناة (${response.status}).`);
+  const body = (await response.json()) as { payload?: { id: number; name: string }[] };
+  const savedInbox = body.payload?.find((item) => item.name === name && item.id > 0);
+  if (!savedInbox) throw new Error("لم تُثبت الخدمة وجود الصندوق؛ لا نعلن نجاح الربط.");
+  return savedInbox;
+}
+
 export function AssistantWelcome({ notice }: { notice?: string | null }) {
+  const adapterStatus = useLinkedAdapterStatus();
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -71,13 +81,15 @@ export function AssistantWelcome({ notice }: { notice?: string | null }) {
       const serviceCreated =
         inbox.channel === "facebook" || inbox.channel === "instagram" || inbox.provider === "embedded";
       if (serviceCreated) {
-        const response = await fetch("/api/cw/inboxes", { cache: "no-store" });
-        if (!response.ok) throw new Error(`تعذر التحقق من صندوق القناة (${response.status}).`);
-        const body = (await response.json()) as { payload?: { id: number; name: string }[] };
-        const savedInbox = body.payload?.find((item) => item.name === inbox.name && item.id > 0);
-        if (!savedInbox) throw new Error("لم تُثبت الخدمة وجود الصندوق؛ لا نعلن نجاح الربط.");
+        const savedInbox = await verifiedLiveInbox(inbox.name);
         setResult({ kind: "connected", name: savedInbox.name, id: savedInbox.id });
       } else {
+        if (
+          linkedSession() &&
+          (!adapterStatus.active || adapterStatus.loading || adapterStatus.error || !adapterStatus.lastSyncedAt)
+        ) {
+          throw new Error("لم يكتمل تحميل المخزن الحي؛ انتظر اكتماله ثم أعد حفظ القناة.");
+        }
         pendingId = inboxesStore.nextId();
         const saved = whenSaved();
         inboxesStore.save({
@@ -100,7 +112,12 @@ export function AssistantWelcome({ notice }: { notice?: string | null }) {
         if (!savedInbox) throw new Error("لم يؤكد المخزن وجود الصندوق المحفوظ.");
         const transientInbox = savedInbox as Inbox & { channelParams?: Record<string, unknown> };
         delete transientInbox.channelParams;
-        setResult({ kind: linkedSession() ? "created" : "preview", name: savedInbox.name, id: savedInbox.id });
+        if (linkedSession()) {
+          const verified = await verifiedLiveInbox(inbox.name);
+          setResult({ kind: "created", name: verified.name, id: verified.id });
+        } else {
+          setResult({ kind: "preview", name: savedInbox.name, id: savedInbox.id });
+        }
       }
       setOpen(false);
     } catch (failure) {
@@ -119,9 +136,13 @@ export function AssistantWelcome({ notice }: { notice?: string | null }) {
   return (
     <section
       dir="rtl"
+      data-live-ready={
+        adapterStatus.active && !adapterStatus.loading && !adapterStatus.error && adapterStatus.lastSyncedAt !== null
+      }
       aria-label="ترحيب إيما واختيار القناة"
       className="flex min-h-[calc(100svh-8rem)] flex-col items-center justify-start px-3 py-8 text-foreground sm:px-5"
     >
+      {adapterStatus.loading && <p role="status">جارٍ تحميل القنوات المرتبطة…</p>}
       {notice && (
         <p role="alert" className="mb-4 max-w-xl text-center text-muted-foreground text-sm">
           {notice}
