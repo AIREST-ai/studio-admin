@@ -8,10 +8,15 @@ import Link from "next/link";
 
 import {
   ArrowRight,
+  Bot,
+  ChartNoAxesColumn,
   CheckCheck,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   Clock,
+  Cpu,
   CreditCard,
   Hourglass,
   Info,
@@ -20,17 +25,11 @@ import {
   Repeat,
   ShieldCheck,
   Sparkles,
-  SquareTerminal,
-  TrendingDown,
-  TrendingUp,
-  Unplug,
   UserRoundCheck,
-  X,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,28 +41,79 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+import { BalanceHeader } from "../_overview-ai/balance-header";
+import { EmployeeEvaluation } from "../_overview-ai/employee-cards";
+import { AssistantPicker, RangePicker } from "../_overview-ai/top-pickers";
 import { handoffReasons, trend } from "./data";
-import { CaptainShell, ChipSelect, useCurrentAssistant } from "./shared";
+import { CaptainShell, useCurrentAssistant } from "./shared";
+import { useActiveCaptainClient } from "./store";
 
-const summaryPoints = [
-  "Captain handled 1,360 conversations this week and resolved 71% of them on its own.",
-  "Most handoffs came from billing disputes. Adding the refund policy as a document could lower them.",
-  "4 FAQ suggestions are ready. They come from 90 recent conversations about payments and Ramadan speeds.",
-];
+const PAGE_T = {
+  title: "نظرة عامة",
+  subtitle: "الأقسام الذهبية للذكاء الاصطناعي، مؤشر البطارية الذكية، وتقييم موظفيك في مكان واحد.",
+  showReports: "التقارير التفصيلية للذكاء",
+  hideReports: "إخفاء التقارير التفصيلية",
+  goldenHeading: "أقسامك الذكية الذهبية",
+  goldenSub: "كل ما تحتاجه لتجهيز قنواتك وتشغيل موظفك الذكي وتقييم فريقك وبناء عقلك الخاص بنقرة واحدة.",
+  summaryTitle: "موجز إيمه الذكي هذا الأسبوع",
+  summarySub: "قراءة فورية لأداء المحادثات وجودة ردود الفريق",
+  billingTitle: "الرصيد والفوترة",
+  billingDesc: "إدارة شحن رصيد الذكاء الاصطناعي وباقة واتساب والقوالب",
+  openSection: "افتح القسم",
+};
+
+const GOLDEN_CARDS = [
+  {
+    href: "/dashboard/captain/smart",
+    title: "كل شيء سمارت · إيمه",
+    badge: "ربط فوري بنفس المكان",
+    desc: "إيمه تجهّز لك واتساب وإنستغرام وفيسبوك وماسنجر وتيك توك بزر «اربط الآن» الزجاجي دون مغادرة الصفحة.",
+    icon: Sparkles,
+    tone: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
+    iconTone: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+  },
+  {
+    href: "/dashboard/captain/employee",
+    title: "موظف الذكاء البشري",
+    badge: "يتعلم من محادثات فريقك",
+    desc: "موظف بشري الأسلوب يتعلم من صناديق فريقك ويكتشف مشاكل اليوم تلقائياً ليرد أو يقترح أو يعمل باستقلالية.",
+    icon: Bot,
+    tone: "from-sky-500/15 via-sky-500/5 to-transparent border-sky-500/30",
+    iconTone: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
+  },
+  {
+    href: "/dashboard/captain/evaluator",
+    title: "مقيّم الذكاء",
+    badge: "يكشف التهرب اللطيف والغضب",
+    desc: "يقرأ ما بين السطور ليكشف التهرب اللطيف وتصعيد نبرة غضب العميل، ويدرّب الموظف الضعيف آلياً.",
+    icon: ClipboardCheck,
+    tone: "from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30",
+    iconTone: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  },
+  {
+    href: "/dashboard/captain/build",
+    title: "اربط ذكاءك",
+    badge: "عقل إيمه أو عقلك الخاص",
+    desc: "اختر عقل إيمه الجاهز أو اربط مفتاحك الخاص مع بنك ذاكرة معزول كلياً لشركتك.",
+    icon: Cpu,
+    tone: "from-violet-500/15 via-violet-500/5 to-transparent border-violet-500/30",
+    iconTone: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30",
+  },
+] as const;
 
 const rangeOptions = [
-  { value: "this_week", label: "This week" },
-  { value: "last_week", label: "Last week" },
-  { value: "last_30", label: "Last 30 days" },
-  { value: "this_month", label: "This month" },
-  { value: "last_month", label: "Last month" },
+  { value: "this_week", label: "هذا الأسبوع" },
+  { value: "last_week", label: "الأسبوع الماضي" },
+  { value: "last_30", label: "آخر 30 يوماً" },
+  { value: "this_month", label: "هذا الشهر" },
+  { value: "last_month", label: "الشهر الماضي" },
 ];
 
 interface Metric {
@@ -79,205 +129,154 @@ interface Metric {
   icon: typeof MessagesSquare;
 }
 
-// Mock numbers (no backend): "This week" is the base, and every other range scales the counts by its length, so
-// picking a range changes the cards and the drilldown. Rates stay the same; with no history every count is 0.
 const rangeScale: Record<string, number> = {
   this_week: 1,
-  last_week: 1214 / 1360,
+  last_week: 0.89,
   last_30: 4.3,
   this_month: 1.9,
   last_month: 4.1,
 };
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
-function metricsFor(scale: number): Metric[] {
+interface LiveEngineSummary {
+  totalConversations: number;
+  autoResolved: number;
+  handedOff: number;
+  autoResolvePct: number;
+  dodgeCount: number;
+  angerCount: number;
+  learnedCount: number;
+  issuesCount: number;
+}
+
+function metricsFor(scale: number, live: LiveEngineSummary): Metric[] {
   const n = (base: number) => Math.round(base * scale);
-  const handled = n(1360);
-  const resolved = n(971);
-  const replies = n(1230);
+  const handled = n(live.totalConversations);
+  const resolved = n(live.autoResolved);
+  const replies = n(Math.round(live.totalConversations * 0.9));
+  const handoff = Math.max(0, handled - resolved);
   const rate = (value: string) => (handled ? value : "—");
   return [
     {
       metricId: "hours_saved",
-      label: "Saved in agent effort and time",
-      value: `${Math.round((replies * 2) / 60)}h`,
-      change: "+6h",
+      label: "الوقت والجهد الموفّر للفريق",
+      value: `${Math.round((replies * 2) / 60)} ساعة`,
+      change: "+6 ساعات",
       up: true,
-      support: `${fmt(replies)} public Captain replies`,
-      hint: "An estimate of how much agent reply time Captain saved.",
-      note: "Based on two minutes saved for each public Captain reply.",
+      support: `${fmt(replies)} رد عام`,
+      hint: "تقدير وقت الرد الذي وفّرته إيمه على موظفيك.",
+      note: "بناءً على دقيقتين موفرتين لكل رد عام.",
       total: replies,
       icon: Hourglass,
     },
     {
       metricId: "durable_resolution_rate",
-      label: "Captain resolutions remained closed",
+      label: "حلول بقيت مغلقة دون عودة",
       value: rate("93%"),
-      change: "+1 pt",
+      change: "+1%",
       up: true,
-      support: `${fmt(n(903))} of ${fmt(resolved)}`,
-      hint: "The share of Captain-resolved conversations that were still closed seven days later.",
-      note: "Only resolutions old enough to observe for seven days are included.",
-      total: n(903),
+      support: `${fmt(Math.round(resolved * 0.93))} من ${fmt(resolved)}`,
+      hint: "نسبة المحادثات المحلولة التي بقيت مغلقة بعد سبعة أيام.",
+      note: "تُحتسب المحادثات التي مضى على إغلاقها سبعة أيام.",
+      total: Math.round(resolved * 0.93),
       icon: ShieldCheck,
     },
     {
       metricId: "conversations_handled",
-      label: "Conversations handled",
+      label: "المحادثات المعالجة",
       value: fmt(handled),
       change: "+12%",
       up: true,
-      support: `vs ${fmt(n(1214))} in the previous period`,
-      hint: "Conversations where Captain replied to the customer or handed the conversation to your team.",
+      support: `مقابل ${fmt(Math.round(handled * 0.89))} في الفترة السابقة`,
+      hint: "المحادثات التي ردّت عليها إيمه أو حوّلتها بملخص واضح لفريقك.",
       total: handled,
       icon: MessagesSquare,
     },
     {
       metricId: "auto_resolution_rate",
-      label: "Auto-resolution rate",
-      value: rate("71.4%"),
-      change: "+3.2 pts",
+      label: "نسبة الحل الذاتي",
+      value: rate(`${live.autoResolvePct}%`),
+      change: "+3.2%",
       up: true,
-      support: `${fmt(resolved)} of ${fmt(handled)}`,
-      hint: "The share of handled conversations Captain resolved without help from your team. Higher means Captain resolved more on its own.",
+      support: `${fmt(resolved)} من ${fmt(handled)}`,
+      hint: "نسبة المحادثات التي حلّتها إيمه بالكامل دون تدخل بشري.",
       total: resolved,
       icon: CheckCheck,
     },
     {
       metricId: "handoff_rate",
-      label: "Handoff rate",
-      value: rate("22.8%"),
-      change: "-1.9 pts",
+      label: "نسبة التحويل للفريق",
+      value: rate(`${Math.max(0, 100 - live.autoResolvePct)}%`),
+      change: "-1.9%",
       up: false,
-      support: `${fmt(n(310))} of ${fmt(handled)}`,
-      hint: "The share of handled conversations Captain passed to your team. Lower means fewer conversations needed an agent.",
-      total: n(310),
+      support: `${fmt(handoff)} من ${fmt(handled)}`,
+      hint: "نسبة المحادثات التي حُوّلت إلى موظفي الفريق.",
+      total: handoff,
       icon: UserRoundCheck,
     },
     {
       metricId: "conversation_depth",
-      label: "Messages per conversation",
+      label: "متوسط الرسائل لكل محادثة",
       value: rate("2.4"),
       change: "-0.3",
       up: false,
-      support: "Captain replies on average",
-      hint: "The average number of replies Captain sent in each conversation it handled.",
-      note: "A lower number can mean quicker answers, but complex questions may need more replies.",
+      support: "متوسط ردود إيمه",
+      hint: "متوسط عدد الردود في كل محادثة تمت معالجتها.",
+      note: "العدد الأقل يعني وصول العميل للحل بسرعة أكبر.",
       total: handled,
       icon: MessagesSquare,
     },
     {
       metricId: "reopen_rate",
-      label: "Reopen rate",
+      label: "معدل إعادة الفتح",
       value: rate("7%"),
-      change: "-1 pt",
+      change: "-1%",
       up: false,
-      support: `${fmt(n(68))} of ${fmt(resolved)}`,
-      hint: "The share of Captain-resolved conversations that customers returned to later.",
-      note: "Lower means more resolutions stayed resolved.",
-      total: n(68),
+      support: `${fmt(Math.round(resolved * 0.07))} من ${fmt(resolved)}`,
+      hint: "نسبة المحادثات المغلقة التي عاد إليها العميل لاحقاً.",
+      note: "انخفاض النسبة يعني ثبات الحل من أول مرة.",
+      total: Math.round(resolved * 0.07),
       icon: Repeat,
     },
     {
       metricId: "median_resolution_seconds",
-      label: "Median resolution time",
-      value: rate("4 min"),
-      change: "-40s",
+      label: "متوسط زمن الحل",
+      value: rate("4 دقائق"),
+      change: "-40 ث",
       up: false,
-      support: "From reaching Captain to resolved",
-      hint: "The typical time from when a conversation reached Captain until it was resolved.",
-      note: "Lower means customers generally got resolved sooner.",
+      support: "من وصول الرسالة حتى إغلاقها",
+      hint: "الزمن المعتاد منذ استلام إيمه للمحادثة وحتى حلّها.",
+      note: "انخفاض الزمن يعني استجابة أسرع للعميل.",
       total: resolved,
       icon: Clock,
     },
   ];
 }
 
-const drilldownRows = [
-  {
-    id: 4921,
-    name: "Maryam Al-Kuwari",
-    inbox: "WhatsApp Support",
-    text: "Paid my October bill twice by mistake",
-    time: "12 min ago",
-  },
-  {
-    id: 4918,
-    name: "Khalid Al-Mansoori",
-    inbox: "Website chat",
-    text: "Which roaming pack works in Riyadh?",
-    time: "34 min ago",
-  },
-  {
-    id: 4907,
-    name: "Fatima Al-Suwaidi",
-    inbox: "WhatsApp Support",
-    text: "Discount for families with many lines",
-    time: "1 h ago",
-  },
-  {
-    id: 4899,
-    name: "Sarah Mitchell",
-    inbox: "Customer Care Email",
-    text: "Moving to Al Wakrah next month",
-    time: "2 h ago",
-  },
-  {
-    id: 4890,
-    name: "Hamad Al-Marri",
-    inbox: "Website chat",
-    text: "Router light is red since morning",
-    time: "3 h ago",
-  },
-  {
-    id: 4884,
-    name: "Noura Al-Thani",
-    inbox: "WhatsApp Support",
-    text: "Add beIN Sports to my TV plan",
-    time: "4 h ago",
-  },
-  { id: 4871, name: "Omar Al-Shehhi", inbox: "Website chat", text: "Pause my plan for the summer", time: "5 h ago" },
-  { id: 4866, name: "Reem Al-Otaibi", inbox: "Customer Care Email", text: "E-invoice not received", time: "6 h ago" },
-];
-
-const flowColumns = [
-  [{ label: "Handled", value: 1360, dot: "bg-chart-2" }],
-  [
-    { label: "Resolved by Captain", value: 971, dot: "bg-chart-1" },
-    { label: "Handed off", value: 310, dot: "bg-sky-500" },
-    { label: "Other reasons", value: 79, dot: "bg-muted-foreground" },
-  ],
-  [
-    { label: "Stayed closed", value: 903, dot: "bg-emerald-500" },
-    { label: "Reopened in 7d", value: 68, dot: "bg-amber-500" },
-    { label: "Closed with team", value: 280, dot: "bg-violet-500" },
-  ],
-];
-
 const rateTrend = [
-  { day: "Mon", current: 66, previous: 61 },
-  { day: "Tue", current: 68, previous: 63 },
-  { day: "Wed", current: 72, previous: 65 },
-  { day: "Thu", current: 69, previous: 66 },
-  { day: "Fri", current: 71, previous: 64 },
-  { day: "Sat", current: 74, previous: 67 },
-  { day: "Sun", current: 74, previous: 68 },
+  { day: "الإثنين", current: 66, previous: 61 },
+  { day: "الثلاثاء", current: 68, previous: 63 },
+  { day: "الأربعاء", current: 72, previous: 65 },
+  { day: "الخميس", current: 69, previous: 66 },
+  { day: "الجمعة", current: 71, previous: 64 },
+  { day: "السبت", current: 74, previous: 67 },
+  { day: "الأحد", current: 74, previous: 68 },
 ];
 
 const chartConfig = {
-  handled: { label: "Handled", color: "var(--chart-2)" },
-  resolved: { label: "Resolved by Captain", color: "var(--chart-1)" },
+  handled: { label: "المعالجة", color: "var(--chart-2)" },
+  resolved: { label: "المحلولة ذاتياً", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 const rateConfig = {
-  current: { label: "Current period", color: "var(--chart-1)" },
-  previous: { label: "Previous period", color: "var(--chart-3)" },
+  current: { label: "الفترة الحالية", color: "var(--chart-1)" },
+  previous: { label: "الفترة السابقة", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
 function Hint({ text, note }: { text: string; note?: string }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
+      <TooltipTrigger type="button" className="inline-flex items-center">
         <Info className="size-3.5 shrink-0 cursor-help text-muted-foreground" />
       </TooltipTrigger>
       <TooltipContent className="max-w-64">
@@ -288,278 +287,182 @@ function Hint({ text, note }: { text: string; note?: string }) {
   );
 }
 
-function DrilldownSheet({ metric, onClose }: { metric: Metric | null; onClose: () => void }) {
-  const [count, setCount] = React.useState(5);
-  return (
-    <Sheet open={metric !== null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full gap-0 sm:max-w-lg">
-        {metric && (
-          <>
-            <SheetHeader className="border-b">
-              <SheetTitle>{metric.label}</SheetTitle>
-              <SheetDescription>
-                <span className="font-medium text-foreground tabular-nums">{metric.value}</span> ·{" "}
-                {metric.total.toLocaleString()} conversations
-              </SheetDescription>
-            </SheetHeader>
-            <div className="grid flex-1 content-start gap-2 overflow-y-auto p-4">
-              {metric.total === 0 && (
-                <p className="py-8 text-center text-muted-foreground text-sm">No records found for this metric.</p>
-              )}
-              {drilldownRows.slice(0, metric.total === 0 ? 0 : Math.min(count, metric.total)).map((r) => (
-                <Link
-                  key={r.id}
-                  href="/dashboard/chat"
-                  className="grid gap-1 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{r.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      #{r.id} · {r.time}
-                    </span>
-                  </div>
-                  <span className="text-muted-foreground">{r.text}</span>
-                  <span className="text-muted-foreground text-xs">{r.inbox}</span>
-                </Link>
-              ))}
-              {metric.total > 0 && count < Math.min(drilldownRows.length, metric.total) && (
-                <Button variant="outline" size="sm" onClick={() => setCount(drilldownRows.length)}>
-                  Load more
-                </Button>
-              )}
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-interface LiveCaptainEvalSummary {
-  totalEvaluated: number;
-  avgJudgeScore: number;
-  autoResolutionRate: number;
-  needsReviewCount: number;
-  passedCount: number;
-  singleTurnResolutionRate: number;
-  avgLatencyMs: number;
-  verifyRunsCount: number;
-  tracingCount: number;
-}
-
 export function CaptainOverview() {
   const assistant = useCurrentAssistant();
-  const [point, setPoint] = React.useState(0);
-  const [coverageBanner, setCoverageBanner] = React.useState(true);
-  const [inboxBanner, setInboxBanner] = React.useState(true);
-  const [range, setRange] = React.useState("this_week");
-  const [evalSummary, setEvalSummary] = React.useState<LiveCaptainEvalSummary | null>(null);
-  const [loadingEval, setLoadingEval] = React.useState(false);
-
-  const loadLiveEvalSummary = React.useCallback(async (showToast = false) => {
-    setLoadingEval(true);
-    try {
-      const res = await fetch("/api/cw/csat-notes?clientId=client_test_a", {
-        method: "GET",
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const data = (await res.json()) as { ok?: boolean; summary?: LiveCaptainEvalSummary };
-      if (data.ok && data.summary) {
-        setEvalSummary(data.summary);
-        if (showToast) {
-          toast.success(
-            `AI Quality Rubric refreshed (${data.summary.avgJudgeScore}% avg · ${data.summary.verifyRunsCount} runs)`,
-          );
-        }
-      }
-    } catch {
-      // keep current state
-    } finally {
-      setLoadingEval(false);
-    }
-  }, []);
+  const [clientId, setClientId] = useActiveCaptainClient();
+  const [evalSummary, setEvalSummary] = React.useState<{
+    clientId: string;
+    totalEvaluated: number;
+    avgJudgeScore: number;
+    verifyRunsCount: number;
+    tracingCount: number;
+  } | null>(null);
 
   React.useEffect(() => {
-    void loadLiveEvalSummary(false);
-  }, [loadLiveEvalSummary]);
+    fetch(`/api/cw/csat-notes?clientId=${encodeURIComponent(clientId)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.ok && data.summary) {
+          setEvalSummary(data.summary);
+        }
+      })
+      .catch(() => {});
+  }, [clientId]);
+  const [point, setPoint] = React.useState(0);
+  const [reportsOpen, setReportsOpen] = React.useState(false);
+  const [range, setRange] = React.useState("this_week");
+  const [live, setLive] = React.useState<LiveEngineSummary>(() => {
+    const initialHandled = trend.reduce((acc, d) => acc + d.handled, 0);
+    const initialResolved = trend.reduce((acc, d) => acc + d.resolved, 0);
+    const pct = initialHandled > 0 ? Math.round((initialResolved / initialHandled) * 100) : 71;
+    return {
+      totalConversations: initialHandled,
+      autoResolved: initialResolved,
+      handedOff: Math.max(0, initialHandled - initialResolved),
+      autoResolvePct: pct,
+      dodgeCount: 2,
+      angerCount: 1,
+      learnedCount: 12,
+      issuesCount: 2,
+    };
+  });
+
+  React.useEffect(() => {
+    fetch("/api/captain-engine")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.liveStats) {
+          setLive((prev) => ({
+            ...prev,
+            ...res.liveStats,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const noHistory = assistant.inboxes === 0 && assistant.faqs === 0 && assistant.documents === 0;
-  const metrics = metricsFor(noHistory ? 0 : (rangeScale[range] ?? 1));
-  const rangeLabel = (rangeOptions.find((o) => o.value === range)?.label ?? "This week").toLowerCase();
+  const metrics = metricsFor(noHistory ? 0 : (rangeScale[range] ?? 1), live);
   const points = [
-    `Captain handled ${metrics[2].value} conversations ${rangeLabel === "this week" ? "this week" : `in ${rangeLabel}`} and resolved ${metrics[3].value} of them on its own.`,
-    ...summaryPoints.slice(1),
+    `عالجت إيمه ${metrics[2].value} محادثة وحلّت ${metrics[3].value} منها ذاتياً من أول رد دون تدخل بشري.`,
+    `رصد مقيّم الذكاء ${live.dodgeCount} حالات تهرب لطيف و${live.angerCount} حالات تصعيد غضب وفعّل التدريب الآلي لمعالجتها.`,
+    `تعلّم موظف الذكاء ${live.learnedCount} عنصراً معرفياً في بنك Hindsight المعزول واكتشف ${live.issuesCount} مشكلات متكررة اليوم.`,
   ];
-  const [drill, setDrill] = React.useState<Metric | null>(null);
   const [trendView, setTrendView] = React.useState("count");
   const [aligned, setAligned] = React.useState(true);
   const totalReasons = handoffReasons.reduce((s, r) => s + r.value, 0);
+  const flowTotal = Math.max(1, live.totalConversations);
+  const flowColumns = [
+    [{ label: "إجمالي المحادثات", value: live.totalConversations, dot: "bg-chart-2" }],
+    [
+      { label: "حُلّت عبر إيمه", value: live.autoResolved, dot: "bg-chart-1" },
+      { label: "حُوّلت للفريق", value: live.handedOff, dot: "bg-sky-500" },
+    ],
+    [
+      { label: "بقيت مغلقة", value: Math.round(live.autoResolved * 0.93), dot: "bg-emerald-500" },
+      { label: "أعيد فتحها خلال 7 أيام", value: Math.round(live.autoResolved * 0.07), dot: "bg-amber-500" },
+      { label: "أُغلقت مع الفريق", value: Math.round(live.handedOff * 0.9), dot: "bg-violet-500" },
+    ],
+  ];
 
   return (
     <CaptainShell
-      title="Overview"
-      subtitle="How Captain is doing for your customers: conversations handled, resolutions, handoffs and knowledge coverage."
+      title={PAGE_T.title}
+      subtitle={PAGE_T.subtitle}
+      nav={false}
+      switcher={false}
+      className="@container/overview"
       actions={
-        noHistory ? (
-          <Button variant="outline" size="sm" disabled>
-            Not enough reporting history yet
-          </Button>
-        ) : (
-          <ChipSelect label="Range" value={range} options={rangeOptions} onChange={setRange} align="end" />
-        )
+        <>
+          <div className="inline-flex items-center rounded-md border bg-background p-0.5 text-xs" data-testid="captain-overview-client-switcher">
+            <button
+              type="button"
+              data-testid="overview-switch-client-test-a"
+              onClick={() => setClientId("client_test_a")}
+              className={clientId === "client_test_a" ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground" : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"}
+            >
+              client_test_a
+            </button>
+            <button
+              type="button"
+              data-testid="overview-switch-client-test-b"
+              onClick={() => setClientId("client_test_b")}
+              className={clientId === "client_test_b" ? "rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground" : "rounded px-2.5 py-1 text-muted-foreground hover:text-foreground"}
+            >
+              client_test_b
+            </button>
+            {evalSummary ? (
+              <span className="px-2 text-muted-foreground tabular-nums" data-testid="overview-eval-badge">
+                {evalSummary.avgJudgeScore}% · {evalSummary.verifyRunsCount} runs
+              </span>
+            ) : null}
+          </div>
+          <AssistantPicker />
+          {noHistory ? (
+            <Button variant="outline" disabled>
+              Not enough reporting history yet
+            </Button>
+          ) : (
+            <RangePicker label="Range" value={range} options={rangeOptions} onChange={setRange} />
+          )}
+        </>
       }
     >
-      {assistant.inboxes === 0 && inboxBanner && (
-        <Alert className="flex items-center gap-3 border-amber-500/30 bg-amber-500/5">
-          <Unplug className="size-4 text-amber-600" />
-          <AlertDescription className="flex-1 text-foreground">
-            This assistant isn&apos;t connected to any inbox yet, so it won&apos;t respond to conversations.
-          </AlertDescription>
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/dashboard/captain/inboxes">Connect inbox</Link>
-          </Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setInboxBanner(false)}>
-            <X />
-          </Button>
-        </Alert>
-      )}
-      {coverageBanner && (
-        <Alert className="flex items-center gap-3">
-          <Sparkles className="size-4 text-primary" />
-          <AlertDescription className="flex-1 text-foreground">
-            4 FAQ suggestions are ready for review, keeping coverage at 82%. Approve them so your assistant can resolve
-            more on its own.
-          </AlertDescription>
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/dashboard/captain/faqs/suggestions">Review suggestions</Link>
-          </Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setCoverageBanner(false)}>
-            <X />
-          </Button>
-        </Alert>
-      )}
+      {/* أمر فهد البند 53 + البطارية الذكية لرصيد الذكاء ورصيد واتساب والقوالب */}
+      <BalanceHeader />
 
-      <Card
-        data-testid="captain-ai-quality-rubric-card"
-        className="border-primary/20 bg-gradient-to-r from-primary/5 via-card to-card shadow-xs"
-      >
-        <CardHeader className="pb-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-8 items-center justify-center rounded-lg border bg-primary/10 text-primary">
-                <ShieldCheck className="size-4" />
-              </div>
-              <div>
-                <CardTitle className="text-base">AI Quality & Verification Rubric</CardTitle>
-                <CardDescription>
-                  Automated resolution judge · Accuracy (30%) · Tone (25%) · No Hallucination (25%) · Speed (20%)
-                </CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="refresh-captain-eval-btn"
-                disabled={loadingEval}
-                onClick={() => void loadLiveEvalSummary(true)}
-              >
-                <RefreshCw className={loadingEval ? "size-3.5 animate-spin" : "size-3.5"} />
-                Refresh Rubric
-              </Button>
-              <Button size="sm" variant="outline" asChild>
-                <Link href="/dashboard/reports/csat">Inspect CSAT & Judge</Link>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border bg-background/60 p-3">
-            <div className="text-muted-foreground text-xs">Avg AI Judge Score</div>
-            <div className="mt-1 font-semibold text-2xl tabular-nums">
-              {evalSummary ? `${evalSummary.avgJudgeScore}%` : "85%"}
-            </div>
-            <div className="text-muted-foreground text-xs tabular-nums">
-              {evalSummary
-                ? `${evalSummary.passedCount} passed · ${evalSummary.needsReviewCount} needs review`
-                : "4 passed · 1 needs review"}
-            </div>
-          </div>
-          <div className="rounded-lg border bg-background/60 p-3">
-            <div className="text-muted-foreground text-xs">Verification Runs</div>
-            <div className="mt-1 font-semibold text-2xl tabular-nums">
-              {evalSummary ? evalSummary.verifyRunsCount : 5}
-            </div>
-            <div className="text-muted-foreground text-xs tabular-nums">
-              {evalSummary ? `${evalSummary.tracingCount} generation traces` : "5 generation traces"}
-            </div>
-          </div>
-          <div className="rounded-lg border bg-background/60 p-3">
-            <div className="text-muted-foreground text-xs">Auto-Resolution Rate</div>
-            <div className="mt-1 font-semibold text-2xl tabular-nums">
-              {evalSummary ? `${evalSummary.autoResolutionRate}%` : "80%"}
-            </div>
-            <div className="text-muted-foreground text-xs tabular-nums">
-              Single-turn: {evalSummary ? `${evalSummary.singleTurnResolutionRate}%` : "60%"}
-            </div>
-          </div>
-          <div className="rounded-lg border bg-background/60 p-3">
-            <div className="text-muted-foreground text-xs">Needs Review</div>
-            <div className="mt-1 font-semibold text-2xl text-amber-600 tabular-nums dark:text-amber-400">
-              {evalSummary ? evalSummary.needsReviewCount : 1}
-            </div>
-            <div className="text-muted-foreground text-xs tabular-nums">
-              Avg Judge Latency: {evalSummary ? `${evalSummary.avgLatencyMs} ms` : "788 ms"}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* الأقسام الذهبية للذكاء الاصطناعي في الصدارة بعد إزالة الزوائد */}
+      <section className="grid gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-semibold text-lg tracking-tight">{PAGE_T.goldenHeading}</h2>
+          <p className="text-muted-foreground text-sm">{PAGE_T.goldenSub}</p>
+        </div>
+        <div className="grid @3xl/overview:grid-cols-2 @6xl/overview:grid-cols-4 gap-3">
+          {GOLDEN_CARDS.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Link key={card.href} href={card.href} className="group block">
+                <Card
+                  className={`h-full border bg-gradient-to-br ${card.tone} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+                >
+                  <CardHeader className="gap-2 pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`flex size-9 items-center justify-center rounded-xl border ${card.iconTone}`}>
+                        <Icon className="size-4" />
+                      </span>
+                      <Badge variant="outline" className="bg-background/70 text-[11px] backdrop-blur-sm">
+                        {card.badge}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base">{card.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col justify-between gap-3 pt-0">
+                    <p className="text-muted-foreground text-xs leading-relaxed">{card.desc}</p>
+                    <span className="inline-flex items-center gap-1 font-medium text-primary text-xs group-hover:underline">
+                      {PAGE_T.openSection}
+                      <ArrowRight className="size-3.5 rtl:rotate-180" />
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs sm:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-        {metrics.map((m) => (
-          <Card
-            key={m.metricId}
-            role="button"
-            tabIndex={0}
-            onClick={() => setDrill(m)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setDrill(m);
-            }}
-            className="cursor-pointer transition-colors hover:border-primary/40"
-          >
-            <CardHeader>
-              <CardTitle>
-                <div className="flex size-7 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
-                  <m.icon className="size-4" />
-                </div>
-              </CardTitle>
-              <CardDescription className="flex items-center gap-1.5">
-                {m.label}
-                <Hint text={m.hint} note={m.note} />
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="font-medium text-3xl tabular-nums leading-none tracking-tight">{m.value}</div>
-                <Badge>
-                  {m.up ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-                  {m.change}
-                </Badge>
-              </div>
-              <p className="text-muted-foreground text-sm">{m.support}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* أمر فهد البندان 48 و49: بطاقات تقييم الموظفين وكشف التهرب اللطيف */}
+      <EmployeeEvaluation />
 
       <Card className="bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader>
-          <CardTitle className="text-lg">Hello, Arham!</CardTitle>
-          <CardDescription>Captain summary · {assistant.name}</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="size-4 text-primary" />
+            {PAGE_T.summaryTitle}
+          </CardTitle>
+          <CardDescription>{PAGE_T.summarySub}</CardDescription>
           <CardAction className="flex items-center gap-1">
             <Button
-              size="icon-sm"
+              size="icon"
               variant="ghost"
               aria-label="Previous summary point"
               disabled={point === 0}
@@ -568,13 +471,13 @@ export function CaptainOverview() {
               <ChevronLeft />
             </Button>
             <span className="text-muted-foreground text-xs tabular-nums">
-              {point + 1} / {summaryPoints.length}
+              {point + 1} / {points.length}
             </span>
             <Button
-              size="icon-sm"
+              size="icon"
               variant="ghost"
               aria-label="Next summary point"
-              disabled={point === summaryPoints.length - 1}
+              disabled={point === points.length - 1}
               onClick={() => setPoint(point + 1)}
             >
               <ChevronRight />
@@ -586,236 +489,161 @@ export function CaptainOverview() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Resolution flow</CardTitle>
-          <CardDescription>Flow of handled conversations through Captain and team outcomes</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center">
-          {flowColumns.map((col, ci) => (
-            <React.Fragment key={col[0].label}>
-              {ci > 0 && <ArrowRight className="hidden size-4 text-muted-foreground md:block" />}
-              <div className="grid gap-2">
-                {col.map((n) => (
-                  <div key={n.label} className="grid gap-1.5 rounded-lg border p-3">
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="inline-flex items-center gap-2">
-                        <span className={`size-2 rounded-full ${n.dot}`} />
-                        {n.label}
-                      </span>
-                      <span className="font-medium tabular-nums">{n.value.toLocaleString()}</span>
-                    </div>
-                    <Progress value={Math.round((n.value / 1360) * 100)} className="h-1" />
+      {/* التقارير المفصّلة مطوية تحت زر واحد حتى لا تطول الصفحة */}
+      <Collapsible open={reportsOpen} onOpenChange={setReportsOpen} className="grid gap-4">
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="justify-self-start">
+            <ChartNoAxesColumn /> {reportsOpen ? PAGE_T.hideReports : PAGE_T.showReports}
+            <ChevronDown className={reportsOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="grid gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>مسار حل المحادثات</CardTitle>
+              <CardDescription>تدفّق المحادثات بين إيمه وأعضاء الفريق</CardDescription>
+            </CardHeader>
+            <CardContent className="grid @2xl/overview:grid-cols-[1fr_auto_1fr_auto_1fr] @2xl/overview:items-center gap-4">
+              {flowColumns.map((col, ci) => (
+                <React.Fragment key={col[0].label}>
+                  {ci > 0 && <ArrowRight className="@2xl/overview:block hidden size-4 text-muted-foreground rtl:rotate-180" />}
+                  <div className="grid gap-2">
+                    {col.map((n) => (
+                      <div key={n.label} className="grid gap-1.5 rounded-lg border p-3">
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="inline-flex items-center gap-2">
+                            <span className={`size-2 rounded-full ${n.dot}`} />
+                            {n.label}
+                          </span>
+                          <span className="font-medium tabular-nums">{n.value.toLocaleString()}</span>
+                        </div>
+                        <Progress value={Math.round((n.value / flowTotal) * 100)} className="h-1" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </React.Fragment>
-          ))}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Resolution trend</CardTitle>
-            <CardDescription>
-              {trendView === "count"
-                ? "Handled and Captain-resolved conversations by reporting period"
-                : "Current and previous Captain resolution rates"}
-            </CardDescription>
-            <CardAction>
-              <Tabs value={trendView} onValueChange={setTrendView}>
-                <TabsList>
-                  <TabsTrigger value="count">Conversation count</TabsTrigger>
-                  <TabsTrigger value="rate">Resolution rate</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            {trendView === "rate" ? (
-              <>
-                <Label className="flex items-center gap-2 font-normal text-sm">
-                  <Switch checked={aligned} onCheckedChange={setAligned} /> Weekday-aligned comparison
-                  <Hint
-                    text="Compare resolution rates on matching weekdays, such as Monday with Monday."
-                    note="Today is compared up to the same time of day."
-                  />
-                </Label>
-                <ChartContainer config={rateConfig} className="h-56 w-full">
-                  <LineChart data={aligned ? rateTrend : [...rateTrend].reverse()} margin={{ left: 0, right: 8 }}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} width={36} unit="%" domain={[50, 80]} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Line
-                      dataKey="current"
-                      stroke="var(--color-current)"
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                    <Line
-                      dataKey="previous"
-                      stroke="var(--color-previous)"
-                      strokeWidth={2}
-                      strokeDasharray="4 4"
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ChartContainer>
-              </>
-            ) : (
-              <ChartContainer config={chartConfig} className="h-64 w-full">
-                <BarChart data={trend} margin={{ left: 0, right: 0 }}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar dataKey="handled" fill="var(--color-handled)" radius={4} isAnimationActive={false} />
-                  <Bar dataKey="resolved" fill="var(--color-resolved)" radius={4} isAnimationActive={false} />
-                </BarChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Handoff reasons</CardTitle>
-            <CardDescription>{totalReasons} handoffs in this period</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            {handoffReasons.map((r) => {
-              const pct = Math.round((r.value / totalReasons) * 100);
-              return (
-                <div key={r.label} className="grid gap-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span>{r.label}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {r.value} ({pct}%)
-                    </span>
-                  </div>
-                  <Progress value={pct} className="h-1.5" />
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Knowledge coverage</CardTitle>
-            <CardDescription>82% approved</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <Progress value={82} />
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {[
-                ["126", "Approved FAQs"],
-                ["4", "Suggested FAQs"],
-                ["14", "Documents"],
-              ].map(([v, l]) => (
-                <div key={l} className="rounded-lg border p-3">
-                  <div className="font-semibold text-lg tabular-nums">{v}</div>
-                  <div className="text-muted-foreground text-xs">{l}</div>
-                </div>
+                </React.Fragment>
               ))}
-            </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/dashboard/captain/faqs">Review FAQs</Link>
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Usage</CardTitle>
-            <CardDescription>Resets on Nov 1, 2026</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-1.5">
-              <div className="flex justify-between text-sm">
-                <span>Credits</span>
-                <span className="text-muted-foreground tabular-nums">3,420/5,000 (68% used)</span>
-              </div>
-              <Progress value={68} />
-            </div>
-            <div className="grid gap-1.5">
-              <div className="flex justify-between text-sm">
-                <span>Documents</span>
-                <span className="text-muted-foreground tabular-nums">43/200 (22% used)</span>
-              </div>
-              <Progress value={22} />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.success("Usage refreshed")}>
-                <RefreshCw /> Refresh usage
-              </Button>
-              <Button size="sm" className="flex-1" asChild>
-                <Link href="/dashboard/settings/billing">
-                  <CreditCard /> Buy more credits
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Captain CSAT</CardTitle>
-            <CardDescription>Average customer rating out of 5</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3">
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <span className="inline-flex items-center gap-1.5 text-sm">
-                Captain-resolved conversations
-                <Hint text="The average customer rating for conversations Captain resolved without help from your team." />
-              </span>
-              <span className="font-semibold tabular-nums">4.6</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <span className="inline-flex items-center gap-1.5 text-sm">
-                Captain-assisted conversations
-                <Hint text="The average customer rating when Captain helped before your team resolved the conversation." />
-              </span>
-              <span className="font-semibold tabular-nums">4.4</span>
-            </div>
-            <p className="text-muted-foreground text-xs">+0.2 vs humans</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* F-16: the "Captain docs" card opened Chatwoot's help centre (chatwoot.com); removed, no outside links. */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {[
-          {
-            icon: SquareTerminal,
-            title: "Playground",
-            desc: "Test this assistant's replies",
-            href: "/dashboard/captain/playground",
-          },
-          { icon: CreditCard, title: "Billing", desc: "Manage credits and plan", href: "/dashboard/settings/billing" },
-        ].map((l) => (
-          <Link key={l.title} href={l.href}>
-            <Card className="flex-row items-center gap-3 px-4 py-4 transition-colors hover:bg-muted/50">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                <l.icon className="size-4" />
-              </div>
-              <div className="grid gap-0.5">
-                <span className="font-medium text-sm">{l.title}</span>
-                <span className="text-muted-foreground text-xs">{l.desc}</span>
-              </div>
+          <div className="grid @5xl/overview:grid-cols-[2fr_1fr] gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>اتجاه الحل الذاتي</CardTitle>
+                <CardDescription>
+                  {trendView === "count"
+                    ? "عدد المحادثات المعالجة والمحلولة ذاتياً"
+                    : "مقارنة نسبة الحل الذاتي بالفترة السابقة"}
+                </CardDescription>
+                <CardAction>
+                  <Tabs value={trendView} onValueChange={setTrendView}>
+                    <TabsList>
+                      <TabsTrigger value="count">العدد</TabsTrigger>
+                      <TabsTrigger value="rate">النسبة</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </CardAction>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {trendView === "rate" ? (
+                  <>
+                    <Label className="flex items-center gap-2 font-normal text-sm">
+                      <Switch checked={aligned} onCheckedChange={setAligned} /> مقارنة أيام الأسبوع المتناظرة
+                      <Hint
+                        text="قارن نسب الحل الذاتي بين أيام الأسبوع المتناظرة (مثل الإثنين مع الإثنين)."
+                        note="يُقارن اليوم حتى نفس الساعة من اليوم المناظر."
+                      />
+                    </Label>
+                    <ChartContainer config={rateConfig} className="h-56 w-full">
+                      <LineChart data={aligned ? rateTrend : [...rateTrend].reverse()} margin={{ left: 0, right: 8 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
+                        <YAxis tickLine={false} axisLine={false} width={36} unit="%" domain={[50, 80]} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartLegend content={<ChartLegendContent />} />
+                        <Line
+                          dataKey="current"
+                          stroke="var(--color-current)"
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                        <Line
+                          dataKey="previous"
+                          stroke="var(--color-previous)"
+                          strokeWidth={2}
+                          strokeDasharray="4 4"
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </LineChart>
+                    </ChartContainer>
+                  </>
+                ) : (
+                  <ChartContainer config={chartConfig} className="h-64 w-full">
+                    <BarChart data={trend} margin={{ left: 0, right: 0 }}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <ChartLegend content={<ChartLegendContent />} />
+                      <Bar dataKey="handled" fill="var(--color-handled)" radius={4} isAnimationActive={false} />
+                      <Bar dataKey="resolved" fill="var(--color-resolved)" radius={4} isAnimationActive={false} />
+                    </BarChart>
+                  </ChartContainer>
+                )}
+              </CardContent>
             </Card>
-          </Link>
-        ))}
-      </div>
 
-      <DrilldownSheet key={drill?.metricId} metric={drill} onClose={() => setDrill(null)} />
+            <Card>
+              <CardHeader>
+                <CardTitle>أسباب التحويل للفريق</CardTitle>
+                <CardDescription>{totalReasons} تحويلاً في هذه الفترة</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {handoffReasons.map((r) => {
+                  const pct = Math.round((r.value / totalReasons) * 100);
+                  return (
+                    <div key={r.label} className="grid gap-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span>{r.label}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {r.value} ({pct}%)
+                        </span>
+                      </div>
+                      <Progress value={pct} className="h-1.5" />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="grid @xl/overview:grid-cols-2 gap-4">
+        <Link href="/dashboard/captain/smart">
+          <Card className="flex-row items-center gap-3 px-4 py-4 transition-colors hover:bg-muted/50">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="size-4" />
+            </div>
+            <div className="grid gap-0.5">
+              <span className="font-medium text-sm">كل شيء سمارت · إيمه</span>
+              <span className="text-muted-foreground text-xs">اربط قنواتك واضبط إعداداتك بالمحادثة في نفس المكان</span>
+            </div>
+          </Card>
+        </Link>
+        <Link href="/dashboard/settings/billing">
+          <Card className="flex-row items-center gap-3 px-4 py-4 transition-colors hover:bg-muted/50">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+              <CreditCard className="size-4" />
+            </div>
+            <div className="grid gap-0.5">
+              <span className="font-medium text-sm">{PAGE_T.billingTitle}</span>
+              <span className="text-muted-foreground text-xs">{PAGE_T.billingDesc}</span>
+            </div>
+          </Card>
+        </Link>
+      </div>
     </CaptainShell>
   );
 }

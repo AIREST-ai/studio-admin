@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SecuritySettings } from "./_components/security-settings";
 
 export const metadata: Metadata = {
-  title: "Security",
+  title: "الأمان والدخول الموحد",
 };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ paywall?: string }> }) {

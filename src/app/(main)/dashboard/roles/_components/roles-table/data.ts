@@ -1,7 +1,3 @@
-// F159: Chatwoot v4.18 Custom Roles merged into Studio's Roles table.
-// The six permission keys and their labels come from Chatwoot (constants/permissions.js + i18n/en/customRole.json).
-// System rows (Administrator, Agent) are Chatwoot's two built-in roles, kept in Studio's grouped table.
-
 export const AVAILABLE_CUSTOM_ROLE_PERMISSIONS = [
   "conversation_manage",
   "conversation_unassigned_manage",
@@ -18,28 +14,26 @@ export const CONVERSATION_UNASSIGNED_PERMISSIONS: Permission = "conversation_una
 export const CONVERSATION_PARTICIPATING_PERMISSIONS: Permission = "conversation_participating_manage";
 
 export const permissionLabels: Record<Permission, string> = {
-  conversation_manage: "Manage all conversations",
-  conversation_unassigned_manage: "Manage unassigned conversations and those assigned to them",
-  conversation_participating_manage: "Manage participating conversations and those assigned to them",
-  contact_manage: "Manage contacts",
-  report_manage: "Manage reports",
-  knowledge_base_manage: "Manage knowledge base",
+  conversation_manage: "إدارة جميع المحادثات",
+  conversation_unassigned_manage: "إدارة المحادثات غير المعيّنة والمُسندة للموظف",
+  conversation_participating_manage: "إدارة المحادثات المشارك فيها والمُسندة للموظف",
+  contact_manage: "إدارة جهات الاتصال",
+  report_manage: "الاطلاع على التقارير وإدارتها",
+  knowledge_base_manage: "إدارة بنك المعرفة ومركز المساعدة",
 };
 
-// Short labels for badges in the table and matrix header (full label is in the tooltip/title).
 export const permissionShortLabels: Record<Permission, string> = {
-  conversation_manage: "All conversations",
-  conversation_unassigned_manage: "Unassigned conversations",
-  conversation_participating_manage: "Participating conversations",
-  contact_manage: "Contacts",
-  report_manage: "Reports",
-  knowledge_base_manage: "Knowledge base",
+  conversation_manage: "كل المحادثات",
+  conversation_unassigned_manage: "غير المعيّنة",
+  conversation_participating_manage: "المشارك فيها",
+  contact_manage: "جهات الاتصال",
+  report_manage: "التقارير",
+  knowledge_base_manage: "بنك المعرفة",
 };
 
 export type RoleGroup = "System roles" | "Custom roles";
 
 export type Role = {
-  /** "administrator" | "agent" for system roles, "custom_<id>" for custom roles */
   key: string;
   customRoleId: number | null;
   name: string;
@@ -47,7 +41,6 @@ export type Role = {
   group: RoleGroup;
   accessLevel: "Full" | "Scoped";
   permissions: Permission[];
-  /** Studio-before columns (kept by Fahad's rule): last review date, owner, review status. Not in Chatwoot. */
   lastReview: string;
   owner: string;
   status: RoleStatus;
@@ -56,33 +49,32 @@ export type Role = {
 export type RoleStatus = "Active" | "Needs review";
 
 export function todayLabel() {
-  return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date().toLocaleDateString("ar-SA", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export const systemRoles: Role[] = [
   {
     key: "administrator",
     customRoleId: null,
-    name: "Administrator",
-    description: "Full access to every inbox, conversation, report and account setting.",
+    name: "مدير النظام (المالك)",
+    description: "وصول كامل إلى جميع الصناديق والمحادثات والتقارير وإعدادات الشركة والذكاء الاصطناعي.",
     group: "System roles",
     accessLevel: "Full",
     permissions: [...AVAILABLE_CUSTOM_ROLE_PERMISSIONS],
-    lastReview: "Apr 12, 2025",
-    owner: "System",
+    lastReview: "١٢ أبريل ٢٠٢٥",
+    owner: "النظام",
     status: "Active",
   },
   {
     key: "agent",
     customRoleId: null,
-    name: "Agent",
-    description: "Views and responds to conversations in the inboxes they are added to.",
+    name: "موظف خدمة عملاء",
+    description: "يعرض ويرد على المحادثات في الصناديق المخصصة له فقط.",
     group: "System roles",
     accessLevel: "Scoped",
-    // Not "Manage all conversations": a Chatwoot agent only works the inboxes they are added to.
     permissions: ["conversation_unassigned_manage", "conversation_participating_manage", "contact_manage"],
-    lastReview: "May 1, 2025",
-    owner: "System",
+    lastReview: "١ مايو ٢٠٢٥",
+    owner: "النظام",
     status: "Active",
   },
 ];
@@ -103,7 +95,7 @@ export function customRole(
     accessLevel: "Scoped",
     permissions,
     lastReview: meta.lastReview ?? todayLabel(),
-    owner: meta.owner ?? "Arham Khan",
+    owner: meta.owner ?? "أرحم خان",
     status: meta.status ?? "Active",
   };
 }
@@ -112,8 +104,8 @@ export const roles: Role[] = [
   ...systemRoles,
   customRole(
     1,
-    "Support Lead",
-    "Oversees the support queue, reassigns conversations and reviews team reports.",
+    "مشرف الدعم الفني",
+    "يشرف على طابور الدعم ويعيد توجيه المحادثات ويراجع تقارير الفريق وتنبيهات التهرب.",
     [
       "conversation_manage",
       "conversation_unassigned_manage",
@@ -121,34 +113,32 @@ export const roles: Role[] = [
       "contact_manage",
       "report_manage",
     ],
-    { lastReview: "Sep 2, 2026", owner: "Arham Khan", status: "Needs review" },
+    { lastReview: "٢ سبتمبر ٢٠٢٦", owner: "أرحم خان", status: "Needs review" },
   ),
   customRole(
     2,
-    "Tier 1 Support",
-    "Picks up new conversations from the unassigned queue and hands off escalations.",
+    "دعم المستوى الأول",
+    "يستلم المحادثات الجديدة من الطابور غير المعيّن ويحيل الحالات المتقدمة.",
     ["conversation_unassigned_manage", "conversation_participating_manage"],
-    { lastReview: "Aug 18, 2026", owner: "Priya Nair", status: "Active" },
+    { lastReview: "١٨ أغسطس ٢٠٢٦", owner: "بريا ناير", status: "Active" },
   ),
   customRole(
     3,
-    "Sales Agent",
-    "Works leads coming in from WhatsApp and the website widget.",
+    "مسؤول مبيعات",
+    "يتابع العملاء المحتملين القادمين من واتساب ومحادثة الموقع.",
     ["conversation_participating_manage", "contact_manage"],
-    { lastReview: "Jul 27, 2026", owner: "Arham Khan", status: "Needs review" },
+    { lastReview: "٢٧ يوليو ٢٠٢٦", owner: "أرحم خان", status: "Needs review" },
   ),
-  customRole(4, "Content Editor", "Writes, updates and publishes help center articles.", ["knowledge_base_manage"], {
-    lastReview: "Sep 30, 2026",
-    owner: "Dana Bakr",
+  customRole(4, "محرر بنك المعرفة", "يكتب ويحدّث مقالات مركز المساعدة وملفات المعرفة.", ["knowledge_base_manage"], {
+    lastReview: "٣٠ سبتمبر ٢٠٢٦",
+    owner: "دانا بكر",
     status: "Active",
   }),
-  customRole(
-    5,
-    "Reporting Analyst",
-    "Prepares the weekly CSAT, SLA and agent performance reviews.",
-    ["report_manage"],
-    { lastReview: "Jun 9, 2026", owner: "Priya Nair", status: "Needs review" },
-  ),
+  customRole(5, "محلل تقارير وجودة", "يراجع تقارير رضا العملاء وأداء الموظفين الأسبوعية.", ["report_manage"], {
+    lastReview: "٩ يونيو ٢٠٢٦",
+    owner: "بريا ناير",
+    status: "Needs review",
+  }),
 ];
 
 export function roleKeyOf(user: { role: "administrator" | "agent"; customRoleId: number | null }) {

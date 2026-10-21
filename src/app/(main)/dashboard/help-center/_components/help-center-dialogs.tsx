@@ -127,7 +127,7 @@ export function CreatePortalDialog({ open, onOpenChange }: DialogProps) {
           <Field label="Name" htmlFor="portal-name" help="Choose an name for your portal." error={nameError}>
             <Input
               id="portal-name"
-              placeholder="User Guide | Weblabs Studio"
+              placeholder="User Guide | منصة الشركة"
               value={name}
               aria-invalid={Boolean(nameError)}
               onChange={(e) => {
@@ -638,7 +638,7 @@ export function LocalizeContentDialog({ open, onOpenChange, locale }: DialogProp
             <Input
               id="localize-name"
               placeholder={portal?.name}
-              defaultValue={locale?.code === "ar" ? "مركز مساعدة ويبلابس ستوديو" : ""}
+              defaultValue={locale?.code === "ar" ? "مركز مساعدة منصة الشركة" : ""}
             />
           </Field>
           <Field label="Page title" htmlFor="localize-title">
