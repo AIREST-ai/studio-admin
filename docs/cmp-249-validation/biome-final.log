@@ -1,0 +1,905 @@
+src/app/(main)/dashboard/_components/header/smart-battery-pill.tsx:81:29 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+  
+    79 │               ))}
+    80 │             </div>
+  > 81 │             <span className="text-muted-foreground text-[11px]">
+       │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    82 │               {`${aiAvailable.toLocaleString("en-US")} نقطة (معاينة)`}
+    83 │             </span>
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+  i Unsafe fix: Sort the classes.
+  
+     79  79 │                 ))}
+     80  80 │               </div>
+     81     │ - ············<span·className="text-muted-foreground·text-[11px]">
+         81 │ + ············<span·className="text-[11px]·text-muted-foreground">
+     82  82 │                 {`${aiAvailable.toLocaleString("en-US")} نقطة (معاينة)`}
+     83  83 │               </span>
+  
+
+src/app/(main)/dashboard/_components/header/smart-battery-pill.tsx:104:29 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+  
+    102 │               ))}
+    103 │             </div>
+  > 104 │             <span className="text-muted-foreground text-[11px]">
+        │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    105 │               {`${waCredit} ر.س (معاينة ثابتة) · ${waConvs.toLocaleString("en-US")} محادثة · ${waTemplates} قالبا�`}
+    106 │             </span>
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+  i Unsafe fix: Sort the classes.
+  
+    102 102 │                 ))}
+    103 103 │               </div>
+    104     │ - ············<span·className="text-muted-foreground·text-[11px]">
+        104 │ + ············<span·className="text-[11px]·text-muted-foreground">
+    105 105 │                 {`${waCredit} ر.س (معاينة ثابتة) · ${waConvs.toLocaleString("en-US")} محادثة · ${waTemplates} قالبا�`}
+    106 106 │               </span>
+  
+
+src/app/(main)/dashboard/_components/header/smart-battery-pill.tsx:109:24 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+  
+    107 │           </div>
+    108 │ 
+  > 109 │           <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-amber-700 text-[11px] leading-relaxed dark:text-amber-300">
+        │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    110 │             {T.mockHint}
+    111 │           </p>
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+  i Unsafe fix: Sort the classes.
+  
+    107 107 │             </div>
+    108 108 │   
+    109     │ - ··········<p·className="rounded-lg·border·border-amber-500/20·bg-amber-500/5·px-2.5·py-2·text-amber-700·text-[11px]·leading-relaxed·dark:text-amber-300">
+        109 │ + ··········<p·className="rounded-lg·border·border-amber-500/20·bg-amber-500/5·px-2.5·py-2·text-[11px]·text-amber-700·leading-relaxed·dark:text-amber-300">
+    110 110 │               {T.mockHint}
+    111 111 │             </p>
+  
+
+src/app/(main)/dashboard/_components/header/smart-battery-pill.tsx:54:27 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+  
+    52 │               <Badge
+    53 │                 variant="outline"
+  > 54 │                 className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-700 text-[10px] dark:text-amber-300"
+       │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    55 │               >
+    56 │                 <EyeOff className="size-2.5" />
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+  i Unsafe fix: Sort the classes.
+  
+     52  52 │                 <Badge
+     53  53 │                   variant="outline"
+     54     │ - ················className="gap-1·border-amber-500/30·bg-amber-500/10·text-amber-700·text-[10px]·dark:text-amber-300"
+         54 │ + ················className="gap-1·border-amber-500/30·bg-amber-500/10·text-[10px]·text-amber-700·dark:text-amber-300"
+     55  55 │                 >
+     56  56 │                   <EyeOff className="size-2.5" />
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:123:23 lint/nursery/useSortedClasses  FIXABLE  ━━━━━━━━━━
+
+  i These CSS classes should be sorted.
+  
+    121 │       </div>
+    122 │       <span className="h-2.5 w-1 rounded-e-sm bg-foreground/25" />
+  > 123 │       <span className="font-semibold text-xs tabular-nums text-emerald-600 dark:text-emerald-400">{T.pct(pct)}</span>
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    124 │     </div>
+    125 │   );
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/1274 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+  i Unsafe fix: Sort the classes.
+  
+    121 121 │         </div>
+    122 122 │         <span className="h-2.5 w-1 rounded-e-sm bg-foreground/25" />
+    123     │ - ······<span·className="font-semibold·text-xs·tabular-nums·text-emerald-600·dark:text-emerald-400">{T.pct(pct)}</span>
+        123 │ + ······<span·className="font-semibold·text-emerald-600·text-xs·tabular-nums·dark:text-emerald-400">{T.pct(pct)}</span>
+    124 124 │       </div>
+    125 125 │     );
+  
+
+src/app/(main)/dashboard/_components/header/smart-battery-pill.tsx:76:24 lint/suspicious/noArrayIndexKey ━━━━━━━━━━
+
+  ! Avoid using the index of an array as key property in an element.
+  
+    74 │               {Array.from({ length: 10 }, (_, i) => (
+    75 │                 <span
+  > 76 │                   key={i}
+       │                        ^
+    77 │                   className={i < aiCells ? "h-2 flex-1 rounded-xs bg-emerald-500" : "h-2 flex-1 rounded-xs bg-muted"}
+    78 │                 />
+  
+  i This is the source of the key value.
+  
+    72 │             </div>
+    73 │             <div className="flex gap-1">
+  > 74 │               {Array.from({ length: 10 }, (_, i) => (
+       │                                               ^
+    75 │                 <span
+    76 │                   key={i}
+  
+  i The order of the items may change, and this also affects performances and component state.
+  
+  i Check the React documentation. 
+  
+
+src/app/(main)/dashboard/_components/header/smart-battery-pill.tsx:99:24 lint/suspicious/noArrayIndexKey ━━━━━━━━━━
+
+  ! Avoid using the index of an array as key property in an element.
+  
+     97 │               {Array.from({ length: 10 }, (_, i) => (
+     98 │                 <span
+   > 99 │                   key={i}
+        │                        ^
+    100 │                   className={i < 8 ? "h-2 flex-1 rounded-xs bg-sky-500" : "h-2 flex-1 rounded-xs bg-muted"}
+    101 │                 />
+  
+  i This is the source of the key value.
+  
+    95 │             </div>
+    96 │             <div className="flex gap-1">
+  > 97 │               {Array.from({ length: 10 }, (_, i) => (
+       │                                               ^
+    98 │                 <span
+    99 │                   key={i}
+  
+  i The order of the items may change, and this also affects performances and component state.
+  
+  i Check the React documentation. 
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:8:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━
+
+  ! This import is unused.
+  
+     6 │ import * as React from "react";
+     7 │ 
+   > 8 │ import Link from "next/link";
+       │        ^^^^
+     9 │ 
+    10 │ import { cn } from "cn";
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+      4   4 │   // التفصيل الذي كان ظاهرا� (التقييم وموظف الذكاء البشري، ومعدل الصرف اليومي، والأيام المتبقية) والسجل صارا في
+      5   5 │   // نافذة جانبية واحدة يفتحها «سجل الصرف» أو «تفصيل الصرف». الشبكة باستعلام الحاوية لتلائم 1024 و1440 بلا قص.
+      6     │ - import·*·as·React·from·"react";
+          6 │ + import·*·as·React·from·"react";
+      7   7 │   
+      8     │ - import·Link·from·"next/link";
+      9   8 │   
+     10   9 │   import { cn } from "cn";
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:102:10 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+
+  ! This function SmartBatteryGraphic is unused.
+  
+    101 │ // بطارية ذكية مقس�مة إلى 10 خلايا تقيس الرصيد بأيام التغطية (حتى لو شحن مليون ريال تبقى منطقية ومريحة للعين)
+  > 102 │ function SmartBatteryGraphic({ days, tone = "emerald" }: { days: number; tone?: "emerald" | "sky" }) {
+        │          ^^^^^^^^^^^^^^^^^^^
+    103 │   const pct = Math.min(100, Math.max(12, Math.round((days / 60) * 100)));
+    104 │   const activeCells = Math.max(1, Math.round(pct / 10));
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend SmartBatteryGraphic with an underscore.
+  
+    100 100 │   
+    101 101 │   // بطارية ذكية مقس�مة إلى 10 خلايا تقيس الرصيد بأيام التغطية (حتى لو شحن مليون ريال تبقى منطقية ومريحة للعين)
+    102     │ - function·SmartBatteryGraphic({·days,·tone·=·"emerald"·}:·{·days:·number;·tone?:·"emerald"·|·"sky"·})·{
+        102 │ + function·_SmartBatteryGraphic({·days,·tone·=·"emerald"·}:·{·days:·number;·tone?:·"emerald"·|·"sky"·})·{
+    103 103 │     const pct = Math.min(100, Math.max(12, Math.round((days / 60) * 100)));
+    104 104 │     const activeCells = Math.max(1, Math.round(pct / 10));
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:114:18 lint/suspicious/noArrayIndexKey ━━━━━━━━━━
+
+  ! Avoid using the index of an array as key property in an element.
+  
+    112 │         {Array.from({ length: 10 }, (_, idx) => (
+    113 │           <span
+  > 114 │             key={idx}
+        │                  ^^^
+    115 │             className={cn(
+    116 │               "h-3.5 w-2 rounded-[3px] transition-all",
+  
+  i This is the source of the key value.
+  
+    110 │     <div role="img" className="flex items-center gap-1.5" aria-label={`${pct}%`}>
+    111 │       <div className="flex items-center gap-1 rounded-lg border-2 border-foreground/20 bg-background/80 p-1">
+  > 112 │         {Array.from({ length: 10 }, (_, idx) => (
+        │                                         ^^^
+    113 │           <span
+    114 │             key={idx}
+  
+  i The order of the items may change, and this also affects performances and component state.
+  
+  i Check the React documentation. 
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:133:25 lint/correctness/noUnusedVariables ━━━━━━━━━━
+
+  ! This variable perDay is unused.
+  
+    132 │ function DetailsSection() {
+  > 133 │   const { spent, total, perDay, daysLeft } = useBalanceMath();
+        │                         ^^^^^^
+    134 │   const split = [
+    135 │     { key: "evaluation", label: T.evaluation, value: balance.spentEvaluation, icon: ClipboardCheck },
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:133:33 lint/correctness/noUnusedVariables ━━━━━━━━━━
+
+  ! This variable daysLeft is unused.
+  
+    132 │ function DetailsSection() {
+  > 133 │   const { spent, total, perDay, daysLeft } = useBalanceMath();
+        │                                 ^^^^^^^^
+    134 │   const split = [
+    135 │     { key: "evaluation", label: T.evaluation, value: balance.spentEvaluation, icon: ClipboardCheck },
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+
+src/app/(main)/dashboard/captain/_overview-ai/balance-header.tsx:251:36 lint/correctness/noUnusedVariables ━━━━━━━━━━
+
+  ! This variable daysLeft is unused.
+  
+    249 │ export function BalanceHeader() {
+    250 │   const [view, setView] = React.useState<View | null>(null);
+  > 251 │   const { available, spent, total, daysLeft } = useBalanceMath();
+        │                                    ^^^^^^^^
+    252 │ 
+    253 │   return (
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+
+src/app/api/captain-engine/route.ts:804:6 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    802 │     recalled.length +
+    803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+  > 804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+        │      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    805 │     evals.length +
+    806 │     (state.smartPlan.history?.length ?? 0);
+  
+  i Drop ?? and the fallback expression.
+  
+    802 │     recalled.length +
+    803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+  > 804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+        │                                           ^^
+    805 │     evals.length +
+    806 │     (state.smartPlan.history?.length ?? 0);
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:276:9 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    274 │     params.customPrompt && params.customPrompt.trim()
+    275 │       ? `${params.customPrompt.trim()}\n${params.customContext ? `معلومات إضافية: ${params.customContext.trim()}\n` : ""}`
+  > 276 │       : params.mode === "evaluator"
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 277 │         ? `أنت «${params.state.employeeName || "إيمه"}» المقي�م والموظف الذكي لشركة «${params.state.companyName}» في قطاع (${params.state.sector}). ترد� على العميل بلباقة وحل عملي فوري مباشر دون تهرب لطيف أو وعود عائمة.`
+  > 278 │         : `أنت «${params.state.employeeName || "إيمه"}» المساعد الذكي لشركة «${params.state.companyName}» في قطاع (${params.state.sector}).`;
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    279 │ 
+    280 │   const systemContent = `${baseSystemPrompt}
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:733:43 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    732 │   const politeDodge = (hasSweet && hasDodge && !hasRealAction) || (hasDodge && !hasRealAction);
+  > 733 │   const politenessScore = hasSweet ? 94 : hasRealAction ? 90 : 65;
+        │                                           ^^^^^^^^^^^^^^^^^^^^^^^
+    734 │   const resolutionScore = politeDodge ? 14 : hasRealAction ? 95 : hasAnger ? 35 : 78;
+    735 │   const overallScore = politeDodge
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:734:46 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    732 │   const politeDodge = (hasSweet && hasDodge && !hasRealAction) || (hasDodge && !hasRealAction);
+    733 │   const politenessScore = hasSweet ? 94 : hasRealAction ? 90 : 65;
+  > 734 │   const resolutionScore = politeDodge ? 14 : hasRealAction ? 95 : hasAnger ? 35 : 78;
+        │                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    735 │   const overallScore = politeDodge
+    736 │     ? Math.round(resolutionScore * 0.75 + politenessScore * 0.25)
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:734:67 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    732 │   const politeDodge = (hasSweet && hasDodge && !hasRealAction) || (hasDodge && !hasRealAction);
+    733 │   const politenessScore = hasSweet ? 94 : hasRealAction ? 90 : 65;
+  > 734 │   const resolutionScore = politeDodge ? 14 : hasRealAction ? 95 : hasAnger ? 35 : 78;
+        │                                                                   ^^^^^^^^^^^^^^^^^^
+    735 │   const overallScore = politeDodge
+    736 │     ? Math.round(resolutionScore * 0.75 + politenessScore * 0.25)
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:781:41 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    779 │     coachingTip,
+    780 │     axes: {
+  > 781 │       understanding: politeDodge ? 28 : hasRealAction ? 95 : 75,
+        │                                         ^^^^^^^^^^^^^^^^^^^^^^^
+    782 │       action: politeDodge ? 12 : hasRealAction ? 96 : 70,
+    783 │       resolution: resolutionScore,
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:782:34 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    780 │     axes: {
+    781 │       understanding: politeDodge ? 28 : hasRealAction ? 95 : 75,
+  > 782 │       action: politeDodge ? 12 : hasRealAction ? 96 : 70,
+        │                                  ^^^^^^^^^^^^^^^^^^^^^^^
+    783 │       resolution: resolutionScore,
+    784 │       effort: politeDodge ? 18 : hasRealAction ? 92 : 74,
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:784:34 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    782 │       action: politeDodge ? 12 : hasRealAction ? 96 : 70,
+    783 │       resolution: resolutionScore,
+  > 784 │       effort: politeDodge ? 18 : hasRealAction ? 92 : 74,
+        │                                  ^^^^^^^^^^^^^^^^^^^^^^^
+    785 │       tone: politenessScore,
+    786 │     },
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:1050:60 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+  
+    1048 │         const parsed = JSON.parse(match[0]);
+    1049 │         if (Array.isArray(parsed)) {
+  > 1050 │           discoveredIssues = parsed.slice(0, 5).map((item: any, idx: number) => ({
+         │                                                            ^^^
+    1051 │             id: `iss-${Date.now()}-${idx + 1}`,
+    1052 │             title: String(item.title || "ملاحظة مستخرجة من السجل الحي"),
+  
+  i any disables many type checking rules. Its use should be avoided.
+  
+
+src/app/api/captain-engine/route.ts:1203:9 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    1201 │     const history = Array.isArray(body.history)
+    1202 │       ? (body.history as { role: "user" | "assistant"; text?: string; content?: string }[])
+  > 1203 │       : Array.isArray(body.messages)
+         │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 1204 │         ? (body.messages as { role: "user" | "assistant"; text?: string; content?: string }[])
+  > 1205 │         : [];
+         │         ^^^^
+    1206 │ 
+    1207 │     const chatRes = await chatWithLiteLLM({
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:120:24 lint/nursery/useNullishCoalescing ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Use ?? instead of ||.
+  
+    119 │ function sanitizeCompanyId(raw?: string | null): string {
+  > 120 │   const cleaned = (raw || "airest-main").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+        │                        ^^
+    121 │   return cleaned || "airest-main";
+    122 │ }
+  
+  i The || operator checks for all falsy values (including 0, '', and false), while ?? only checks for null and undefined.
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/8043 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+
+src/app/api/captain-engine/route.ts:243:36 lint/nursery/useNullishCoalescing ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Use ?? instead of ||.
+  
+    241 │       politeDodge,
+    242 │       angerEscalation,
+  > 243 │       verdictLabel: parsed.verdict || baseResult.verdictLabel,
+        │                                    ^^
+    244 │       explanation: parsed.reason || baseResult.explanation,
+    245 │       coachingTip: parsed.coachingTip || baseResult.coachingTip,
+  
+  i The || operator checks for all falsy values (including 0, '', and false), while ?? only checks for null and undefined.
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/8043 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+
+src/app/api/captain-engine/route.ts:244:34 lint/nursery/useNullishCoalescing ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Use ?? instead of ||.
+  
+    242 │       angerEscalation,
+    243 │       verdictLabel: parsed.verdict || baseResult.verdictLabel,
+  > 244 │       explanation: parsed.reason || baseResult.explanation,
+        │                                  ^^
+    245 │       coachingTip: parsed.coachingTip || baseResult.coachingTip,
+    246 │       verdictTone: politeDodge || angerEscalation ? "danger" : score >= 75 ? "success" : "warning",
+  
+  i The || operator checks for all falsy values (including 0, '', and false), while ?? only checks for null and undefined.
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/8043 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+
+src/app/api/captain-engine/route.ts:245:39 lint/nursery/useNullishCoalescing ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Use ?? instead of ||.
+  
+    243 │       verdictLabel: parsed.verdict || baseResult.verdictLabel,
+    244 │       explanation: parsed.reason || baseResult.explanation,
+  > 245 │       coachingTip: parsed.coachingTip || baseResult.coachingTip,
+        │                                       ^^
+    246 │       verdictTone: politeDodge || angerEscalation ? "danger" : score >= 75 ? "success" : "warning",
+    247 │       evaluatedByModel: "azure-gpt-6.1-sol",
+  
+  i The || operator checks for all falsy values (including 0, '', and false), while ?? only checks for null and undefined.
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/8043 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+
+src/app/api/captain-engine/route.ts:269:22 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    267 │   const key = await getLiteLLMKey();
+    268 │   const recalled = await recallFromHindsight(params.companyId, params.userText);
+  > 269 │   const rulesText = (params.state.memoryBank.ownerRules ?? []).join(" | ");
+        │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    270 │   const issuesText = (params.state.memoryBank.todayIssues ?? []).map((i) => `${i.title}: ${i.approvedFix}`).join(" | ");
+    271 │   const recalledText = recalled.length > 0 ? `\nذاكرة Hindsight المسترجعة: ${recalled.slice(0, 3).join(" | ")}` : "";
+  
+  i Drop ?? and the fallback expression.
+  
+    267 │   const key = await getLiteLLMKey();
+    268 │   const recalled = await recallFromHindsight(params.companyId, params.userText);
+  > 269 │   const rulesText = (params.state.memoryBank.ownerRules ?? []).join(" | ");
+        │                                                         ^^
+    270 │   const issuesText = (params.state.memoryBank.todayIssues ?? []).map((i) => `${i.title}: ${i.approvedFix}`).join(" | ");
+    271 │   const recalledText = recalled.length > 0 ? `\nذاكرة Hindsight المسترجعة: ${recalled.slice(0, 3).join(" | ")}` : "";
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:270:23 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    268 │   const recalled = await recallFromHindsight(params.companyId, params.userText);
+    269 │   const rulesText = (params.state.memoryBank.ownerRules ?? []).join(" | ");
+  > 270 │   const issuesText = (params.state.memoryBank.todayIssues ?? []).map((i) => `${i.title}: ${i.approvedFix}`).join(" | ");
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    271 │   const recalledText = recalled.length > 0 ? `\nذاكرة Hindsight المسترجعة: ${recalled.slice(0, 3).join(" | ")}` : "";
+    272 │ 
+  
+  i Drop ?? and the fallback expression.
+  
+    268 │   const recalled = await recallFromHindsight(params.companyId, params.userText);
+    269 │   const rulesText = (params.state.memoryBank.ownerRules ?? []).join(" | ");
+  > 270 │   const issuesText = (params.state.memoryBank.todayIssues ?? []).map((i) => `${i.title}: ${i.approvedFix}`).join(" | ");
+        │                                                           ^^
+    271 │   const recalledText = recalled.length > 0 ? `\nذاكرة Hindsight المسترجعة: ${recalled.slice(0, 3).join(" | ")}` : "";
+    272 │ 
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:274:5 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    273 │   const baseSystemPrompt =
+  > 274 │     params.customPrompt && params.customPrompt.trim()
+        │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    275 │       ? `${params.customPrompt.trim()}\n${params.customContext ? `معلومات إضافية: ${params.customContext.trim()}\n` : ""}`
+    276 │       : params.mode === "evaluator"
+  
+  i Unsafe fix: Change to an optional chain.
+  
+     272  272 │   
+     273  273 │     const baseSystemPrompt =
+     274      │ - ····params.customPrompt·&&·params.customPrompt.trim()
+          274 │ + ····params.customPrompt?.trim()
+     275  275 │         ? `${params.customPrompt.trim()}\n${params.customContext ? `معلومات إضافية: ${params.customContext.trim()}\n` : ""}`
+     276  276 │         : params.mode === "evaluator"
+  
+
+src/app/api/captain-engine/route.ts:326:33 lint/nursery/useNullishCoalescing ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Use ?? instead of ||.
+  
+    324 │             return {
+    325 │               reply,
+  > 326 │               model: data.model || candidateModel,
+        │                                 ^^
+    327 │               latencyMs: Math.max(1, Date.now() - startedAt),
+    328 │               liveGateway: true,
+  
+  i The || operator checks for all falsy values (including 0, '', and false), while ?? only checks for null and undefined.
+  
+  i This rule is still being actively worked on, so it may be missing features or have rough edges. Visit https://github.com/biomejs/biome/issues/8043 for more information or to report possible bugs.
+  
+  i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+  
+
+src/app/api/captain-engine/route.ts:797:17 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    795 │   const state = await readCompanyState(companyId);
+    796 │   const recalled = await recallFromHindsight(companyId, "أسلوب الشركة وقواعد المالك ومشكلات اليوم");
+  > 797 │   const evals = state.evaluations ?? [];
+        │                 ^^^^^^^^^^^^^^^^^
+    798 │   const dodgeCount = evals.filter((e) => e.politeDodge).length;
+    799 │   const angerCount = evals.filter((e) => e.angerEscalation).length;
+  
+  i Drop ?? and the fallback expression.
+  
+    795 │   const state = await readCompanyState(companyId);
+    796 │   const recalled = await recallFromHindsight(companyId, "أسلوب الشركة وقواعد المالك ومشكلات اليوم");
+  > 797 │   const evals = state.evaluations ?? [];
+        │                                   ^^
+    798 │   const dodgeCount = evals.filter((e) => e.politeDodge).length;
+    799 │   const angerCount = evals.filter((e) => e.angerEscalation).length;
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:800:48 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    798 │   const dodgeCount = evals.filter((e) => e.politeDodge).length;
+    799 │   const angerCount = evals.filter((e) => e.angerEscalation).length;
+  > 800 │   const connectedChannelsCount = Object.values(state.channels ?? {}).filter((c) => c.connected).length;
+        │                                                ^^^^^^^^^^^^^^
+    801 │   const dynamicLearnedCount =
+    802 │     recalled.length +
+  
+  i Drop ?? and the fallback expression.
+  
+    798 │   const dodgeCount = evals.filter((e) => e.politeDodge).length;
+    799 │   const angerCount = evals.filter((e) => e.angerEscalation).length;
+  > 800 │   const connectedChannelsCount = Object.values(state.channels ?? {}).filter((c) => c.connected).length;
+        │                                                               ^^
+    801 │   const dynamicLearnedCount =
+    802 │     recalled.length +
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:803:6 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    801 │   const dynamicLearnedCount =
+    802 │     recalled.length +
+  > 803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+        │      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  
+  i Drop ?? and the fallback expression.
+  
+    801 │   const dynamicLearnedCount =
+    802 │     recalled.length +
+  > 803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+        │                                          ^^
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:803:6 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary optional chaining.
+  
+    801 │   const dynamicLearnedCount =
+    802 │     recalled.length +
+  > 803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+        │      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  
+  i Replace ?. with ..
+  
+    801 │   const dynamicLearnedCount =
+    802 │     recalled.length +
+  > 803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+        │                                 ^^
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  
+  i The receiver is guaranteed to be non-nullish.
+  
+
+src/app/api/captain-engine/route.ts:246:64 lint/style/noNestedTernary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Do not nest ternary expressions.
+  
+    244 │       explanation: parsed.reason || baseResult.explanation,
+    245 │       coachingTip: parsed.coachingTip || baseResult.coachingTip,
+  > 246 │       verdictTone: politeDodge || angerEscalation ? "danger" : score >= 75 ? "success" : "warning",
+        │                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    247 │       evaluatedByModel: "azure-gpt-6.1-sol",
+    248 │     };
+  
+  i Nesting ternary expressions can make code more difficult to understand.
+  
+  i Convert nested ternary expression into if-else statements or separate the conditions to make the logic easier to understand.
+  
+
+src/app/api/captain-engine/route.ts:804:6 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary optional chaining.
+  
+    802 │     recalled.length +
+    803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+  > 804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+        │      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    805 │     evals.length +
+    806 │     (state.smartPlan.history?.length ?? 0);
+  
+  i Replace ?. with ..
+  
+    802 │     recalled.length +
+    803 │     (state.memoryBank.ownerRules?.length ?? 0) +
+  > 804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+        │                                  ^^
+    805 │     evals.length +
+    806 │     (state.smartPlan.history?.length ?? 0);
+  
+  i The receiver is guaranteed to be non-nullish.
+  
+
+src/app/api/captain-engine/route.ts:806:6 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  > 806 │     (state.smartPlan.history?.length ?? 0);
+        │      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    807 │   const humanInboxLearned = Object.keys(state.humanInbox ?? {}).length;
+    808 │   state.memoryBank.hindsightConnected = recalled.length > 0;
+  
+  i Drop ?? and the fallback expression.
+  
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  > 806 │     (state.smartPlan.history?.length ?? 0);
+        │                                      ^^
+    807 │   const humanInboxLearned = Object.keys(state.humanInbox ?? {}).length;
+    808 │   state.memoryBank.hindsightConnected = recalled.length > 0;
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:806:6 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary optional chaining.
+  
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  > 806 │     (state.smartPlan.history?.length ?? 0);
+        │      ^^^^^^^^^^^^^^^^^^^^^^^
+    807 │   const humanInboxLearned = Object.keys(state.humanInbox ?? {}).length;
+    808 │   state.memoryBank.hindsightConnected = recalled.length > 0;
+  
+  i Replace ?. with ..
+  
+    804 │     (state.memoryBank.todayIssues?.length ?? 0) +
+    805 │     evals.length +
+  > 806 │     (state.smartPlan.history?.length ?? 0);
+        │                             ^^
+    807 │   const humanInboxLearned = Object.keys(state.humanInbox ?? {}).length;
+    808 │   state.memoryBank.hindsightConnected = recalled.length > 0;
+  
+  i The receiver is guaranteed to be non-nullish.
+  
+
+src/app/api/captain-engine/route.ts:834:20 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    832 │       connectedChannelsCount,
+    833 │       learnedCount: dynamicLearnedCount,
+  > 834 │       issuesCount: state.memoryBank.todayIssues?.length ?? 0,
+        │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    835 │     },
+    836 │     hindsight: {
+  
+  i Drop ?? and the fallback expression.
+  
+    832 │       connectedChannelsCount,
+    833 │       learnedCount: dynamicLearnedCount,
+  > 834 │       issuesCount: state.memoryBank.todayIssues?.length ?? 0,
+        │                                                         ^^
+    835 │     },
+    836 │     hindsight: {
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:834:20 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary optional chaining.
+  
+    832 │       connectedChannelsCount,
+    833 │       learnedCount: dynamicLearnedCount,
+  > 834 │       issuesCount: state.memoryBank.todayIssues?.length ?? 0,
+        │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    835 │     },
+    836 │     hindsight: {
+  
+  i Replace ?. with ..
+  
+    832 │       connectedChannelsCount,
+    833 │       learnedCount: dynamicLearnedCount,
+  > 834 │       issuesCount: state.memoryBank.todayIssues?.length ?? 0,
+        │                                                ^^
+    835 │     },
+    836 │     hindsight: {
+  
+  i The receiver is guaranteed to be non-nullish.
+  
+
+src/app/api/captain-engine/route.ts:933:53 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    931 │         ? `تصحيح رد إيمه في المحادثة (${convId}): "${text}"${customerText ? ` ردا� على "${customerText}"` : ""}`
+    932 │         : `اعتماد أسلوب إيمه في المحادثة (${convId}): "${text}"`;
+  > 933 │     state.memoryBank.learnedStyle = [styleNote, ...(state.memoryBank.learnedStyle ?? [])].slice(0, 30);
+        │                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    934 │     state.memoryBank.learnedCount = (state.memoryBank.learnedCount ?? 0) + 1;
+    935 │     state.memoryBank.lastLearnedAt = "الآن (محفوظ في بنك Hindsight المعزول)";
+  
+  i Drop ?? and the fallback expression.
+  
+    931 │         ? `تصحيح رد إيمه في المحادثة (${convId}): "${text}"${customerText ? ` ردا� على "${customerText}"` : ""}`
+    932 │         : `اعتماد أسلوب إيمه في المحادثة (${convId}): "${text}"`;
+  > 933 │     state.memoryBank.learnedStyle = [styleNote, ...(state.memoryBank.learnedStyle ?? [])].slice(0, 30);
+        │                                                                                   ^^
+    934 │     state.memoryBank.learnedCount = (state.memoryBank.learnedCount ?? 0) + 1;
+    935 │     state.memoryBank.lastLearnedAt = "الآن (محفوظ في بنك Hindsight المعزول)";
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:934:38 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    932 │         : `اعتماد أسلوب إيمه في المحادثة (${convId}): "${text}"`;
+    933 │     state.memoryBank.learnedStyle = [styleNote, ...(state.memoryBank.learnedStyle ?? [])].slice(0, 30);
+  > 934 │     state.memoryBank.learnedCount = (state.memoryBank.learnedCount ?? 0) + 1;
+        │                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    935 │     state.memoryBank.lastLearnedAt = "الآن (محفوظ في بنك Hindsight المعزول)";
+    936 │     const hindsightRetained = await retainInHindsight(companyId, styleNote, "human-inbox-learning", [
+  
+  i Drop ?? and the fallback expression.
+  
+    932 │         : `اعتماد أسلوب إيمه في المحادثة (${convId}): "${text}"`;
+    933 │     state.memoryBank.learnedStyle = [styleNote, ...(state.memoryBank.learnedStyle ?? [])].slice(0, 30);
+  > 934 │     state.memoryBank.learnedCount = (state.memoryBank.learnedCount ?? 0) + 1;
+        │                                                                    ^^
+    935 │     state.memoryBank.lastLearnedAt = "الآن (محفوظ في بنك Hindsight المعزول)";
+    936 │     const hindsightRetained = await retainInHindsight(companyId, styleNote, "human-inbox-learning", [
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+src/app/api/captain-engine/route.ts:1023:26 lint/suspicious/noUnnecessaryConditions ━━━━━━━━━━━━━━━━
+
+  ! Unnecessary nullish coalescing.
+  
+    1022 │     const recalledMemories = await recallFromHindsight(companyId, "محادثات العملاء ومشكلات الصناديق وأسلوب الرد");
+  > 1023 │     const evalSamples = (state.evaluations ?? []).map(
+         │                          ^^^^^^^^^^^^^^^^^
+    1024 │       (ev) => `العميل: ${ev.customerText} | رد الموظف (${ev.agentName}): ${ev.agentReply} | الحكم: ${ev.verdictLabel}`,
+    1025 │     );
+  
+  i Drop ?? and the fallback expression.
+  
+    1022 │     const recalledMemories = await recallFromHindsight(companyId, "محادثات العملاء ومشكلات الصناديق وأسلوب الرد");
+  > 1023 │     const evalSamples = (state.evaluations ?? []).map(
+         │                                            ^^
+    1024 │       (ev) => `العميل: ${ev.customerText} | رد الموظف (${ev.agentName}): ${ev.agentReply} | الحكم: ${ev.verdictLabel}`,
+    1025 │     );
+  
+  i The left-hand side is guaranteed to be non-nullish, so the fallback is unreachable.
+  
+
+Checked 3 files in 429ms. No fixes applied.
+Found 39 warnings.
+Found 5 infos.

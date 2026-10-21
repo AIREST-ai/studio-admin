@@ -1,0 +1,136 @@
+▲ Next.js 16.3.8 (webpack)
+✓ Running next.config.mjs took 10ms
+
+  Creating an optimized production build ...
+Failed to compile.
+
+node:fs/promises
+Module build failed: UnhandledSchemeError: Reading from "node:fs/promises" is not handled by plugins (Unhandled scheme).
+Webpack supports "data:" and "file:" URIs by default.
+You may need an additional plugin to handle "node:" URIs.
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408401
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at Object.processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408326)
+    at processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5306)
+    at iteratePitchingLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4665)
+    at runLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:8588)
+    at NormalModule._doBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408188)
+    at NormalModule.build (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:410201)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82494
+    at NormalModule.needBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:414151)
+    at Compilation._buildModule (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82211)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378326
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378197)
+    at AsyncQueue._ensureProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378046)
+    at process.processImmediate (node:internal/timers:505:21)
+
+Import trace for requested module:
+node:fs/promises
+../studio-admin/node_modules/clawpdf/dist/input.js
+../studio-admin/node_modules/clawpdf/dist/engine.js
+../studio-admin/node_modules/clawpdf/dist/index.js
+../studio-admin/node_modules/clawpdf/dist/browser.js
+../studio-admin/node_modules/@pdfme/converter/dist/index.js
+./src/app/(main)/dashboard/invoice/_components/pdf-fill-sheet.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice-form.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice.tsx
+
+node:module
+Module build failed: UnhandledSchemeError: Reading from "node:module" is not handled by plugins (Unhandled scheme).
+Webpack supports "data:" and "file:" URIs by default.
+You may need an additional plugin to handle "node:" URIs.
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408401
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at Object.processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408326)
+    at processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5306)
+    at iteratePitchingLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4665)
+    at runLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:8588)
+    at NormalModule._doBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408188)
+    at NormalModule.build (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:410201)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82494
+    at NormalModule.needBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:414151)
+    at Compilation._buildModule (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82211)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378326
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378197)
+    at AsyncQueue._ensureProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378046)
+    at process.processImmediate (node:internal/timers:505:21)
+
+Import trace for requested module:
+node:module
+../studio-admin/node_modules/clawpdf/dist/vendor/pdfium.esm.js
+../studio-admin/node_modules/clawpdf/dist/engine.js
+../studio-admin/node_modules/clawpdf/dist/index.js
+../studio-admin/node_modules/clawpdf/dist/browser.js
+../studio-admin/node_modules/@pdfme/converter/dist/index.js
+./src/app/(main)/dashboard/invoice/_components/pdf-fill-sheet.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice-form.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice.tsx
+
+node:url
+Module build failed: UnhandledSchemeError: Reading from "node:url" is not handled by plugins (Unhandled scheme).
+Webpack supports "data:" and "file:" URIs by default.
+You may need an additional plugin to handle "node:" URIs.
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408401
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at Object.processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408326)
+    at processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5306)
+    at iteratePitchingLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4665)
+    at runLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:8588)
+    at NormalModule._doBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408188)
+    at NormalModule.build (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:410201)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82494
+    at NormalModule.needBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:414151)
+    at Compilation._buildModule (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82211)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378326
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378197)
+    at AsyncQueue._ensureProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378046)
+    at process.processImmediate (node:internal/timers:505:21)
+
+Import trace for requested module:
+node:url
+../studio-admin/node_modules/clawpdf/dist/input.js
+../studio-admin/node_modules/clawpdf/dist/engine.js
+../studio-admin/node_modules/clawpdf/dist/index.js
+../studio-admin/node_modules/clawpdf/dist/browser.js
+../studio-admin/node_modules/@pdfme/converter/dist/index.js
+./src/app/(main)/dashboard/invoice/_components/pdf-fill-sheet.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice-form.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice.tsx
+
+node:zlib
+Module build failed: UnhandledSchemeError: Reading from "node:zlib" is not handled by plugins (Unhandled scheme).
+Webpack supports "data:" and "file:" URIs by default.
+You may need an additional plugin to handle "node:" URIs.
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408401
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:6376)
+    at Object.processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408326)
+    at processResource (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:5306)
+    at iteratePitchingLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:4665)
+    at runLoaders (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/loader-runner/LoaderRunner.js:1:8588)
+    at NormalModule._doBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:408188)
+    at NormalModule.build (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:410201)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82494
+    at NormalModule.needBuild (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:414151)
+    at Compilation._buildModule (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:82211)
+    at /Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378326
+    at Hook.eval [as callAsync] (eval at create (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:14:9222), <anonymous>:6:1)
+    at AsyncQueue._startProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378197)
+    at AsyncQueue._ensureProcessing (/Users/ali/server-work/ai-home/vendor/studio-admin/node_modules/next/dist/compiled/webpack/bundle5.js:29:1378046)
+    at process.processImmediate (node:internal/timers:505:21)
+
+Import trace for requested module:
+node:zlib
+../studio-admin/node_modules/clawpdf/dist/png.js
+../studio-admin/node_modules/clawpdf/dist/index.js
+../studio-admin/node_modules/clawpdf/dist/browser.js
+../studio-admin/node_modules/@pdfme/converter/dist/index.js
+./src/app/(main)/dashboard/invoice/_components/pdf-fill-sheet.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice-form.tsx
+./src/app/(main)/dashboard/invoice/_components/invoice.tsx
+
+
+> Build failed because of webpack errors

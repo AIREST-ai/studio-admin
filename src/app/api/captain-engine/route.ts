@@ -662,7 +662,7 @@ async function writeCompanyState(companyId: string, state: CompanyEngineState): 
   await fs.writeFile(file, JSON.stringify(state, null, 2), "utf8");
 }
 
-export function analyzeEvaluation(
+function analyzeEvaluation(
   customerText: string,
   agentReply: string,
   agentName = "موظف الاختبار",
@@ -1043,7 +1043,7 @@ export async function POST(request: Request) {
 
     let discoveredIssues: { id: string; title: string; inbox: string; count: number; action: string }[] = [];
     try {
-      const match = llmAnalysis.reply.match(/\[.*\]/s);
+      const match = llmAnalysis.reply.match(/\[[\s\S]*\]/);
       if (match) {
         const parsed = JSON.parse(match[0]);
         if (Array.isArray(parsed)) {
