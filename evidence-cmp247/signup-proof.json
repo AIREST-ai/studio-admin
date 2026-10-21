@@ -1,0 +1,38 @@
+{
+  "task": "CMP-247",
+  "appCommit": "185b81901f5a7cf7a2a093742dbb8fa9d3b045b2",
+  "testedAt": "2026-10-21T13:22:23.390Z",
+  "targetPort": "3200",
+  "accountId": 1,
+  "closedGateHttp": { "status": 403, "error": "signup_disabled", "createdUser": false },
+  "isolatedHandlerTest": {
+    "execution": "Real POST handler in a separate server-side process; actual Chatwoot helper calls, not mocks or a browser test",
+    "closedGateStatus": 403,
+    "invalidInputStatus": 400,
+    "foreignOriginStatus": 403,
+    "createStatus": 201,
+    "inputRole": "administrator",
+    "returnedRole": "agent",
+    "requiresActivation": true,
+    "readback": {
+      "id": 4,
+      "name": "CMP247-signup-agent-1792588943212",
+      "email": "cmp247-signup-agent-1792588943212@example.test",
+      "role": "agent"
+    }
+  },
+  "runningPreviewSignupEnabled": false,
+  "sessionCreatedByRegistration": false,
+  "userPasswordEstablished": false,
+  "firstLoginVerified": false,
+  "browserViewportsVerified": [],
+  "fixtureCleanupPerformed": false,
+  "biome": { "files": 1, "passed": true },
+  "tsc": { "passed": false, "errorsInOwnedRoute": 0, "baselineErrorsOutsideScope": 2 },
+  "productionBuildVerified": false,
+  "dcgRefusal": {
+    "reason": "Safety evaluation did not complete within 1000ms; proposed frontend, page descriptions, and route edge corrections were not applied",
+    "repeated": false,
+    "splitOrAlternativeToolUsed": false
+  }
+}
