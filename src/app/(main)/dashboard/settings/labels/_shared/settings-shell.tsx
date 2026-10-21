@@ -1,5 +1,5 @@
 "use client";
-import * as React from "react";
+import type * as React from "react";
 
 import { ExternalLink } from "lucide-react";
 
@@ -113,11 +113,8 @@ export function CountTabs({
   onValueChange: (value: string) => void;
   items: ShellTab[];
 }) {
-  const [direction, setDirection] = React.useState<"ltr" | "rtl">("ltr");
-  React.useEffect(() => setDirection(document.documentElement.dir === "rtl" ? "rtl" : "ltr"), []);
-
   return (
-    <Tabs className="min-w-0 gap-4" dir={direction} value={value} onValueChange={onValueChange}>
+    <Tabs className="min-w-0 gap-4" dir="rtl" value={value} onValueChange={onValueChange}>
       <div data-settings-tabs-scroll className="min-w-0 max-w-full overflow-x-auto pb-1">
         <TabsList
           variant="line"
