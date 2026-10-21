@@ -1,0 +1,428 @@
+{
+  "checkedAt": "2026-10-21T12:15:04.314590+00:00",
+  "base": "http://127.0.0.1:8797/api/cw/",
+  "inboxes": [
+    {
+      "inboxId": 10,
+      "name": "1. واتساب",
+      "type": "Channel::Whatsapp",
+      "reauthorizationRequired": false,
+      "conversations": [
+        {
+          "conversationId": 12,
+          "messages": [
+            {
+              "id": 51,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792270540,
+              "hasExternalSource": true
+            },
+            {
+              "id": 52,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792270544,
+              "hasExternalSource": true
+            },
+            {
+              "id": 53,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792270547,
+              "hasExternalSource": true
+            },
+            {
+              "id": 55,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792270633,
+              "hasExternalSource": true
+            },
+            {
+              "id": 58,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792270680,
+              "hasExternalSource": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "inboxId": 9,
+      "name": "3. إنستغرام",
+      "type": "Channel::Instagram",
+      "reauthorizationRequired": false,
+      "conversations": [
+        {
+          "conversationId": 13,
+          "messages": [
+            {
+              "id": 87,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792342648,
+              "hasExternalSource": true
+            },
+            {
+              "id": 88,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792342682,
+              "hasExternalSource": true
+            },
+            {
+              "id": 93,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792581825,
+              "hasExternalSource": true
+            }
+          ]
+        },
+        {
+          "conversationId": 14,
+          "messages": [
+            {
+              "id": 89,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792356276,
+              "hasExternalSource": true
+            }
+          ]
+        },
+        {
+          "conversationId": 10,
+          "messages": [
+            {
+              "id": 40,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792269246,
+              "hasExternalSource": true
+            },
+            {
+              "id": 41,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792269280,
+              "hasExternalSource": true
+            },
+            {
+              "id": 42,
+              "direction": 1,
+              "private": false,
+              "status": "read",
+              "createdAt": 1792269301,
+              "hasExternalSource": true
+            },
+            {
+              "id": 43,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792269312,
+              "hasExternalSource": true
+            },
+            {
+              "id": 44,
+              "direction": 1,
+              "private": false,
+              "status": "read",
+              "createdAt": 1792269318,
+              "hasExternalSource": true
+            },
+            {
+              "id": 45,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792269330,
+              "hasExternalSource": true
+            },
+            {
+              "id": 60,
+              "direction": 1,
+              "private": false,
+              "status": "read",
+              "createdAt": 1792271787,
+              "hasExternalSource": true
+            },
+            {
+              "id": 61,
+              "direction": 1,
+              "private": false,
+              "status": "read",
+              "createdAt": 1792271802,
+              "hasExternalSource": true
+            },
+            {
+              "id": 62,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792271806,
+              "hasExternalSource": true
+            },
+            {
+              "id": 63,
+              "direction": 1,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792272660,
+              "hasExternalSource": true
+            },
+            {
+              "id": 64,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792272674,
+              "hasExternalSource": true
+            },
+            {
+              "id": 65,
+              "direction": 1,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792272682,
+              "hasExternalSource": true
+            },
+            {
+              "id": 66,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792272696,
+              "hasExternalSource": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "inboxId": 3,
+      "name": "Studio Test (API)",
+      "type": "Channel::Api",
+      "reauthorizationRequired": null,
+      "conversations": [
+        {
+          "conversationId": 2,
+          "messages": [
+            {
+              "id": 13,
+              "direction": 2,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792223716,
+              "hasExternalSource": false
+            },
+            {
+              "id": 67,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792298535,
+              "hasExternalSource": false
+            },
+            {
+              "id": 68,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792298617,
+              "hasExternalSource": false
+            },
+            {
+              "id": 70,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792302210,
+              "hasExternalSource": false
+            },
+            {
+              "id": 71,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792302211,
+              "hasExternalSource": false
+            },
+            {
+              "id": 72,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792302212,
+              "hasExternalSource": false
+            },
+            {
+              "id": 73,
+              "direction": 2,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792302402,
+              "hasExternalSource": false
+            },
+            {
+              "id": 74,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792304581,
+              "hasExternalSource": false
+            },
+            {
+              "id": 75,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792304592,
+              "hasExternalSource": false
+            },
+            {
+              "id": 76,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792305421,
+              "hasExternalSource": false
+            },
+            {
+              "id": 77,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792305547,
+              "hasExternalSource": false
+            },
+            {
+              "id": 78,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792305555,
+              "hasExternalSource": false
+            },
+            {
+              "id": 79,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792305669,
+              "hasExternalSource": false
+            },
+            {
+              "id": 80,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792305677,
+              "hasExternalSource": false
+            },
+            {
+              "id": 81,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792306416,
+              "hasExternalSource": false
+            },
+            {
+              "id": 82,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792315321,
+              "hasExternalSource": false
+            },
+            {
+              "id": 83,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792315611,
+              "hasExternalSource": false
+            },
+            {
+              "id": 84,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792318947,
+              "hasExternalSource": false
+            },
+            {
+              "id": 85,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792324496,
+              "hasExternalSource": false
+            },
+            {
+              "id": 86,
+              "direction": 1,
+              "private": true,
+              "status": "sent",
+              "createdAt": 1792325652,
+              "hasExternalSource": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "inboxId": 12,
+      "name": "فحص الحمض النووي Genaty DNA",
+      "type": "Channel::FacebookPage",
+      "reauthorizationRequired": false,
+      "conversations": [
+        {
+          "conversationId": 15,
+          "messages": [
+            {
+              "id": 90,
+              "direction": 0,
+              "private": false,
+              "status": "sent",
+              "createdAt": 1792412943,
+              "hasExternalSource": true
+            },
+            {
+              "id": 91,
+              "direction": 1,
+              "private": false,
+              "status": "failed",
+              "createdAt": 1792413021,
+              "hasExternalSource": false
+            },
+            {
+              "id": 92,
+              "direction": 1,
+              "private": false,
+              "status": "failed",
+              "createdAt": 1792413212,
+              "hasExternalSource": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
