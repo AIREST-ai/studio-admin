@@ -99,22 +99,31 @@ const DEFAULT_STANDARD_ROLES: StandardRoleMatrix[] = [
 export function StandardRolesMatrixCard() {
   const [matrix, setMatrix] = React.useState<StandardRoleMatrix[]>(DEFAULT_STANDARD_ROLES);
   const [saving, setSaving] = React.useState(false);
+  const [status, setStatus] = React.useState<"loading" | "ready" | "saved" | "error">("loading");
+  const [saveError, setSaveError] = React.useState("");
 
   React.useEffect(() => {
     fetch("/api/workspace-hub?companyId=tenant_demo_cars", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((res) => {
         if (Array.isArray(res?.roles) && res.roles.length) {
           setMatrix(res.roles);
+          setStatus("ready");
+        } else {
+          throw new Error("لم تُرجع الخدمة صلاحيات محفوظة");
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setStatus("error");
+        setSaveError("تعذر قراءة الصلاحيات المحفوظة. أعد تحميل الصفحة للمحاولة مجددًا.");
+      });
   }, []);
 
   function togglePerm(
     roleId: StandardRoleMatrix["roleId"],
     key: "viewConversations" | "editEmma" | "viewReports" | "topUpBalance" | "manageInvoices",
   ) {
+    if (saving || status === "loading" || status === "error") return;
     if (roleId === "owner") {
       toast.info("المالك يملك كافة الصلاحيات دائماً بمعيار الشركات العالمية.");
       return;
@@ -122,6 +131,7 @@ export function StandardRolesMatrixCard() {
     const next = matrix.map((r) => (r.roleId === roleId ? { ...r, [key]: !r[key] } : r));
     setMatrix(next);
     setSaving(true);
+    setSaveError("");
     Promise.all([
       fetch("/api/workspace-hub", {
         method: "POST",
@@ -134,8 +144,19 @@ export function StandardRolesMatrixCard() {
         body: JSON.stringify({ action: "roles.save", standardRoles: next }),
       }),
     ])
-      .then(() => toast.success("حُفظت الصلاحيات القياسية فوراً في قاعدة بيانات PostgreSQL وذاكرة الشركة"))
-      .catch(() => {})
+      .then((responses) => {
+        if (responses.some((response) => !response.ok)) {
+          throw new Error("لم تؤكد كل الخدمات حفظ التغيير");
+        }
+        setStatus("saved");
+        toast.success("حُفظت إعدادات الصلاحيات");
+      })
+      .catch(() => {
+        setStatus("error");
+        const message = "لم يكتمل تأكيد الحفظ. قد يكون التغيير حُفظ جزئيًا؛ أعد تحميل الصفحة للتحقق قبل تعديل آخر.";
+        setSaveError(message);
+        toast.error("تعذر تأكيد حفظ الصلاحيات", { description: message });
+      })
       .finally(() => setSaving(false));
   }
 
@@ -150,11 +171,15 @@ export function StandardRolesMatrixCard() {
             <ShieldCheck className="size-4.5 text-primary" />
             مصفوفة الصلاحيات والأدوار العالمية البسيطة (المالك · المدير · المشرف · الموظف · المحاسب)
           </CardTitle>
-          <Badge
-            variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-          >
-            {saving ? "جارٍ الحفظ في PostgreSQL…" : "محفوظ في قاعدة البيانات · بلا تعقيد بنكي"}
+          <Badge variant="outline" className={status === "error" ? "border-destructive text-destructive" : undefined}>
+            {saving
+              ? "جارٍ حفظ التغيير…"
+              : {
+                  loading: "جارٍ قراءة الصلاحيات…",
+                  error: "تعذر تأكيد الحالة",
+                  saved: "حُفظ آخر تغيير",
+                  ready: "الإعدادات المحفوظة",
+                }[status]}
           </Badge>
         </div>
         <CardDescription>
@@ -163,6 +188,11 @@ export function StandardRolesMatrixCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
+        {saveError ? (
+          <p role="alert" data-role-matrix-error className="mb-3 text-destructive text-sm">
+            {saveError}
+          </p>
+        ) : null}
         <div className="overflow-x-auto rounded-xl border bg-background/80">
           <Table>
             <TableHeader>
@@ -202,6 +232,7 @@ export function StandardRolesMatrixCard() {
                   <TableCell className="px-3 py-3 text-center">
                     <div className="flex justify-center">
                       <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
                         checked={row.viewConversations}
                         onCheckedChange={() => togglePerm(row.roleId, "viewConversations")}
                         aria-label={`رؤية المحادثات - ${row.title}`}
@@ -211,6 +242,7 @@ export function StandardRolesMatrixCard() {
                   <TableCell className="px-3 py-3 text-center">
                     <div className="flex justify-center">
                       <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
                         checked={row.editEmma}
                         onCheckedChange={() => togglePerm(row.roleId, "editEmma")}
                         aria-label={`تعديل إيمه - ${row.title}`}
@@ -220,6 +252,7 @@ export function StandardRolesMatrixCard() {
                   <TableCell className="px-3 py-3 text-center">
                     <div className="flex justify-center">
                       <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
                         checked={row.viewReports}
                         onCheckedChange={() => togglePerm(row.roleId, "viewReports")}
                         aria-label={`رؤية التقارير - ${row.title}`}
@@ -229,6 +262,7 @@ export function StandardRolesMatrixCard() {
                   <TableCell className="px-3 py-3 text-center">
                     <div className="flex justify-center">
                       <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
                         checked={row.topUpBalance}
                         onCheckedChange={() => togglePerm(row.roleId, "topUpBalance")}
                         aria-label={`شحن الرصيد - ${row.title}`}
@@ -238,6 +272,7 @@ export function StandardRolesMatrixCard() {
                   <TableCell className="px-3 py-3 text-center">
                     <div className="flex justify-center">
                       <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
                         checked={Boolean(row.manageInvoices)}
                         onCheckedChange={() => togglePerm(row.roleId, "manageInvoices")}
                         aria-label={`إدارة الفواتير - ${row.title}`}

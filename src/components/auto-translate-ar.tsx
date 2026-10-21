@@ -8,7 +8,8 @@ import dictionary from "@/lingo/dom-ar.json";
 // tabs, placeholders, tooltips) from a fixed dictionary, after the page loads and whenever the page changes.
 const DICT = new Map<string, string>(Object.entries(dictionary as Record<string, string>));
 const ATTRS = ["placeholder", "title", "aria-label", "alt"];
-const SKIP = "script,style,textarea,code,pre,[contenteditable='true']";
+const PENDING = "data-translation-pending";
+const SKIP = `script,style,textarea,code,pre,[contenteditable='true'],[${PENDING}]`;
 
 // Q-6 round 2: a key holding {n1}, {n2}… is a pattern; each stands for a number that changes with the data
 // (counts, days, times, dates), e.g. "{n1} payments" -> "الدفعات: {n1}".
@@ -47,6 +48,7 @@ function translateText(node: Text) {
 }
 
 function translateAttributes(el: Element) {
+  if (el.closest(`[${PENDING}]`)) return;
   for (const name of ATTRS) {
     const value = el.getAttribute(name);
     const arabic = value ? lookup(value) : undefined;
@@ -57,6 +59,7 @@ function translateAttributes(el: Element) {
 function translateTree(root: Node) {
   if (root.nodeType === Node.TEXT_NODE) return translateText(root as Text);
   if (root.nodeType !== Node.ELEMENT_NODE) return;
+  if ((root as Element).closest(`[${PENDING}]`)) return;
   translateAttributes(root as Element);
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
@@ -72,8 +75,10 @@ export function AutoTranslateAr() {
       if (!isArabic()) return;
       for (const m of mutations) {
         if (m.type === "characterData") translateText(m.target as Text);
-        else if (m.type === "attributes") translateAttributes(m.target as Element);
-        else m.addedNodes.forEach(translateTree);
+        else if (m.type === "attributes") {
+          if (m.attributeName === PENDING) translateTree(m.target);
+          else translateAttributes(m.target as Element);
+        } else m.addedNodes.forEach(translateTree);
       }
     });
     observer.observe(document.body, {
@@ -81,7 +86,7 @@ export function AutoTranslateAr() {
       childList: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ATTRS,
+      attributeFilter: [...ATTRS, PENDING],
     });
     return () => observer.disconnect();
   }, []);

@@ -18,6 +18,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { canOpen, useViewer } from "@/lib/cw/view-as";
 import { isShown, sectionOfUrl } from "@/lib/owner/site-sections";
 import { useSiteSections } from "@/lib/owner/site-sections-context";
+import dictionary from "@/lingo/dom-ar.json";
 
 import { PageHeader } from "../labels/_shared/settings-shell";
 import { personalLinks, type SettingsLink, settingsGroups } from "./settings-nav";
@@ -25,8 +26,15 @@ import { personalLinks, type SettingsLink, settingsGroups } from "./settings-nav
 // Every word of the search starts a word of the page's name, line, content words or part name ("tag" finds Labels,
 // not the "stages" of Customer Path).
 function matches(item: SettingsLink, part: string, words: string[]) {
-  const text = `${item.title} ${item.description} ${item.keywords ?? ""} ${part}`.toLowerCase();
-  return words.every((word) => new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(text));
+  const translations = dictionary as Record<string, string>;
+  const fields = [item.title, item.description, item.keywords ?? "", part];
+  const text = fields
+    .flatMap((field) => [field, translations[field] ?? ""])
+    .join(" ")
+    .toLowerCase();
+  return words.every((word) =>
+    new RegExp(`(^|[^\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "u").test(text),
+  );
 }
 
 // A pointer to a page that lives elsewhere (Automation) is listed but not counted as one of the part's pages.
@@ -103,16 +111,22 @@ export function SettingsIndex() {
                         <Link
                           href={item.url}
                           data-settings-elsewhere={away ? "" : undefined}
-                          className="group flex items-center gap-3 px-6 py-3.5 transition-colors hover:bg-muted/40"
+                          className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 sm:px-6"
                         >
                           <div className="grid size-9 shrink-0 place-items-center rounded-lg border bg-muted/50">
-                            <Icon className="size-4 text-muted-foreground group-hover:text-foreground" />
+                            <Icon
+                              aria-hidden="true"
+                              className="size-4 text-muted-foreground group-hover:text-foreground"
+                            />
                           </div>
                           <div className="grid min-w-0 flex-1 gap-0.5">
-                            <span className="flex items-center gap-2 font-medium text-sm">
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-sm [overflow-wrap:anywhere]">
                               {item.title}
                               {away ? (
-                                <Badge variant="outline" className="font-normal text-muted-foreground">
+                                <Badge
+                                  variant="outline"
+                                  className="max-w-full whitespace-normal font-normal text-muted-foreground"
+                                >
                                   {away}
                                 </Badge>
                               ) : null}
@@ -120,9 +134,15 @@ export function SettingsIndex() {
                             <span className="truncate text-muted-foreground text-xs">{item.description}</span>
                           </div>
                           {away ? (
-                            <ArrowUpRight className="size-4 text-muted-foreground" />
+                            <ArrowUpRight
+                              aria-hidden="true"
+                              className="size-4 shrink-0 text-muted-foreground rtl:-rotate-90"
+                            />
                           ) : (
-                            <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                            <ChevronRight
+                              aria-hidden="true"
+                              className="size-4 shrink-0 text-muted-foreground transition-transform ltr:group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5"
+                            />
                           )}
                         </Link>
                       </li>
