@@ -1,0 +1,17 @@
+
+> studio-admin@2.2.0 build
+> next build
+
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.mjs took 14ms
+- Experiments (use with caution):
+  ⨯ turbopackServerFastRefresh
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.9s
+  Running TypeScript ...
+src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx(232,7): error TS2345: Argument of type 'string' is not assignable to parameter of type '() => void'.
+src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx(234,10): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/app/(main)/dashboard/chat/_components/reply-box.tsx(566,21): error TS2339: Property 'kind' does not exist on type 'Message'.
+src/app/api/captain-engine/route.ts(1046,53): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+Failed to type check.

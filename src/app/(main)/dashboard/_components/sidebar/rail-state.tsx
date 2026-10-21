@@ -2,6 +2,8 @@
 
 import { type ComponentProps, createContext, useCallback, useContext, useEffect, useState } from "react";
 
+import { cn } from "cn";
+
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -34,7 +36,13 @@ export function RailSidebarProvider({
 
   return (
     <RailContext.Provider value={shown}>
-      <SidebarProvider {...props} open={false} onOpenChange={toggle}>
+      {/* The fixed icon rail stays on the left; reserve its space on that same side in RTL. */}
+      <SidebarProvider
+        {...props}
+        className={cn("rtl:flex-row-reverse", props.className)}
+        open={false}
+        onOpenChange={toggle}
+      >
         {children}
       </SidebarProvider>
     </RailContext.Provider>

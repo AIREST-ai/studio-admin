@@ -1,5 +1,5 @@
 "use client";
-import type * as React from "react";
+import * as React from "react";
 
 import { ExternalLink } from "lucide-react";
 
@@ -69,10 +69,11 @@ export function PageHeader({
   const helpHref = wanted && isOwnLink(wanted) ? wanted : undefined;
   return (
     // م137 round 2 (judge: the header button moved with the line's length): the buttons sit at the top right, level
-    // with the title, on every page and width; the title and line take the rest (Polaris Page: the main button in
+    // with the title on desktop. On phones, actions have their own row so opening search cannot squeeze the title.
+    // The title and line take the rest (Polaris Page: the main button in
     // the page header; HubSpot: "In the upper right").
-    <div data-settings-header className="flex flex-wrap items-start justify-between gap-3 md:flex-nowrap md:gap-6">
-      <div className="flex min-w-0 max-w-3xl flex-1 flex-col gap-1">
+    <div data-settings-header className="flex flex-col items-start justify-between gap-3 md:flex-row md:gap-6">
+      <div className="flex w-full min-w-0 max-w-3xl flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
         <h1 className="text-3xl tracking-tight">{title}</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
           {description}
@@ -91,7 +92,10 @@ export function PageHeader({
         </p>
       </div>
       {actions ? (
-        <div data-settings-header-actions className="ms-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div
+          data-settings-header-actions
+          className="ms-auto flex w-full max-w-full flex-wrap items-center justify-end gap-2 md:w-auto md:shrink-0"
+        >
           {actions}
         </div>
       ) : null}
@@ -109,23 +113,28 @@ export function CountTabs({
   onValueChange: (value: string) => void;
   items: ShellTab[];
 }) {
+  const [direction, setDirection] = React.useState<"ltr" | "rtl">("ltr");
+  React.useEffect(() => setDirection(document.documentElement.dir === "rtl" ? "rtl" : "ltr"), []);
+
   return (
-    <Tabs className="gap-4" value={value} onValueChange={onValueChange}>
-      <TabsList
-        variant="line"
-        className="w-full justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none"
-      >
-        {items.map((item) => (
-          <TabsTrigger key={item.value} value={item.value}>
-            {item.label}
-            {item.count !== undefined ? (
-              <Badge variant="secondary" className="ms-1 tabular-nums">
-                {item.count}
-              </Badge>
-            ) : null}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+    <Tabs className="min-w-0 gap-4" dir={direction} value={value} onValueChange={onValueChange}>
+      <div data-settings-tabs-scroll className="min-w-0 max-w-full overflow-x-auto pb-1">
+        <TabsList
+          variant="line"
+          className="w-full min-w-max justify-start gap-2 border-b ps-0 *:data-[slot=tabs-trigger]:flex-none"
+        >
+          {items.map((item) => (
+            <TabsTrigger key={item.value} value={item.value}>
+              {item.label}
+              {item.count !== undefined ? (
+                <Badge variant="secondary" className="ms-1 tabular-nums">
+                  {item.count}
+                </Badge>
+              ) : null}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
     </Tabs>
   );
 }
