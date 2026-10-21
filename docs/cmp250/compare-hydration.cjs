@@ -1,0 +1,2 @@
+const p=require('/Users/ali/server-work/ai-home/manychat-design/node_modules/puppeteer-core');
+(async()=>{const b=await p.launch({executablePath:'/usr/bin/google-chrome',headless:true});try{for(const port of [8797,8824]){const page=await b.newPage();page.on('pageerror',e=>console.log(port,e.message));await page.goto(`http://127.0.0.1:${port}/dashboard/settings/profile?tab=preferences`,{waitUntil:'networkidle2',timeout:60000});await page.close()}}finally{await b.close()}})();

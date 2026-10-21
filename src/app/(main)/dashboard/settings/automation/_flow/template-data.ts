@@ -30,7 +30,7 @@ export const templateGapTitles: Record<string, string> = {
   G13: "سياق البث وحالة الاشتراك",
   G14: "مشغل يدوي أو اختصار للموظف (Shortcut)",
   G15: "انتظار بين الخطوات، والقفز، وتشغيل تدفق آخر",
-  G16: "صندوق TikTok في ستوديو",
+  G16: "صندوق TikTok في المنصة",
   G17: "الفرق في بيانات المعاينة",
   G18: "إرسال المرفق فعلاً",
   G19: "إرسال قالب رسالة معتمد من التدفق",
@@ -42,7 +42,7 @@ export const templateGapTitles: Record<string, string> = {
   G25: "حدث تعليق Instagram أو Facebook",
   G26: "حدث الفواتير والدفع",
   G27: "حدث حالة قالب الرسالة",
-  G28: "نظام رمز دخول خارجي (خارج نطاق ستوديو)",
+  G28: "نظام رمز دخول خارجي (خارج نطاق المنصة)",
 };
 
 /** F-4: the English of templateGapTitles, same keys. */
@@ -204,7 +204,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S22", "S11"],
         },
@@ -369,7 +369,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). والأزرار تظهر نصاً",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). والأزرار تظهر نصاً",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Buttons appear as text`,
           evidence: ["S48", "S86", "S11"],
         },
@@ -524,7 +524,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S22", "S11"],
         },
@@ -734,7 +734,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S22", "S11"],
         },
@@ -891,7 +891,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S22", "S11"],
         },
@@ -927,7 +927,7 @@ export const templateLibrary: TemplateLibrary = {
         draft: null,
         buildable: "none",
         limit_ar:
-          "لا شرط ساعات عمل في المحرر (G04). والمعيار موجود في ستوديو: تبويب Business Hours في الصندوق، ويُحفظ على قرص المعاينة. فالبطاقة توجّه إليه.",
+          "لا شرط ساعات عمل في المحرر (G04). والمعيار موجود في المنصة: تبويب Business Hours في الصندوق، ويُحفظ على قرص المعاينة. فالبطاقة توجّه إليه.",
         limit_en: `There is no business-hours condition in the editor (G04). The standard exists in ${PRODUCT_NAME}: the Business Hours tab of the inbox, saved on the preview disk. The card points to it.`,
       },
       gaps: ["G04"],
@@ -980,7 +980,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). والأزرار تظهر نصاً",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). والأزرار تظهر نصاً",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Buttons appear as text`,
           evidence: ["S48", "S86", "S11"],
         },
@@ -1154,7 +1154,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). والأزرار تظهر نصاً",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). والأزرار تظهر نصاً",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Buttons appear as text`,
           evidence: ["S48", "S86", "S11"],
         },
@@ -1413,7 +1413,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -1443,7 +1443,7 @@ export const templateLibrary: TemplateLibrary = {
         studio_setting: "/dashboard/settings/assignment-policy + /dashboard/settings/inboxes/<id> (Auto assignment)",
         draft: null,
         buildable: "none",
-        limit_ar: "لا إجراء «إسناد دوري» في المحرر (G06). والمعيار موجود في ستوديو: سياسة الإسناد وإعداد الصندوق.",
+        limit_ar: "لا إجراء «إسناد دوري» في المحرر (G06). والمعيار موجود في المنصة: سياسة الإسناد وإعداد الصندوق.",
         limit_en: `There is no round-robin assignment action in the editor (G06). The standard exists in ${PRODUCT_NAME}: the assignment policy and the inbox setting.`,
       },
       gaps: ["G06"],
@@ -1496,7 +1496,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -1578,7 +1578,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -1608,7 +1608,7 @@ export const templateLibrary: TemplateLibrary = {
         studio_setting: "/dashboard/settings/assignment-policy",
         draft: null,
         buildable: "none",
-        limit_ar: "ستوديو يعرض «Balanced» في سياسة الإسناد، لكن مقابله غير موجود في CE (G06).",
+        limit_ar: "المنصة يعرض «Balanced» في سياسة الإسناد، لكن مقابله غير موجود في CE (G06).",
         limit_en: `${PRODUCT_NAME} shows “Balanced” in the assignment policy, but its equivalent does not exist in CE (G06).`,
       },
       gaps: ["G06"],
@@ -1742,7 +1742,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -1958,7 +1958,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -2040,7 +2040,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). ولا دليل على لغة القناة",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). ولا دليل على لغة القناة",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). No evidence of a channel language`,
           evidence: ["S23", "S11"],
         },
@@ -2199,7 +2199,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). والأزرار تظهر نصاً",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). والأزرار تظهر نصاً",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Buttons appear as text`,
           evidence: ["S48", "S86", "S11"],
         },
@@ -2281,7 +2281,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). والأزرار تظهر نصاً",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). والأزرار تظهر نصاً",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Buttons appear as text`,
           evidence: ["S48", "S86", "S11"],
         },
@@ -2465,7 +2465,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -2547,7 +2547,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -2967,7 +2967,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -3167,7 +3167,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). والأزرار تظهر نصاً",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). والأزرار تظهر نصاً",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Buttons appear as text`,
           evidence: ["S48", "S86", "S11"],
         },
@@ -3351,7 +3351,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         buildable: "partial",
         limit_ar:
-          "يرسم الوسم ثم Webhook برابط فارغ. والوسيط غير موجود (G10). ومسار العميل في ستوديو ليس حدثاً في المحرر.",
+          "يرسم الوسم ثم Webhook برابط فارغ. والوسيط غير موجود (G10). ومسار العميل في المنصة ليس حدثاً في المحرر.",
         limit_en: `Draws the label, then a webhook with an empty URL. The intermediary does not exist (G10). The customer path in ${PRODUCT_NAME} is not an event in the editor.`,
       },
       gaps: ["G10"],
@@ -3404,7 +3404,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S23", "S11"],
         },
@@ -3490,7 +3490,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). ولا تبدأ الشركة المحادثة، والحد 10 رسائل متتالية",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). ولا تبدأ الشركة المحادثة، والحد 10 رسائل متتالية",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). The business cannot start the conversation, and the limit is 10 consecutive messages`,
           evidence: ["S22", "S48", "S11"],
         },
@@ -3519,7 +3519,7 @@ export const templateLibrary: TemplateLibrary = {
         studio_setting: "/dashboard/settings/inboxes/<id> (CSAT)",
         draft: null,
         buildable: "none",
-        limit_ar: "لا حدث تقييم (G12) ولا كتابة خارجية (G11). والاستبيان في تبويب CSAT في ستوديو.",
+        limit_ar: "لا حدث تقييم (G12) ولا كتابة خارجية (G11). والاستبيان في تبويب CSAT في المنصة.",
         limit_en: `No rating event (G12) and no external write (G11). The survey is in the CSAT tab in ${PRODUCT_NAME}.`,
       },
       gaps: ["G11", "G12"],
@@ -3572,7 +3572,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). ولا تبدأ الشركة المحادثة، والحد 10 رسائل متتالية",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). ولا تبدأ الشركة المحادثة، والحد 10 رسائل متتالية",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). The business cannot start the conversation, and the limit is 10 consecutive messages`,
           evidence: ["S22", "S48", "S11"],
         },
@@ -3681,7 +3681,7 @@ export const templateLibrary: TemplateLibrary = {
         studio_setting: null,
         draft: null,
         buildable: "none",
-        limit_ar: "لا شرط إعلان (G09). ولا ربط بتقويم ستوديو.",
+        limit_ar: "لا شرط إعلان (G09). ولا ربط بتقويم المنصة.",
         limit_en: `No ad condition (G09). And no link to the ${PRODUCT_NAME} calendar.`,
       },
       gaps: ["G09"],
@@ -4213,7 +4213,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). ويحتاج G09",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). ويحتاج G09",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Needs G09`,
           evidence: ["S49", "S23", "S11"],
         },
@@ -4295,7 +4295,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). ويحتاج G09 وG10",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). ويحتاج G09 وG10",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Needs G09 and G10`,
           evidence: ["S44", "S49", "S11"],
         },
@@ -4377,7 +4377,7 @@ export const templateLibrary: TemplateLibrary = {
         tiktok: {
           status: "conditional",
           note_ar:
-            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في ستوديو اليوم (G16). ويحتاج G09 وG10",
+            "المحرك (v4.18.0) فيه قناة TikTok بنافذة 48 ساعة، لكن لا صندوق TikTok في المنصة اليوم (G16). ويحتاج G09 وG10",
           note_en: `The engine (v4.18.0) has a TikTok channel with a 48-hour window, but ${PRODUCT_NAME} has no TikTok inbox today (G16). Needs G09 and G10`,
           evidence: ["S44", "S49", "S11"],
         },
@@ -4468,7 +4468,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -4524,7 +4524,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "يعمل بعد ربط ستوديو بمحرك المحادثات فقط",
+        condition_ar: "يعمل بعد ربط المنصة بمحرك المحادثات فقط",
         condition_en: `Works in the simulator now; for real conversations it needs ${PRODUCT_NAME} linked to the conversation engine`,
       },
       editor_today: {
@@ -4661,7 +4661,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -4850,7 +4850,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إعداد صندوق، ولا صندوق TikTok في ستوديو (G16)",
+          note_ar: "إعداد صندوق، ولا صندوق TikTok في المنصة (G16)",
           note_en: `An inbox setting, and ${PRODUCT_NAME} has no TikTok inbox (G16)`,
           evidence: ["S11"],
         },
@@ -4969,7 +4969,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -5185,7 +5185,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -5240,7 +5240,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "يعمل بعد ربط ستوديو بمحرك المحادثات فقط",
+        condition_ar: "يعمل بعد ربط المنصة بمحرك المحادثات فقط",
         condition_en: `Works in the simulator now; for real conversations it needs ${PRODUCT_NAME} linked to the conversation engine`,
       },
       editor_today: {
@@ -5391,7 +5391,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -5805,7 +5805,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -5989,7 +5989,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -6189,7 +6189,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -6372,7 +6372,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -6562,7 +6562,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -6683,7 +6683,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -6740,7 +6740,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -6810,7 +6810,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -6933,7 +6933,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -7150,7 +7150,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -7386,7 +7386,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -7625,7 +7625,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -7682,7 +7682,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -7749,7 +7749,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -7806,7 +7806,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -7873,7 +7873,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -7930,7 +7930,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -7997,7 +7997,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -8054,7 +8054,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -8121,7 +8121,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -8178,7 +8178,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -8245,7 +8245,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -8302,7 +8302,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "store:shopify|salla|zid (أحدها، بعد ربطه)"],
-        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في ستوديو صفحة ربط وعرض فقط (L23)",
+        condition_ar: "لا حدث طلب يصل إلى الأتمتة اليوم؛ ربط المتجر في المنصة صفحة ربط وعرض فقط (L23)",
         condition_en: `No order event reaches automation today; the store link in ${PRODUCT_NAME} is a link-and-view page only (L23)`,
       },
       editor_today: {
@@ -8370,7 +8370,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -8492,7 +8492,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -8712,7 +8712,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -8768,7 +8768,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "invoices:مصدر فواتير مربوط"],
-        condition_ar: "صفحة الفواتير في ستوديو لا تطلق حدثاً للأتمتة (G26)",
+        condition_ar: "صفحة الفواتير في المنصة لا تطلق حدثاً للأتمتة (G26)",
         condition_en: `The invoices page in ${PRODUCT_NAME} does not fire an automation event (G26)`,
       },
       editor_today: {
@@ -8835,7 +8835,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -8891,7 +8891,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "invoices:مصدر فواتير مربوط"],
-        condition_ar: "صفحة الفواتير في ستوديو لا تطلق حدثاً للأتمتة (G26)",
+        condition_ar: "صفحة الفواتير في المنصة لا تطلق حدثاً للأتمتة (G26)",
         condition_en: `The invoices page in ${PRODUCT_NAME} does not fire an automation event (G26)`,
       },
       editor_today: {
@@ -8960,7 +8960,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -9016,7 +9016,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["chatwoot", "calendar:مصدر مواعيد مربوط"],
-        condition_ar: "تقويم ستوديو ببيانات محلية ولا يطلق حدثاً (L24)؛ ولا مشغل زمني في الأتمتة (G22)",
+        condition_ar: "تقويم المنصة ببيانات محلية ولا يطلق حدثاً (L24)؛ ولا مشغل زمني في الأتمتة (G22)",
         condition_en: `The ${PRODUCT_NAME} calendar uses local data and fires no event (L24); and there is no timed trigger in automation (G22)`,
       },
       editor_today: {
@@ -9081,7 +9081,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -9270,7 +9270,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -9488,7 +9488,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -9610,7 +9610,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إعداد صندوق، ولا صندوق TikTok في ستوديو (G16)",
+          note_ar: "إعداد صندوق، ولا صندوق TikTok في المنصة (G16)",
           note_en: `An inbox setting, and ${PRODUCT_NAME} has no TikTok inbox (G16)`,
           evidence: ["S11"],
         },
@@ -9731,7 +9731,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إعداد صندوق، ولا صندوق TikTok في ستوديو (G16)",
+          note_ar: "إعداد صندوق، ولا صندوق TikTok في المنصة (G16)",
           note_en: `An inbox setting, and ${PRODUCT_NAME} has no TikTok inbox (G16)`,
           evidence: ["S11"],
         },
@@ -9856,7 +9856,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -10057,7 +10057,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "لا صندوق TikTok في ستوديو اليوم (G16)، والنافذة 48 ساعة",
+          note_ar: "لا صندوق TikTok في المنصة اليوم (G16)، والنافذة 48 ساعة",
           note_en: `${PRODUCT_NAME} has no TikTok inbox today (G16), and the window is 48 hours`,
           evidence: ["S22", "S11", "S48"],
         },
@@ -10401,7 +10401,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "unavailable",
-          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في ستوديو (G16)",
+          note_ar: "TikTok لا يسمح للشركة ببدء المحادثة، ولا صندوق له في المنصة (G16)",
           note_en: `TikTok does not let the business start the conversation, and ${PRODUCT_NAME} has no inbox for it (G16)`,
           evidence: ["S48", "S11"],
         },
@@ -10639,7 +10639,7 @@ export const templateLibrary: TemplateLibrary = {
         },
         tiktok: {
           status: "conditional",
-          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في ستوديو اليوم (G16)",
+          note_ar: "إجراء داخلي، لكن لا صندوق TikTok في المنصة اليوم (G16)",
           note_en: `An internal action, but ${PRODUCT_NAME} has no TikTok inbox today (G16)`,
           evidence: ["S11", "L01"],
         },
@@ -10941,7 +10941,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11069,7 +11069,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11195,7 +11195,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11323,7 +11323,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11449,7 +11449,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11574,7 +11574,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11700,7 +11700,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11825,7 +11825,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -11953,7 +11953,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -12080,7 +12080,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "after_linking",
         requires_source: ["chatwoot"],
-        condition_ar: "بعد الربط واعتماد Meta. ستوديو يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
+        condition_ar: "بعد الربط واعتماد Meta. المنصة يعرض القوالب المعتمدة في صفحتها؛ ولا يرسلها تدفق اليوم (G19)",
         condition_en: `Works in the simulator now; actually sending it needs Meta approval. ${PRODUCT_NAME} shows approved templates on their own page; no flow sends them today (G19)`,
       },
       editor_today: {
@@ -12217,7 +12217,7 @@ export const templateLibrary: TemplateLibrary = {
       linking: {
         scope: "needs_missing_capability",
         requires_source: ["login-system:نظام دخول خارجي يولّد الرمز ويتحقق منه"],
-        condition_ar: "لا نظام دخول في ستوديو يولّد رموزاً. القالب وحده لا يتحقق من الهوية (G28)",
+        condition_ar: "لا نظام دخول في المنصة يولّد رموزاً. القالب وحده لا يتحقق من الهوية (G28)",
         condition_en: `${PRODUCT_NAME} has no sign-in system that generates codes. The template alone does not verify identity (G28)`,
       },
       editor_today: {

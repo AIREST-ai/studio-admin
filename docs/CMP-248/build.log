@@ -1,0 +1,470 @@
+
+> studio-admin@2.2.0 build
+> next build
+
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.mjs took 10ms
+- Experiments (use with caution):
+  ⨯ turbopackServerFastRefresh
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 36.7s
+  Running TypeScript ...
+src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx(232,7): error TS2345: Argument of type 'string' is not assignable to parameter of type '() => void'.
+src/app/(main)/dashboard/captain/smart/_components/smart-setup.tsx(234,10): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/app/api/captain-engine/route.ts(1046,53): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+Failed to type check.
+
+Turbopack build encountered 16 warnings:
+./src/app/api/calls/[action]/route.ts:102:27
+Warning: Dynamic filesystem access causes tracing of the whole project
+  100 |   for (const file of candidates) {
+  101 |     try {
+> 102 |       const text = (await readFile(file, "utf8")).trim();
+      |                           ^^^^^^^^^^^^^^^^^^^^^^
+  103 |       if (text && !/\s/.test(text) && text.length <= 256) return text;
+  104 |     } catch {
+  105 |       // try next candidate
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import trace:
+  App Route:
+    ./src/app/api/calls/[action]/route.ts
+    ./src/app/api/calls/[action]/route.ts
+
+
+./src/app/api/captain/run/route.ts:60:26
+Warning: Dynamic filesystem access causes tracing of the whole project
+  58 |   for (const candidate of candidates) {
+  59 |     try {
+> 60 |       const raw = (await readFile(candidate, "utf8")).trim();
+     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  61 |       if (raw.length >= 16) return raw;
+  62 |     } catch {
+  63 |       // continue
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import trace:
+  App Route:
+    ./src/app/api/captain/run/route.ts
+    ./src/app/api/calls/[action]/route.ts
+
+
+./src/app/api/comments/[action]/route.ts:118:27
+Warning: Dynamic filesystem access causes tracing of the whole project
+  116 |   for (const file of candidates) {
+  117 |     try {
+> 118 |       const text = (await readFile(file, "utf8")).trim();
+      |                           ^^^^^^^^^^^^^^^^^^^^^^
+  119 |       if (text && !/\s/.test(text) && text.length <= 256) return text;
+  120 |     } catch {
+  121 |       // try next candidate
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import trace:
+  App Route:
+    ./src/app/api/comments/[action]/route.ts
+    ./src/app/api/calls/[action]/route.ts
+
+
+./src/lib/audit/server.ts:24:29
+Warning: Dynamic filesystem access causes tracing of the whole project
+  22 |   if (fromEnv) return fromEnv;
+  23 |   try {
+> 24 |     const fromFile = (await readFile(AUDIT_KEY_FILE, "utf8")).trim();
+     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  25 |     return fromFile || null;
+  26 |   } catch {
+  27 |     return null;
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/audit/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/audit/server.ts
+    ./src/lib/audit/retraced.ts
+    ./src/app/api/notifications-feed/route.ts
+
+
+./src/lib/bigcapital/server.ts:37:24
+Warning: Dynamic filesystem access causes tracing of the whole project
+  35 |   if (process.env.BIGCAPITAL_API_KEY) return process.env.BIGCAPITAL_API_KEY;
+  36 |   try {
+> 37 |     cachedKey = (await readFile(KEY_FILE, "utf8")).trim();
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  38 |   } catch {
+  39 |     throw new BigcapitalError("The invoices server's API key is not configured on the prev...
+  40 |   }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/bigcapital/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/bigcapital/server.ts
+    ./src/app/api/invoices/[id]/route.ts
+
+
+./src/lib/captain/litellm-budget.ts:148:25
+Warning: Dynamic filesystem access causes tracing of the whole project
+  146 |   for (const candidate of MASTER_KEY_CANDIDATES) {
+  147 |     try {
+> 148 |       const raw = await readFile(candidate, "utf8");
+      |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  149 |       const trimmed = raw.trim();
+  150 |       if (trimmed.length >= 16) return trimmed;
+  151 |     } catch {
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/captain/litellm-budget.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/captain/litellm-budget.ts
+    ./src/app/api/captain-state/route.ts
+
+
+./src/lib/captain/studio-tools.ts:339:27
+Warning: Dynamic filesystem access causes tracing of the whole project
+  337 |   for (const file of candidates) {
+  338 |     try {
+> 339 |       const text = (await readFile(file, "utf8")).trim();
+      |                           ^^^^^^^^^^^^^^^^^^^^^^
+  340 |       if (text && !/\s/.test(text) && text.length <= 256) return text;
+  341 |     } catch {
+  342 |       // continue
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/captain/studio-tools.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/captain/studio-tools.ts
+    ./src/app/api/mcp/studio/route.ts
+
+
+./src/lib/chatwoot/realtime-bus.ts:215:10
+Warning: Dynamic filesystem access causes tracing of the whole project
+  213 | function readDiskJournal(): DiskJournalData | null {
+  214 |   try {
+> 215 |     if (!existsSync(DISK_JOURNAL_PATH)) return null;
+      |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  216 |     const raw = readFileSync(DISK_JOURNAL_PATH, "utf8");
+  217 |     const parsed = JSON.parse(raw);
+  218 |     if (!parsed || typeof parsed !== "object") return null;
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.existsSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/chatwoot/realtime-bus.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/chatwoot/realtime-bus.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/chatwoot/realtime-bus.ts:216:17
+Warning: Dynamic filesystem access causes tracing of the whole project
+  214 |   try {
+  215 |     if (!existsSync(DISK_JOURNAL_PATH)) return null;
+> 216 |     const raw = readFileSync(DISK_JOURNAL_PATH, "utf8");
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  217 |     const parsed = JSON.parse(raw);
+  218 |     if (!parsed || typeof parsed !== "object") return null;
+  219 |     const seq = typeof parsed.seq === "number" && Number.isFinite(parsed.seq) ? parsed.se...
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFileSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/chatwoot/realtime-bus.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/chatwoot/realtime-bus.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/chatwoot/server.ts:138:13
+Warning: Dynamic filesystem access causes tracing of the whole project
+  136 |       const candidate = path.join(dir, name);
+  137 |       try {
+> 138 |         if (existsSync(candidate)) {
+      |             ^^^^^^^^^^^^^^^^^^^^^
+  139 |           const val = readFileSync(candidate, "utf8").trim();
+  140 |           if (val && !/\s/.test(val)) return candidate;
+  141 |         }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.existsSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/chatwoot/server.ts:298:20
+Warning: Dynamic filesystem access causes tracing of the whole project
+  296 |   } catch {
+  297 |     try {
+> 298 |       text = await readFile(tokenFile(), "utf8");
+      |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  299 |     } catch {
+  300 |       throw new ChatwootError("no-token", "not linked: no token", 503);
+  301 |     }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/chatwoot/server.ts:139:23
+Warning: Dynamic filesystem access causes tracing of the whole project
+  137 |       try {
+  138 |         if (existsSync(candidate)) {
+> 139 |           const val = readFileSync(candidate, "utf8").trim();
+      |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  140 |           if (val && !/\s/.test(val)) return candidate;
+  141 |         }
+  142 |       } catch {
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFileSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/chatwoot/server.ts:136:25
+Warning: Dynamic filesystem access causes tracing of the whole project
+  134 |   for (const dir of vaultDirs) {
+  135 |     for (const name of candidateNames) {
+> 136 |       const candidate = path.join(dir, name);
+      |                         ^^^^^^^^^^^^^^^^^^^^
+  137 |       try {
+  138 |         if (existsSync(candidate)) {
+  139 |           const val = readFileSync(candidate, "utf8").trim();
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: path.join(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/davis/server.ts:117:29
+Warning: Dynamic filesystem access causes tracing of the whole project
+  115 | async function readPasswords(): Promise<Record<string, string>> {
+  116 |   try {
+> 117 |     return JSON.parse(await readFile(USERS_FILE, "utf8")) as Record<string, string>;
+      |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  118 |   } catch {
+  119 |     return {};
+  120 |   }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/davis/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/davis/server.ts
+    ./src/app/api/calendar-davis/share/route.ts
+
+
+./src/lib/system-vault.ts:47:17
+Warning: Dynamic filesystem access causes tracing of the whole project
+  45 |   if (!found) return null;
+  46 |   try {
+> 47 |     const val = readFileSync(found, "utf8").trim();
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  48 |     return val || null;
+  49 |   } catch {
+  50 |     return null;
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFileSync(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/system-vault.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/system-vault.ts
+    ./src/lib/chatwoot/server.ts
+    ./src/app/api/cw/webhook/route.ts
+
+
+./src/lib/twenty/server.ts:53:24
+Warning: Dynamic filesystem access causes tracing of the whole project
+  51 |   if (process.env.TWENTY_API_KEY) return process.env.TWENTY_API_KEY;
+  52 |   try {
+> 53 |     cachedKey = (await readFile(KEY_FILE, "utf8")).trim();
+     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  54 |   } catch {
+  55 |     throw new TwentyError("The tasks server's API key is not configured on the preview ser...
+  56 |   }
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: fs.readFile(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/lib/twenty/server.ts
+    ./src/app/api/calls/[action]/route.ts
+
+  #2 [App Route]:
+    ./src/lib/twenty/server.ts
+    ./src/app/api/tasks-twenty/[id]/route.ts

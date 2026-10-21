@@ -26,8 +26,8 @@ export const assistants: Assistant[] = [
     id: 2,
     name: "Salma",
     description:
-      "Answers plan, invoice and refund questions for Weblabs Studio customers and hands disputes to the Billing team.",
-    productName: "Weblabs Studio Billing",
+      "Answers plan, invoice and refund questions for منصة الشركة customers and hands disputes to the Billing team.",
+    productName: "منصة الشركة Billing",
     inboxes: 2,
     documents: 8,
     faqs: 64,
@@ -412,13 +412,13 @@ export const connectedInboxes: ConnectedInbox[] = [
 export const availableInboxes = ["Instagram DMs", "Facebook Page", "SMS Doha", "Telegram Bot"];
 
 export const handoffReasons = [
-  { label: "Customer requested", value: 34 },
-  { label: "Missing knowledge", value: 22 },
-  { label: "Unsupported request", value: 15 },
-  { label: "Policy restriction", value: 11 },
-  { label: "Tool failure", value: 6 },
-  { label: "Pending customer clarification", value: 8 },
-  { label: "Unclassified", value: 4 },
+  { label: "طلب العميل التحدث لموظف", value: 34 },
+  { label: "معلومة غير مضافة في المعرفة", value: 22 },
+  { label: "طلب خارج الصلاحية التلقائية", value: 15 },
+  { label: "تقييد في سياسة الشركة", value: 11 },
+  { label: "تعذر أداة الربط الخارجية", value: 6 },
+  { label: "بانتظار توضيح من العميل", value: 8 },
+  { label: "أخرى", value: 4 },
 ];
 
 export const trend = [

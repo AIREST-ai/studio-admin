@@ -1,0 +1,94 @@
+{
+  "base": "http://127.0.0.1:8822",
+  "checkedAt": "2026-10-21T12:22:42.079663+00:00",
+  "results": [
+    {
+      "path": "/api/chatwoot/status",
+      "status": 200,
+      "bytes": 543,
+      "mode": "linked",
+      "connected": true,
+      "reachable": true,
+      "target": "127.0.0.1:3200",
+      "problem": null
+    },
+    {
+      "path": "/api/cw/meta-config",
+      "status": 200,
+      "bytes": 318,
+      "configuration": {
+        "available": true,
+        "mode": "linked",
+        "facebook": {
+          "appId": null,
+          "version": "v22.0",
+          "configured": false
+        },
+        "whatsapp": {
+          "appId": null,
+          "configurationId": null,
+          "version": "v22.0",
+          "configured": false
+        },
+        "instagram": {
+          "appId": null,
+          "version": "v22.0",
+          "configured": false
+        },
+        "readiness": {
+          "https": false,
+          "adminRole": true,
+          "metaAppConfigured": false
+        }
+      }
+    },
+    {
+      "path": "/api/cw/inboxes",
+      "status": 200,
+      "bytes": 7880,
+      "channels": [
+        {
+          "id": 10,
+          "name": "1. واتساب",
+          "type": "Channel::Whatsapp"
+        },
+        {
+          "id": 9,
+          "name": "3. إنستغرام",
+          "type": "Channel::Instagram"
+        },
+        {
+          "id": 3,
+          "name": "Studio Test (API)",
+          "type": "Channel::Api"
+        },
+        {
+          "id": 12,
+          "name": "فحص الحمض النووي Genaty DNA",
+          "type": "Channel::FacebookPage"
+        }
+      ]
+    },
+    {
+      "path": "/api/cw/conversations/2/messages",
+      "status": 200,
+      "bytes": 13446,
+      "testMessageIds": [
+        94,
+        95
+      ]
+    },
+    {
+      "path": "/dashboard/chat?conversation=13",
+      "status": 200,
+      "bytes": 142119
+    },
+    {
+      "path": "/dashboard/settings/inboxes",
+      "status": 200,
+      "bytes": 218956,
+      "check": "HTTP only; no browser behavior claim"
+    }
+  ],
+  "correctedAt": "2026-10-21T12:23:22.034010+00:00"
+}

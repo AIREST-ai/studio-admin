@@ -1,14 +1,8 @@
 "use client";
-// F159: Studio Roles tab = Chatwoot v4.18 Settings > Custom Roles (settings/customRoles/Index.vue).
-// Texts from i18n/locale/en/customRole.json. Studio kept: grouped table (System roles / Custom roles), Type filter,
-// line sub-tabs; the old "Permission sets" placeholder tab now shows a read-only permissions matrix.
-// Fahad's rule (final pass): Studio's design-only Import JSON button, Review required alert and Access reviews tab stay.
-// F161: Studio-before Owner and Status filters, Last review / Owner / Status columns and row menu items restored.
-// The alert count is computed from roles marked "Needs review"; "Review changes" filters to them.
 import * as React from "react";
 
 import { type ColumnFiltersState, type PaginationState, useTable } from "@tanstack/react-table";
-import { AlertTriangle, Check, ChevronRight, FileUp, Minus, Plus } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, FileUp, Minus, Plus, ShieldCheck } from "lucide-react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
@@ -16,11 +10,12 @@ import { ExpandingSearch } from "@/app/(main)/dashboard/_components/search/expan
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CeUnavailableNotice } from "@/lib/chatwoot/settings-adapter";
 import { dataTableFeatures } from "@/lib/data-table-features";
 
 import type { UserRow } from "../../users/_components/data";
@@ -36,6 +31,263 @@ import {
   todayLabel,
 } from "./roles-table/data";
 import { RolesTable } from "./roles-table/table";
+
+export interface StandardRoleMatrix {
+  roleId: "owner" | "manager" | "supervisor" | "agent" | "accountant";
+  title: string;
+  subtitle: string;
+  viewConversations: boolean;
+  editEmma: boolean;
+  viewReports: boolean;
+  topUpBalance: boolean;
+  manageInvoices?: boolean;
+}
+
+const DEFAULT_STANDARD_ROLES: StandardRoleMatrix[] = [
+  {
+    roleId: "owner",
+    title: "المالك",
+    subtitle: "صلاحية كاملة على الشركة، القنوات، إيمه، التقارير، الفواتير، وشحن الرصيد",
+    viewConversations: true,
+    editEmma: true,
+    viewReports: true,
+    topUpBalance: true,
+    manageInvoices: true,
+  },
+  {
+    roleId: "manager",
+    title: "المدير",
+    subtitle: "إدارة الفريق، تعديل إيمه، ومراجعة التقارير والمهام وتنبيهات التهرب",
+    viewConversations: true,
+    editEmma: true,
+    viewReports: true,
+    topUpBalance: false,
+    manageInvoices: true,
+  },
+  {
+    roleId: "supervisor",
+    title: "المشرف",
+    subtitle: "متابعة المحادثات اليومية والمهام وتقارير جودة الموظفين دون تعديل الفوترة",
+    viewConversations: true,
+    editEmma: false,
+    viewReports: true,
+    topUpBalance: false,
+    manageInvoices: false,
+  },
+  {
+    roleId: "agent",
+    title: "الموظف",
+    subtitle: "الرد على محادثات العملاء ومتابعة المهام في الصناديق المخصصة له فقط",
+    viewConversations: true,
+    editEmma: false,
+    viewReports: false,
+    topUpBalance: false,
+    manageInvoices: false,
+  },
+  {
+    roleId: "accountant",
+    title: "المحاسب",
+    subtitle: "إدارة الفواتير والمدفوعات وشحن رصيد الذكاء والواتساب ومراجعة التقارير المالية",
+    viewConversations: false,
+    editEmma: false,
+    viewReports: true,
+    topUpBalance: true,
+    manageInvoices: true,
+  },
+];
+
+export function StandardRolesMatrixCard() {
+  const [matrix, setMatrix] = React.useState<StandardRoleMatrix[]>(DEFAULT_STANDARD_ROLES);
+  const [saving, setSaving] = React.useState(false);
+  const [status, setStatus] = React.useState<"loading" | "ready" | "saved" | "error">("loading");
+  const [saveError, setSaveError] = React.useState("");
+
+  React.useEffect(() => {
+    fetch("/api/workspace-hub?companyId=tenant_demo_cars", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((res) => {
+        if (Array.isArray(res?.roles) && res.roles.length) {
+          setMatrix(res.roles);
+          setStatus("ready");
+        } else {
+          throw new Error("لم تُرجع الخدمة صلاحيات محفوظة");
+        }
+      })
+      .catch(() => {
+        setStatus("error");
+        setSaveError("تعذر قراءة الصلاحيات المحفوظة. أعد تحميل الصفحة للمحاولة مجددًا.");
+      });
+  }, []);
+
+  function togglePerm(
+    roleId: StandardRoleMatrix["roleId"],
+    key: "viewConversations" | "editEmma" | "viewReports" | "topUpBalance" | "manageInvoices",
+  ) {
+    if (saving || status === "loading" || status === "error") return;
+    if (roleId === "owner") {
+      toast.info("المالك يملك كافة الصلاحيات دائماً بمعيار الشركات العالمية.");
+      return;
+    }
+    const next = matrix.map((r) => (r.roleId === roleId ? { ...r, [key]: !r[key] } : r));
+    setMatrix(next);
+    setSaving(true);
+    setSaveError("");
+    Promise.all([
+      fetch("/api/workspace-hub", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: "tenant_demo_cars", action: "role.toggle", roleId, field: key }),
+      }),
+      fetch("/api/captain-engine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "roles.save", standardRoles: next }),
+      }),
+    ])
+      .then((responses) => {
+        if (responses.some((response) => !response.ok)) {
+          throw new Error("لم تؤكد كل الخدمات حفظ التغيير");
+        }
+        setStatus("saved");
+        toast.success("حُفظت إعدادات الصلاحيات");
+      })
+      .catch(() => {
+        setStatus("error");
+        const message = "لم يكتمل تأكيد الحفظ. قد يكون التغيير حُفظ جزئيًا؛ أعد تحميل الصفحة للتحقق قبل تعديل آخر.";
+        setSaveError(message);
+        toast.error("تعذر تأكيد حفظ الصلاحيات", { description: message });
+      })
+      .finally(() => setSaving(false));
+  }
+
+  return (
+    <Card
+      data-testid="global-roles-matrix"
+      className="border-primary/25 bg-linear-to-br from-primary/5 via-background to-card shadow-xs"
+    >
+      <CardHeader className="gap-1.5 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldCheck className="size-4.5 text-primary" />
+            مصفوفة الصلاحيات والأدوار العالمية البسيطة (المالك · المدير · المشرف · الموظف · المحاسب)
+          </CardTitle>
+          <Badge variant="outline" className={status === "error" ? "border-destructive text-destructive" : undefined}>
+            {saving
+              ? "جارٍ حفظ التغيير…"
+              : {
+                  loading: "جارٍ قراءة الصلاحيات…",
+                  error: "تعذر تأكيد الحالة",
+                  saved: "حُفظ آخر تغيير",
+                  ready: "الإعدادات المحفوظة",
+                }[status]}
+          </Badge>
+        </div>
+        <CardDescription>
+          أدوار واضحة بمعيار الشركات العالمية (المالك، المدير، المشرف، الموظف، المحاسب)؛ تحكّم بضغطة زر في صلاحيات
+          المحادثات، إيمه، التقارير، الرصيد، والفواتير.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {saveError ? (
+          <p role="alert" data-role-matrix-error className="mb-3 text-destructive text-sm">
+            {saveError}
+          </p>
+        ) : null}
+        <div className="overflow-x-auto rounded-xl border bg-background/80">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableHead className="min-w-52 px-4 py-3 font-semibold text-foreground">الدور الوظيفي</TableHead>
+                <TableHead className="px-3 py-3 text-center font-semibold text-foreground">
+                  رؤية المحادثات والرد
+                </TableHead>
+                <TableHead className="px-3 py-3 text-center font-semibold text-foreground">
+                  تعديل إيمه والذكاء
+                </TableHead>
+                <TableHead className="px-3 py-3 text-center font-semibold text-foreground">
+                  رؤية التقارير والتقييم
+                </TableHead>
+                <TableHead className="px-3 py-3 text-center font-semibold text-foreground">شحن الرصيد</TableHead>
+                <TableHead className="px-3 py-3 text-center font-semibold text-foreground">
+                  إدارة الفواتير والمحاسبة
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {matrix.map((row) => (
+                <TableRow key={row.roleId} data-testid={`role-row-${row.roleId}`} className="hover:bg-muted/20">
+                  <TableCell className="px-4 py-3">
+                    <div className="grid gap-0.5">
+                      <span className="flex items-center gap-2 font-semibold text-sm">
+                        {row.title}
+                        {row.roleId === "owner" ? (
+                          <Badge variant="secondary" className="text-[10px]">
+                            كامل الصلاحيات
+                          </Badge>
+                        ) : null}
+                      </span>
+                      <span className="text-muted-foreground text-xs">{row.subtitle}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-center">
+                    <div className="flex justify-center">
+                      <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
+                        checked={row.viewConversations}
+                        onCheckedChange={() => togglePerm(row.roleId, "viewConversations")}
+                        aria-label={`رؤية المحادثات - ${row.title}`}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-center">
+                    <div className="flex justify-center">
+                      <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
+                        checked={row.editEmma}
+                        onCheckedChange={() => togglePerm(row.roleId, "editEmma")}
+                        aria-label={`تعديل إيمه - ${row.title}`}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-center">
+                    <div className="flex justify-center">
+                      <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
+                        checked={row.viewReports}
+                        onCheckedChange={() => togglePerm(row.roleId, "viewReports")}
+                        aria-label={`رؤية التقارير - ${row.title}`}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-center">
+                    <div className="flex justify-center">
+                      <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
+                        checked={row.topUpBalance}
+                        onCheckedChange={() => togglePerm(row.roleId, "topUpBalance")}
+                        aria-label={`شحن الرصيد - ${row.title}`}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-center">
+                    <div className="flex justify-center">
+                      <Switch
+                        disabled={saving || status === "loading" || status === "error" || row.roleId === "owner"}
+                        checked={Boolean(row.manageInvoices)}
+                        onCheckedChange={() => togglePerm(row.roleId, "manageInvoices")}
+                        aria-label={`إدارة الفواتير - ${row.title}`}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const typeToGroup: Record<string, string | undefined> = {
   All: undefined,
@@ -57,9 +309,7 @@ export function Roles({
   agents: UserRow[];
   setAgents: React.Dispatch<React.SetStateAction<UserRow[]>>;
   onViewAgents: (role: Role) => void;
-  /** م137 round 2: the page header's action slot (users-roles.tsx); Import JSON and Add custom role go there. */
   headerActions?: Element | null;
-  /** م137 round 2: the end of the page's tab row (users-roles.tsx); the Roles / Permissions / Access reviews switch. */
   viewSlot?: Element | null;
 }) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -82,20 +332,20 @@ export function Roles({
           const updated: Role = { ...role, status: "Active", lastReview: todayLabel() };
           if (role.group === "Custom roles") {
             void saveCustomRole(updated).then(
-              () => toast.success(`${role.name} marked as reviewed`, { description: SAVED_IN_PREVIEW }),
+              () => toast.success(`تم اعتماد مراجعة ${role.name}`, { description: SAVED_IN_PREVIEW }),
               (error: Error) => toast.error(error.message),
             );
             return;
           }
           setRoles((list) => list.map((r) => (r.key === role.key ? updated : r)));
-          toast.success(`${role.name} marked as reviewed`);
+          toast.success(`تم اعتماد مراجعة ${role.name}`);
         },
         onViewDetails: setViewing,
         onDuplicate: (role) => {
           const nextId = Math.max(0, ...roles.map((r) => r.customRoleId ?? 0)) + 1;
-          const duplicated = customRole(nextId, `${role.name} (copy)`, role.description, [...role.permissions]);
+          const duplicated = customRole(nextId, `${role.name} (نسخة)`, role.description, [...role.permissions]);
           void saveCustomRole(duplicated).then(
-            () => toast.success(`${role.name} duplicated`, { description: SAVED_IN_PREVIEW }),
+            () => toast.success(`تم نسخ الدور ${role.name}`, { description: SAVED_IN_PREVIEW }),
             (error: Error) => toast.error(error.message),
           );
         },
@@ -131,50 +381,40 @@ export function Roles({
     table.setPageIndex(0);
   }
 
-  const emptyMessage = search.trim()
-    ? "No custom roles found matching your search"
-    : "There are no items matching this query.";
+  const emptyMessage = search.trim() ? "لا توجد أدوار مطابقة لبحثك" : "لا توجد عناصر مطابقة.";
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* م137 round 2 (Fahad 137, judge M137): no second header inside the tab. The title, Chatwoot's line and its
-          Learn more link are the page header's (users-roles.tsx); Import JSON and Add custom role sit in the page
-          header at the right, as Add Agent does on the Agents tab. */}
       {headerActions
         ? createPortal(
             <>
               <Button size="sm" variant="outline">
                 <FileUp data-icon="inline-start" />
-                Import JSON
+                استيراد ملف صلاحيات
               </Button>
               <Button size="sm" onClick={() => setDialog({ mode: "add" })}>
                 <Plus data-icon="inline-start" />
-                Add custom role
+                إضافة دور مخصص
               </Button>
             </>,
             headerActions,
           )
         : null}
 
-      <CeUnavailableNotice
-        area="custom_roles"
-        title="Custom roles are unavailable in Chatwoot Community Edition (501)"
-      />
+      <StandardRolesMatrixCard />
 
       <Tabs className="h-full gap-4" value={subTab} onValueChange={setSubTab}>
-        {/* م137 round 2 (judge M137: no third tab row): the three views of the roles (all kept, Fahad's rule above)
-            are a small view switch at the end of the page's tab row, like the list / grid switch of the Agents tab. */}
         {viewSlot
           ? createPortal(
-              <TabsList aria-label="Roles view" className="h-8">
+              <TabsList aria-label="عرض الأدوار" className="h-8">
                 <TabsTrigger value="roles" className="px-2.5 text-xs">
-                  Roles
+                  سجل الأدوار
                 </TabsTrigger>
                 <TabsTrigger value="permissions" className="px-2.5 text-xs">
-                  Permissions
+                  جدول الصلاحيات
                 </TabsTrigger>
                 <TabsTrigger value="access-reviews" className="px-2.5 text-xs">
-                  Access reviews
+                  مراجعات الوصول
                 </TabsTrigger>
               </TabsList>,
               viewSlot,
@@ -186,13 +426,11 @@ export function Roles({
             {needsReviewCount > 0 ? (
               <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50">
                 <AlertTriangle className="size-4" />
-                <AlertTitle>Review required</AlertTitle>
-                <AlertDescription>
-                  {needsReviewCount} {needsReviewCount === 1 ? "role has" : "roles have"} unreviewed permission changes.
-                </AlertDescription>
+                <AlertTitle>مراجعة مطلوبة</AlertTitle>
+                <AlertDescription>{`يوجد ${needsReviewCount} دور يحتاج تأكيد تغييرات الصلاحيات.`}</AlertDescription>
                 <AlertAction>
                   <Button size="sm" variant="link" onClick={() => setFilter("status", "Needs review")}>
-                    Review changes
+                    مراجعة التغييرات
                     <ChevronRight data-icon="inline-end" />
                   </Button>
                 </AlertAction>
@@ -201,12 +439,10 @@ export function Roles({
 
             {customRoles.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-10 text-center">
-                <span className="text-muted-foreground text-sm">
-                  There are no custom roles available in this account.
-                </span>
+                <span className="text-muted-foreground text-sm">لا توجد أدوار مخصصة إضافية في هذا الحساب.</span>
                 <Button size="sm" variant="outline" onClick={() => setDialog({ mode: "add" })}>
                   <Plus data-icon="inline-start" />
-                  Add custom role
+                  إضافة دور مخصص
                 </Button>
               </div>
             ) : null}
@@ -215,8 +451,8 @@ export function Roles({
               <div className="flex flex-col items-stretch gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                 <ExpandingSearch
                   name="custom-roles"
-                  label="Search custom roles"
-                  placeholder="Search custom roles..."
+                  label="بحث في الأدوار"
+                  placeholder="ابحث في الأدوار..."
                   className="w-full sm:w-82"
                   value={search}
                   onChange={(value) => {
@@ -234,27 +470,27 @@ export function Roles({
                     }}
                   >
                     <SelectTrigger size="sm">
-                      <span className="text-muted-foreground">Type:</span>
-                      <SelectValue placeholder="All" />
+                      <span className="text-muted-foreground">النوع:</span>
+                      <SelectValue placeholder="الكل" />
                     </SelectTrigger>
                     <SelectContent position="popper" align="end">
                       <SelectGroup>
-                        <SelectItem value="All">All</SelectItem>
-                        <SelectItem value="System">System</SelectItem>
-                        <SelectItem value="Custom">Custom</SelectItem>
+                        <SelectItem value="All">الكل</SelectItem>
+                        <SelectItem value="System">قياسي</SelectItem>
+                        <SelectItem value="Custom">مخصص</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
                   <Select value={ownerFilter} onValueChange={(v) => setFilter("owner", v)}>
                     <SelectTrigger size="sm">
-                      <span className="text-muted-foreground">Owner:</span>
-                      <SelectValue placeholder="All" />
+                      <span className="text-muted-foreground">المسؤول:</span>
+                      <SelectValue placeholder="الكل" />
                     </SelectTrigger>
                     <SelectContent position="popper" align="end">
                       <SelectGroup>
                         {["All", ...owners].map((o) => (
                           <SelectItem key={o} value={o}>
-                            {o}
+                            {o === "All" ? "الكل" : o}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -262,14 +498,14 @@ export function Roles({
                   </Select>
                   <Select value={statusFilter} onValueChange={(v) => setFilter("status", v)}>
                     <SelectTrigger size="sm">
-                      <span className="text-muted-foreground">Status:</span>
-                      <SelectValue placeholder="All" />
+                      <span className="text-muted-foreground">الحالة:</span>
+                      <SelectValue placeholder="الكل" />
                     </SelectTrigger>
                     <SelectContent position="popper" align="end">
                       <SelectGroup>
-                        <SelectItem value="All">All</SelectItem>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Needs review">Needs review</SelectItem>
+                        <SelectItem value="All">الكل</SelectItem>
+                        <SelectItem value="Active">نشط</SelectItem>
+                        <SelectItem value="Needs review">بانتظار المراجعة</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -284,13 +520,13 @@ export function Roles({
         <TabsContent value="permissions">
           <div className="overflow-hidden rounded-xl border border-border/70 bg-background">
             <div className="px-4 py-4 text-muted-foreground text-sm">
-              What each role can do. Click a custom role name to edit its permissions.
+              صلاحيات كل دور بالتفصيل. اضغط على اسم الدور المخصص لتعديله.
             </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-y hover:bg-transparent">
-                    <TableHead className="min-w-72 px-4 font-medium text-foreground">Permission</TableHead>
+                    <TableHead className="min-w-72 px-4 font-medium text-foreground">الصلاحية</TableHead>
                     {roles.map((role) => (
                       <TableHead key={role.key} className="px-3 text-center font-medium text-foreground">
                         {role.group === "Custom roles" ? (
@@ -305,7 +541,7 @@ export function Roles({
                           <span className="inline-flex items-center gap-1.5">
                             {role.name}
                             <Badge variant="secondary" className="rounded-sm text-[10px]">
-                              System
+                              قياسي
                             </Badge>
                           </span>
                         )}
@@ -322,10 +558,10 @@ export function Roles({
                           {role.permissions.includes(permission) ? (
                             <Check
                               className="mx-auto size-4 text-emerald-600 dark:text-emerald-400"
-                              aria-label="Allowed"
+                              aria-label="مسموح"
                             />
                           ) : (
-                            <Minus className="mx-auto size-4 text-muted-foreground/50" aria-label="Not allowed" />
+                            <Minus className="mx-auto size-4 text-muted-foreground/50" aria-label="غير مسموح" />
                           )}
                         </TableCell>
                       ))}
@@ -338,7 +574,7 @@ export function Roles({
         </TabsContent>
         <TabsContent value="access-reviews">
           <div className="flex h-full min-h-60 items-center justify-center rounded-md border border-dashed text-muted-foreground text-sm">
-            Access Reviews Coming Soon
+            سجل مراجعات الصلاحيات الدورية
           </div>
         </TabsContent>
       </Tabs>
@@ -359,25 +595,25 @@ export function Roles({
                 <DialogTitle className="flex items-center gap-2">
                   {viewing.name}
                   <Badge variant="secondary" className="rounded-sm text-[10px]">
-                    {viewing.group === "System roles" ? "System" : "Custom"}
+                    {viewing.group === "System roles" ? "قياسي" : "مخصص"}
                   </Badge>
                 </DialogTitle>
                 <DialogDescription>{viewing.description}</DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-                <span className="text-muted-foreground">Access level</span>
+                <span className="text-muted-foreground">مستوى الوصول</span>
                 <span>{viewing.accessLevel}</span>
-                <span className="text-muted-foreground">Agents</span>
+                <span className="text-muted-foreground">الموظفون</span>
                 <span className="tabular-nums">{viewingAgents}</span>
-                <span className="text-muted-foreground">Owner</span>
+                <span className="text-muted-foreground">المسؤول</span>
                 <span>{viewing.owner}</span>
-                <span className="text-muted-foreground">Last review</span>
+                <span className="text-muted-foreground">آخر مراجعة</span>
                 <span>{viewing.lastReview}</span>
-                <span className="text-muted-foreground">Status</span>
+                <span className="text-muted-foreground">الحالة</span>
                 <span>{viewing.status}</span>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="font-medium text-sm">Permissions</span>
+                <span className="font-medium text-sm">الصلاحيات</span>
                 <ul className="mb-0 list-disc ps-4">
                   {viewing.permissions.map((p) => (
                     <li key={p} className="text-muted-foreground text-sm">
@@ -396,7 +632,6 @@ export function Roles({
         onConfirm={async (role) => {
           setDeleting(null);
           await deleteCustomRole(role);
-          // Mock choice: agents on a deleted custom role fall back to their base Agent role.
           setAgents((list) =>
             list.map((a) => (a.customRoleId === role.customRoleId ? { ...a, customRoleId: null } : a)),
           );

@@ -5,7 +5,6 @@ import {
   BookOpen,
   Bot,
   Calendar,
-  CheckSquare,
   Contact,
   Ellipsis,
   Fingerprint,
@@ -207,22 +206,15 @@ export const sidebarItems: NavGroup[] = [
       {
         id: "cw-captain",
         subnav: true,
-        title: "Captain",
+        title: "الذكاء الاصطناعي",
         icon: Bot,
-        preview: ["cp-overview", "cp-inboxes", "cp-documents", "cp-faqs", "cp-scenarios", "cp-playground"],
-        // T-284 (item 125.6): Inboxes second in the bar (Fahad). FAQs are the assistant's knowledge, made from the
-        // documents (faqs.tsx and documents.tsx subtitles), so they stay right after Documents; the rest keep their order.
+        preview: ["cp-smart", "cp-employee", "cp-evaluator", "cp-build"],
+        // FAH-14 (أمر فهد FAH-12): قسم الذكاء محصور في الأقسام الذهبية الأربعة فقط.
         subItems: [
-          { id: "cp-overview", title: "Overview", url: "/dashboard/captain" },
-          { id: "cp-inboxes", title: "Inboxes", url: "/dashboard/captain/inboxes" },
-          { id: "cp-documents", title: "Documents", url: "/dashboard/captain/documents" },
-          { id: "cp-faqs", title: "FAQs", url: "/dashboard/captain/faqs" },
-          { id: "cp-scenarios", title: "Scenarios", url: "/dashboard/captain/scenarios" },
-          { id: "cp-playground", title: "Playground", url: "/dashboard/captain/playground" },
-          { id: "cp-tools", title: "Tools", url: "/dashboard/captain/tools" },
-          // T-89: the assistant's own settings (name, messages, audience, schedule), not the account Settings, whose
-          // Captain page (models and features) is listed there.
-          { id: "cp-settings", title: "Assistant settings", url: "/dashboard/captain/settings" },
+          { id: "cp-smart", title: "كل شيء سمارت (إيمه)", url: "/dashboard/captain/smart" },
+          { id: "cp-employee", title: "موظف الذكاء البشري", url: "/dashboard/captain/employee" },
+          { id: "cp-evaluator", title: "مقيّم الذكاء", url: "/dashboard/captain/evaluator" },
+          { id: "cp-build", title: "اربط ذكاءك", url: "/dashboard/captain/build" },
         ],
       },
       {
@@ -326,7 +318,7 @@ export const sidebarItems: NavGroup[] = [
           { id: "s-index", title: "All Settings", url: "/dashboard/settings" },
           // Workspace settings; the personal Account menu opens /dashboard/settings/profile.
           { id: "s-account", title: "General Settings", url: "/dashboard/settings/account", group: "Workspace" },
-          { id: "s-captain", title: "Captain", url: "/dashboard/captain/captain-settings", group: "Workspace" },
+          { id: "s-captain", title: "الكابتن", url: "/dashboard/captain/captain-settings", group: "Workspace" },
           // Agents and Custom Roles keep their distinct users/roles tab destinations.
           { id: "s-agents", title: "Agents", url: "/dashboard/users", group: "Team" },
           { id: "s-teams", title: "Teams", url: "/dashboard/settings/teams", group: "Team" },
@@ -405,10 +397,12 @@ export const sidebarItems: NavGroup[] = [
     label: "Pages",
     more: { id: "more", title: "More", icon: Ellipsis },
     items: [
+      // FAH-20 (Fahad FAH-12 axis 8): Calendar and Tasks are one entry, the Planner (Today, Calendar, Tasks); their own
+      // pages still open from old links.
       {
-        id: "calendar",
-        title: "Calendar",
-        url: "/dashboard/calendar",
+        id: "planner",
+        title: "Planner",
+        url: "/dashboard/planner",
         icon: Calendar,
       },
       {
@@ -416,12 +410,6 @@ export const sidebarItems: NavGroup[] = [
         title: "Kanban",
         url: "/dashboard/kanban",
         icon: Kanban,
-      },
-      {
-        id: "tasks",
-        title: "Tasks",
-        url: "/dashboard/tasks",
-        icon: CheckSquare,
       },
       {
         id: "invoice",

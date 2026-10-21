@@ -234,7 +234,7 @@ export const ROUTES: readonly RouteRow[] = [
   v1(`teams/${ID}`, "admin", ["PUT", "PATCH", "DELETE"]),
   v1(`teams/${ID}/team_members`, "admin", ["POST", "PATCH", "DELETE"]),
   v1("inboxes", "admin", ["POST"]),
-  v1(`inboxes/${ID}`, "admin", ["PUT", "PATCH"]),
+  v1(`inboxes/${ID}`, "admin", ["PUT", "PATCH", "DELETE"]),
   v1("inbox_members", "admin", ["POST", "PATCH", "DELETE"]),
   v1("macros", "agent", ["POST"]),
   v1(`macros/${ID}`, "agent", ["PUT", "PATCH", "DELETE"]),
@@ -328,7 +328,8 @@ export const TEST_INBOX_ID = 3;
 /** V-16: the only conversation allowed for mute/unmute/transcript/delete-message during Meta review. */
 export const TEST_CONVERSATION_ID = 2;
 
-const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript", "messages"]);
+// 2026-10-19 أمر فهد «جرب الرسائل والمحادثات بنفسك»: الرد في كل المحادثات مفتوح؛ الكتم والنص والحذف تبقى مقفلة.
+const SENSITIVE_CONVERSATION_MEMBER = new Set(["mute", "unmute", "transcript"]);
 
 function bodyInboxId(body: unknown): number | null {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
