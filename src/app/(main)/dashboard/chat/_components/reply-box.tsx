@@ -563,7 +563,7 @@ export function ReplyBox({
           subject: conversation.subject,
           draftText: text,
           messages: conversation.messages.slice(-6).map((m) => ({
-            kind: m.kind,
+            kind: m.align === "start" ? "incoming" : "outgoing",
             text: m.text,
           })),
         }),
